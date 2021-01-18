@@ -92,21 +92,24 @@ done
 
 # manual build processes that don't fit the other patterns
 
+# DHS/INL ICS parsers
+ICSNPP_FULL_PARSERS=(
+  zeek_bacnet_parser
+  zeek_bsap_ip_parser
+  zeek_bsap_serial_parser
+  zeek_enip_parser
+)
 SRC_DIR="$(clone_github_repo "https://github.com/cisagov/ICSNPP")"
 if [[ -d "$SRC_DIR" ]]; then
   CWD="$(pwd)"
-  cd "$SRC_DIR"/zeek_bacnet_parser && \
-    ./configure --bro-dist="$ZEEK_DIST_DIR" --install-root="$ZEEK_PLUGIN_DIR" && \
-    make && \
-    make install
-  cd "$SRC_DIR"/zeek_enip_parser && \
-    ./configure --bro-dist="$ZEEK_DIST_DIR" --install-root="$ZEEK_PLUGIN_DIR" && \
-    make && \
-    make install
-  cd "$SRC_DIR"/zeek_dnp3_parser && \
-    cp *.zeek /opt/zeek/share/zeek/base/protocols/dnp3/
-  cd "$SRC_DIR"/zeek_modbus_parser && \
-    cp *.zeek /opt/zeek/share/zeek/base/protocols/modbus/
+  for FULL_PARSER in ${ICSNPP_FULL_PARSERS[@]}; do
+    cd "$SRC_DIR"/"$FULL_PARSER" && \
+      ./configure --bro-dist="$ZEEK_DIST_DIR" --install-root="$ZEEK_PLUGIN_DIR" && \
+      make && \
+      make install
+  done
+  cp "$SRC_DIR"/zeek_dnp3_parser/*.zeek /opt/zeek/share/zeek/base/protocols/dnp3/
+  cp "$SRC_DIR"/zeek_modbus_parser/*.zeek /opt/zeek/share/zeek/base/protocols/modbus/
   cd "$CWD"
 fi
 
