@@ -1,5 +1,7 @@
 # Malcolm
 
+[![Join the chat at https://gitter.im/malcolmnetsec/community](https://badges.gitter.im/malcolmnetsec/community.svg)](https://gitter.im/malcolmnetsec/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ![](./docs/images/logo/Malcolm_banner.png)
 
 [Malcolm](https://github.com/idaholab/Malcolm) is a powerful network traffic analysis tool suite designed with the following goals in mind:
