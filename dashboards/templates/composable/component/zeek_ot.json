@@ -5982,6 +5982,22 @@
                 }
               }
             },
+            "sv": {
+              "properties": {
+                "appid": {
+                  "type": "integer"
+                },
+                "length": {
+                  "type": "integer"
+                },
+                "smpcnt": {
+                  "type": "integer"
+                },
+                "sv_id": {
+                  "type": "keyword"
+                }
+              }
+            },
             "synchrophasor": {
               "properties": {
                 "data_frame_count": {

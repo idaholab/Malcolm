@@ -58,6 +58,7 @@ global disable_ics_profinet = (getenv("ZEEK_DISABLE_ICS_PROFINET") == true_regex
 global disable_ics_profinet_io_cm = (getenv("ZEEK_DISABLE_ICS_PROFINET_IO_CM") == true_regex) ? T : F;
 global disable_ics_roc_plus = (getenv("ZEEK_DISABLE_ICS_ROC_PLUS") == true_regex) ? T : F;
 global disable_ics_s7comm = (getenv("ZEEK_DISABLE_ICS_S7COMM") == true_regex) ? T : F;
+global disable_ics_sv = (getenv("ZEEK_DISABLE_ICS_SV") == true_regex) ? T : F;
 global disable_ics_synchrophasor = (getenv("ZEEK_DISABLE_ICS_SYNCHROPHASOR") == true_regex) ? T : F;
 
 redef Broker::default_listen_address = "127.0.0.1";
@@ -219,6 +220,9 @@ event zeek_init() &priority=-5 {
   }
   if (disable_ics_all || disable_ics_s7comm) {
     Analyzer::disable_analyzer(Analyzer::ANALYZER_S7COMM_TCP);
+  }
+   if (disable_ics_all || disable_ics_sv) {
+    Analyzer::disable_analyzer(Analyzer::ANALYZER_SPICY_SV);
   }
   if (disable_ics_all || disable_ics_synchrophasor) {
     Spicy::disable_protocol_analyzer(Analyzer::ANALYZER_SYNCHROPHASOR_TCP);
