@@ -143,6 +143,7 @@ ZKG_GITHUB_URLS=(
   "https://github.com/corelight/zeek-xor-exe-plugin|master"
   "https://github.com/corelight/zerologon"
   "https://github.com/cybera/zeek-sniffpass"
+  "https://github.com/DINA-community/icsnpp-iec61850-sv"
   "https://github.com/FoxIO-LLC/ja4|main"
   "https://github.com/mitre-attack/bzar"
   "https://github.com/salesforce/GQUIC_Protocol_Analyzer"
