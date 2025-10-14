@@ -3886,7 +3886,7 @@ class LinuxInstaller(Installer):
 class MacInstaller(Installer):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def __init__(self, orchMode, configOnly=False):
-        super().__init__(orchMode, debug, configOnly)
+        super().__init__(orchMode, configOnly)
 
         self.sudoCmd = []
 
