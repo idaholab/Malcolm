@@ -59,6 +59,8 @@ from scripts.installer.configs.configuration_items import (
     ALL_CONFIG_ITEMS_DICT,
     CONFIG_ITEM_DEFINITION_NAME_BY_KEY,
 )
+from scripts.installer.configs.menu_items import ALL_MENU_ITEMS_DICT
+from scripts.installer.core.menu_item import MenuItem
 from scripts.installer.configs.constants.constants import (
     COMPOSE_FILENAME,
     LABEL_MALCOLM_CERTRESOLVER,
@@ -102,6 +104,7 @@ class MalcolmConfig(ObservableStoreMixin):
         self.config_dir_loaded = None  # only set when items are loaded from .env files in a config_dir
         self.config_dir_written = None  # only set when items are written to .env files in a config_dir
         self._items: Dict[str, ConfigItem] = copy.deepcopy(ALL_CONFIG_ITEMS_DICT)
+        self._menu_items: Dict[str, MenuItem] = copy.deepcopy(ALL_MENU_ITEMS_DICT)
         self._env_mapper: EnvMapper = (
             EnvMapper()
         )  # contains the mapping of config items <--> environment variables as well as environment variables to .env files
@@ -122,17 +125,22 @@ class MalcolmConfig(ObservableStoreMixin):
     def _set_item_visible(self, key: str, visible: bool) -> None:
         """Set item visibility and propagate changes to dependents."""
 
+        # Check if it's a menu item or config item
         item = self._items.get(key)
-        if not item:
+        menu_item = self._menu_items.get(key) if not item else None
+
+        if not item and not menu_item:
             return
 
-        if item.is_visible == visible:
+        target_item = item if item else menu_item
+
+        if target_item.is_visible == visible:
             return
 
-        item.set_visible(visible)
+        target_item.set_visible(visible)
 
-        # ensure parent map entries exist for ad-hoc relationships
-        if item.ui_parent:
+        # For config items, ensure parent map entries exist for ad-hoc relationships
+        if item and item.ui_parent:
             children = self._parent_map.setdefault(item.ui_parent, [])
             if key not in children:
                 children.append(key)
@@ -222,6 +230,42 @@ class MalcolmConfig(ObservableStoreMixin):
             ConfigItem instance or None if not found
         """
         return self._items.get(key)
+
+    def get_menu_item(self, key: str) -> Optional[MenuItem]:
+        """Get a MenuItem instance by its key.
+
+        Args:
+            key: Menu item key
+
+        Returns:
+            MenuItem instance or None if not found
+        """
+        return self._menu_items.get(key)
+
+    def is_menu_item_visible(self, key: str) -> bool:
+        """Check if a menu item should be visible based on observer-driven state.
+
+        Args:
+            key: Menu item key
+
+        Returns:
+            True if the menu item should be visible, False otherwise
+        """
+        if key in self._menu_items:
+            return self.get_menu_item(key).is_visible
+        return False
+
+    def get_visible_menu_items(self) -> Dict[str, MenuItem]:
+        """Get all menu items that should be visible.
+
+        Returns:
+            Dictionary of visible menu items
+        """
+        visible_items = {}
+        for key, item in self._menu_items.items():
+            if self.is_menu_item_visible(key):
+                visible_items[key] = item
+        return visible_items
 
     def get_value(self, key: str) -> Optional[Any]:
         """Get the current value of a configuration item.

@@ -17,7 +17,7 @@ from scripts.malcolm_common import (
     DialogCanceledException,
 )
 from scripts.installer.utils.logger_utils import InstallerLogger
-from scripts.installer.configs.constants.constants import MAIN_MENU_KEYS
+from scripts.installer.configs.constants.constants import MAIN_MENU_ITEM_KEYS
 from scripts.installer.ui.shared.menu_builder import ValueFormatter
 from scripts.installer.ui.shared.store_view_model import build_rows_from_items, build_child_map
 from scripts.installer.ui.shared.search_utils import format_search_results_text
@@ -46,10 +46,14 @@ class DialogConfigurationMenu:
     ) -> None:
         self.mc = malcolm_config
         self.ctx = install_context
-        self.main_menu_keys = main_menu_keys or MAIN_MENU_KEYS
+        self.main_menu_keys = main_menu_keys or MAIN_MENU_ITEM_KEYS
         self.debug_mode = debug_mode
         self.ui_mode = ui_mode
-        self.child_map: Dict[str, List[str]] = build_child_map(self.mc.get_all_config_items().items())
+        # Build child map from both ConfigItems and MenuItems
+        all_config_items = list(self.mc.get_all_config_items().items())
+        all_menu_items = list(self.mc.get_visible_menu_items().items())
+        combined_items = all_config_items + all_menu_items
+        self.child_map: Dict[str, List[str]] = build_child_map(combined_items)
 
     def run(self) -> bool:
         try:
@@ -69,8 +73,11 @@ class DialogConfigurationMenu:
         for r in rows:
             if not r.visible:
                 continue
+            # Check both ConfigItem and MenuItem
             item = self.mc.get_item(r.key)
-            if item and item.ui_parent == parent_key:
+            menu_item = self.mc.get_menu_item(r.key) if not item else None
+            target_item = item if item else menu_item
+            if target_item and target_item.ui_parent == parent_key:
                 ordered.append(r.key)
         return ordered
 
@@ -80,24 +87,43 @@ class DialogConfigurationMenu:
         choices: List[Tuple[str, str, bool]] = []
         tag_map: Dict[str, str] = {}
         for key in keys:
+            # Check if it's a MenuItem or ConfigItem
             item = self.mc.get_item(key)
-            if not item:
+            menu_item = self.mc.get_menu_item(key) if not item else None
+            
+            if not item and not menu_item:
                 continue
-            value_display = ValueFormatter.format_config_value(item.label, item.get_value())
-            desc = value_display if isinstance(value_display, str) else str(value_display)
-            tag = item.label or key
-            # map displayed tag back to real key
-            tag_map[tag] = f"KEY:{key}"
-            choices.append((tag, desc, False))
+            
+            if menu_item:
+                # MenuItem - display as group header (non-editable)
+                tag = menu_item.label or key
+                tag_map[tag] = f"GROUP:{key}"  # MenuItems are always groups
+                choices.append((tag, "", False))
+            else:
+                # ConfigItem - display with value
+                value_display = ValueFormatter.format_config_value(item.label, item.get_value())
+                desc = value_display if isinstance(value_display, str) else str(value_display)
+                tag = item.label or key
+                # map displayed tag back to real key
+                tag_map[tag] = f"KEY:{key}"
+                choices.append((tag, desc, False))
 
-            # if this item has visible children, offer a separate entry to navigate
-            # into its submenu without conflating it with the parent value editor
-            visible_children = [c for c in self.child_map.get(key, []) if self.mc.is_item_visible(c)]
-            if visible_children:
-                # visually indent group navigation entries to indicate dependency
-                nav_tag = " ↳ " + re.sub(r'^(?:Enable |Use )| Mode$', '', item.label) + " Settings"
-                tag_map[nav_tag] = f"GROUP:{key}"
-                choices.append((nav_tag, "", False))
+                # if this item has visible children, offer a separate entry to navigate
+                # into its submenu without conflating it with the parent value editor
+                visible_children = []
+                for c in self.child_map.get(key, []):
+                    child_item = self.mc.get_item(c)
+                    child_menu = self.mc.get_menu_item(c) if not child_item else None
+                    if child_item and self.mc.is_item_visible(c):
+                        visible_children.append(c)
+                    elif child_menu and self.mc.is_menu_item_visible(c):
+                        visible_children.append(c)
+                
+                if visible_children:
+                    # visually indent group navigation entries to indicate dependency
+                    nav_tag = " ↳ " + re.sub(r'^(?:Enable |Use )| Mode$', '', item.label) + " Settings"
+                    tag_map[nav_tag] = f"GROUP:{key}"
+                    choices.append((nav_tag, "", False))
 
         if include_actions:
             # add a non-selectable-looking separator label before actions
@@ -129,7 +155,12 @@ class DialogConfigurationMenu:
                 return True if parent_key is None else True
 
             try:
-                label = "Malcolm Configuration" if parent_key is None else self.mc.get_item(parent_key).label
+                if parent_key is None:
+                    label = "Malcolm Configuration"
+                else:
+                    parent_item = self.mc.get_item(parent_key)
+                    parent_menu = self.mc.get_menu_item(parent_key) if not parent_item else None
+                    label = (parent_item.label if parent_item else parent_menu.label if parent_menu else parent_key)
                 prompt = re.sub(r'^(?:Enable |Use )| Mode$', '', label) + ": select an item to configure"
                 result = InstallerChooseOne(
                     prompt,

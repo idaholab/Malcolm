@@ -59,13 +59,25 @@ class ConfigurationMenu(BaseMenu):
         for row in rows:
             if not row.visible:
                 continue
+            # Check if it's a MenuItem or ConfigItem
             item = self.malcolm_config.get_item(row.key)
-            if not item:
+            menu_item = self.malcolm_config.get_menu_item(row.key) if not item else None
+            
+            if not item and not menu_item:
                 continue
-            value_display = ValueFormatter.format_config_value(item.label, item.get_value())
-            item_number = len(self.displayed_keys) + 1
-            self.displayed_keys.append(row.key)
-            self.menu_builder.add_tree_item(row.prefix, item_number, item.label, value_display)
+            
+            # MenuItems are group headers (no value display), ConfigItems show values
+            if menu_item:
+                # MenuItem - display as group header without value
+                item_number = len(self.displayed_keys) + 1
+                self.displayed_keys.append(row.key)
+                self.menu_builder.add_tree_item(row.prefix, item_number, menu_item.label, "")
+            else:
+                # ConfigItem - display with value
+                value_display = ValueFormatter.format_config_value(item.label, item.get_value())
+                item_number = len(self.displayed_keys) + 1
+                self.displayed_keys.append(row.key)
+                self.menu_builder.add_tree_item(row.prefix, item_number, item.label, value_display)
 
         self.menu_builder.add_action_section()
         self.menu_builder.add_action(
@@ -159,7 +171,18 @@ class ConfigurationMenu(BaseMenu):
             item_index: The index of the selected item
         """
         selected_key = self.displayed_keys[item_index]
+        
+        # Check if it's a MenuItem (non-editable) or ConfigItem
+        menu_item = self.malcolm_config.get_menu_item(selected_key)
+        if menu_item:
+            # MenuItem - just show a message that it's a group header
+            print(f"\n'{menu_item.label}' is a menu group. Select items within this group to configure them.\n")
+            self.ask_string("Press Enter to continue...", default="")
+            return
+        
         item_to_edit = self.malcolm_config.get_item(selected_key)
+        if not item_to_edit:
+            return
 
         while True:
             new_value = self.prompt_config_item(item_to_edit)

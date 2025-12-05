@@ -19,7 +19,7 @@ from scripts.malcolm_common import UserInterfaceMode
 from scripts.malcolm_constants import OrchestrationFramework
 from scripts.installer.configs.constants.enums import ControlFlow
 
-from scripts.installer.configs.constants.constants import MAIN_MENU_KEYS
+from scripts.installer.configs.constants.constants import MAIN_MENU_ITEM_KEYS
 from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_CONTAINER_NETWORK_NAME,
     KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
@@ -121,7 +121,7 @@ class TestUIParityDrivenPrompts(unittest.TestCase):
         menu = ConfigurationMenu(
             self.mc_tui,
             self.ctx_tui,
-            main_menu_keys=MAIN_MENU_KEYS,
+            main_menu_keys=MAIN_MENU_ITEM_KEYS,
             ui_mode=UserInterfaceMode.InteractionInput,
         )
         for key in ordered_keys():
@@ -149,7 +149,7 @@ class TestUIParityDrivenPrompts(unittest.TestCase):
         menu = DialogConfigurationMenu(
             self.mc_dui,
             self.ctx_dui,
-            MAIN_MENU_KEYS,
+            MAIN_MENU_ITEM_KEYS,
             ui_mode=UserInterfaceMode.InteractionDialog,
         )
 

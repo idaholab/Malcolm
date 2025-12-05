@@ -70,7 +70,7 @@ from scripts.installer.args.presentation_args import add_presentation_args
 from scripts.installer.configs.constants.installation_item_keys import *
 from scripts.installer.configs.constants.configuration_item_keys import *
 from scripts.installer.configs.constants.enums import InstallerResult, ControlFlow, ContainerRuntime
-from scripts.installer.configs.constants.constants import MAIN_MENU_KEYS
+from scripts.installer.configs.constants.constants import MAIN_MENU_ITEM_KEYS
 
 from scripts.installer.core.malcolm_config import MalcolmConfig
 from scripts.installer.core.install_context import InstallContext
@@ -783,7 +783,7 @@ def main():
         config_success = ui_impl.run_configuration_menu(
             malcolm_config,
             install_context,
-            main_menu_keys=MAIN_MENU_KEYS,
+            main_menu_keys=MAIN_MENU_ITEM_KEYS,
             debug_mode=parsed_args.debug,
         )
 
@@ -817,7 +817,7 @@ def main():
             config_success = ui_impl.run_configuration_menu(
                 malcolm_config,
                 install_context,
-                main_menu_keys=MAIN_MENU_KEYS,
+                main_menu_keys=MAIN_MENU_ITEM_KEYS,
                 debug_mode=parsed_args.debug,
             )
             if not config_success:
