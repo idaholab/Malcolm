@@ -63,6 +63,7 @@ class MenuBuilder:
         label: str,
         current_value: Any,
         question: str = None,
+        show_value: bool = True,
     ) -> None:
         """Add a tree-style menu item with prefix formatting.
 
@@ -70,11 +71,17 @@ class MenuBuilder:
             prefix: The tree prefix (e.g., "├── ", "└── ")
             number: The item number
             label: The item label
-            current_value: The current value to display
+            current_value: The current value to display (ignored if show_value is False)
             question: Question text to display below the item
+            show_value: Whether to display the current value (False for MenuItems, True for ConfigItems)
         """
-        value_display = self._format_value_display(current_value)
-        self.menu_lines.append(f"{prefix}{number}. {label} (current: {value_display})")
+        if show_value:
+            # ConfigItem - always show value, even if empty
+            value_display = self._format_value_display(current_value)
+            self.menu_lines.append(f"{prefix}{number}. {label} (current: {value_display})")
+        else:
+            # MenuItem - no value display
+            self.menu_lines.append(f"{prefix}{number}. {label}")
 
         if question:
             # Adjust help text indentation based on prefix

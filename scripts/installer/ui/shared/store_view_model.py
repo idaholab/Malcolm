@@ -104,6 +104,15 @@ def build_rows_from_items(
         if not vis:
             return
         
+        # For items with MenuItem parents (both ConfigItems and nested MenuItems), 
+        # check if parent is expanded
+        if it.ui_parent:
+            parent_item = item_by_key.get(it.ui_parent)
+            if parent_item and isinstance(parent_item, MenuItem):
+                # Parent is a MenuItem - only show if it's expanded
+                if not store.is_menu_item_expanded(it.ui_parent):
+                    return
+        
         # Build tree prefix using ancestors' lastness
         prefix_parts: List[str] = []
         for is_last in ancestors_last[:-1]:
@@ -130,6 +139,11 @@ def build_rows_from_items(
                 prefix=prefix,
             )
         )
+        # Only process children if this is a MenuItem that is expanded, or if it's not a MenuItem
+        # (ConfigItems always show their children if visible)
+        if is_menu_item and not store.is_menu_item_expanded(k):
+            return  # Don't process children of collapsed MenuItems
+        
         # Only consider visible children for connector correctness
         vis_children = []
         for ck in children.get(k, []):

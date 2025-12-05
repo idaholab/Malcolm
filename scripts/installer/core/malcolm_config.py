@@ -111,10 +111,18 @@ class MalcolmConfig(ObservableStoreMixin):
         self._observers: Dict[str, List[Callable[[Any], None]]] = {}
         self._modified_keys: List[str] = []  # list instead of a set to preserve change order for display
         self._parent_map: Dict[str, List[str]] = {}
+        self._expanded_menu_items: set[str] = set()  # Track which MenuItems are expanded
 
-        # all items default to visible unless overridden
+        # Set default visibility: items with MenuItem parents are hidden by default
+        # Top-level items (like MALCOLM_PROFILE) remain visible
+        menu_item_keys = set(self._menu_items.keys())
         for item in self._items.values():
-            item._visible = True
+            # If item has a MenuItem as parent, hide it by default
+            # Visibility rules will show it when conditions are met
+            if item.ui_parent and item.ui_parent in menu_item_keys:
+                item._visible = False
+            else:
+                item._visible = True
 
         # initialize declarative dependency system
         from scripts.installer.core.dependency_manager import DependencyManager
@@ -266,6 +274,49 @@ class MalcolmConfig(ObservableStoreMixin):
             if self.is_menu_item_visible(key):
                 visible_items[key] = item
         return visible_items
+
+    def is_menu_item_expanded(self, key: str) -> bool:
+        """Check if a menu item is expanded.
+
+        Args:
+            key: Menu item key
+
+        Returns:
+            True if the menu item is expanded, False otherwise
+        """
+        menu_item = self.get_menu_item(key)
+        if menu_item:
+            return menu_item.is_expanded
+        return key in self._expanded_menu_items
+
+    def set_menu_item_expanded(self, key: str, expanded: bool) -> None:
+        """Set the expanded state of a menu item.
+
+        Args:
+            key: Menu item key
+            expanded: Whether the menu item should be expanded
+        """
+        menu_item = self.get_menu_item(key)
+        if menu_item:
+            menu_item.set_expanded(expanded)
+            if expanded:
+                self._expanded_menu_items.add(key)
+            else:
+                self._expanded_menu_items.discard(key)
+
+    def toggle_menu_item_expanded(self, key: str) -> None:
+        """Toggle the expanded state of a menu item.
+
+        Args:
+            key: Menu item key
+        """
+        menu_item = self.get_menu_item(key)
+        if menu_item:
+            menu_item.toggle_expanded()
+            if menu_item.is_expanded:
+                self._expanded_menu_items.add(key)
+            else:
+                self._expanded_menu_items.discard(key)
 
     def get_value(self, key: str) -> Optional[Any]:
         """Get the current value of a configuration item.

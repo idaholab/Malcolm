@@ -95,7 +95,7 @@ class DialogConfigurationMenu:
                 continue
             
             if menu_item:
-                # MenuItem - display as group header (non-editable)
+                # MenuItem - display as group header (non-editable) without value
                 tag = menu_item.label or key
                 tag_map[tag] = f"GROUP:{key}"  # MenuItems are always groups
                 choices.append((tag, "", False))
@@ -107,23 +107,6 @@ class DialogConfigurationMenu:
                 # map displayed tag back to real key
                 tag_map[tag] = f"KEY:{key}"
                 choices.append((tag, desc, False))
-
-                # if this item has visible children, offer a separate entry to navigate
-                # into its submenu without conflating it with the parent value editor
-                visible_children = []
-                for c in self.child_map.get(key, []):
-                    child_item = self.mc.get_item(c)
-                    child_menu = self.mc.get_menu_item(c) if not child_item else None
-                    if child_item and self.mc.is_item_visible(c):
-                        visible_children.append(c)
-                    elif child_menu and self.mc.is_menu_item_visible(c):
-                        visible_children.append(c)
-                
-                if visible_children:
-                    # visually indent group navigation entries to indicate dependency
-                    nav_tag = " ↳ " + re.sub(r'^(?:Enable |Use )| Mode$', '', item.label) + " Settings"
-                    tag_map[nav_tag] = f"GROUP:{key}"
-                    choices.append((nav_tag, "", False))
 
         if include_actions:
             # add a non-selectable-looking separator label before actions
@@ -187,16 +170,31 @@ class DialogConfigurationMenu:
             # selected a key
             if mapped.startswith("KEY:"):
                 key = mapped.split(":", 1)[1]
+                # editing a key always prompts for value
+                self._prompt_for_item_value(key)
+                continue
             elif mapped.startswith("GROUP:"):
                 grp_key = mapped.split(":", 1)[1]
+                # Check if it's a MenuItem - if so, toggle expansion
+                menu_item = self.mc.get_menu_item(grp_key)
+                if menu_item:
+                    # Toggle expansion and continue (menu will rebuild)
+                    self.mc.toggle_menu_item_expanded(grp_key)
+                    continue
+                # Otherwise navigate into the group
                 if not self._navigate(grp_key):
                     return False
                 continue
             else:
-                # fallback – shouldn't happen
+                # fallback – check if it's a MenuItem
+                menu_item = self.mc.get_menu_item(result)
+                if menu_item:
+                    # Toggle expansion
+                    self.mc.toggle_menu_item_expanded(result)
+                    continue
+                # Otherwise treat as key
                 key = result
-            # editing a key always prompts for value; navigation occurs via GROUP entries
-            self._prompt_for_item_value(key)
+                self._prompt_for_item_value(key)
             continue
 
     def _prompt_for_item_value(self, key: str) -> None:

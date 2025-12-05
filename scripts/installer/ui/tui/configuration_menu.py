@@ -71,13 +71,13 @@ class ConfigurationMenu(BaseMenu):
                 # MenuItem - display as group header without value
                 item_number = len(self.displayed_keys) + 1
                 self.displayed_keys.append(row.key)
-                self.menu_builder.add_tree_item(row.prefix, item_number, menu_item.label, "")
+                self.menu_builder.add_tree_item(row.prefix, item_number, menu_item.label, "", show_value=False)
             else:
                 # ConfigItem - display with value
                 value_display = ValueFormatter.format_config_value(item.label, item.get_value())
                 item_number = len(self.displayed_keys) + 1
                 self.displayed_keys.append(row.key)
-                self.menu_builder.add_tree_item(row.prefix, item_number, item.label, value_display)
+                self.menu_builder.add_tree_item(row.prefix, item_number, item.label, value_display, show_value=True)
 
         self.menu_builder.add_action_section()
         self.menu_builder.add_action(
@@ -165,7 +165,7 @@ class ConfigurationMenu(BaseMenu):
         self.ask_string("Press Enter to continue...", default="")
 
     def _handle_item_selection(self, item_index: int) -> None:
-        """Handle selection of a configuration item.
+        """Handle selection of a configuration item or menu item.
 
         Args:
             item_index: The index of the selected item
@@ -175,9 +175,10 @@ class ConfigurationMenu(BaseMenu):
         # Check if it's a MenuItem (non-editable) or ConfigItem
         menu_item = self.malcolm_config.get_menu_item(selected_key)
         if menu_item:
-            # MenuItem - just show a message that it's a group header
-            print(f"\n'{menu_item.label}' is a menu group. Select items within this group to configure them.\n")
-            self.ask_string("Press Enter to continue...", default="")
+            # MenuItem - toggle expanded state to show/hide children
+            self.malcolm_config.toggle_menu_item_expanded(selected_key)
+            # Rebuild menu to show/hide children
+            self.build_menu()
             return
         
         item_to_edit = self.malcolm_config.get_item(selected_key)

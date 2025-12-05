@@ -35,6 +35,7 @@ class MenuItem:
     sort_priority: Optional[int] = None
     ui_parent: Optional[str] = None
     is_visible: bool = True
+    is_expanded: bool = False  # Whether this menu item is expanded to show children
 
     def set_visible(self, visible: bool):
         """Set the visibility of the menu item.
@@ -43,4 +44,16 @@ class MenuItem:
             visible: The new visibility state
         """
         self.is_visible = visible
+
+    def set_expanded(self, expanded: bool):
+        """Set the expanded state of the menu item.
+
+        Args:
+            expanded: Whether the menu item is expanded to show its children
+        """
+        self.is_expanded = expanded
+
+    def toggle_expanded(self):
+        """Toggle the expanded state of the menu item."""
+        self.is_expanded = not self.is_expanded
 
