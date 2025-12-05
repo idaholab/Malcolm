@@ -63,23 +63,51 @@ class DialogConfigurationMenu:
 
     def _ordered_visible_children(self, parent_key: Optional[str]) -> List[str]:
         """Return visible children in a stable, view-model-driven order."""
-        all_items = self.mc.get_all_config_items().items()
+        # Get direct children from child_map
         if parent_key is None:
-            rows = build_rows_from_items(all_items, self.mc, roots=self.main_menu_keys)
-            return [r.key for r in rows if r.visible and r.depth == 0]
-        # For a specific parent, order direct children under that parent
-        rows = build_rows_from_items(all_items, self.mc, roots=[parent_key])
-        ordered = []
-        for r in rows:
-            if not r.visible:
+            # Top level: show main menu items
+            candidate_keys = self.main_menu_keys
+        else:
+            # Get direct children of the parent from child_map
+            candidate_keys = self.child_map.get(parent_key, [])
+        
+        # Filter for visible items and build sortable list
+        visible_items: List[Tuple[int, str, str]] = []  # (priority, label_lower, key)
+        
+        for key in candidate_keys:
+            # Check if it's a ConfigItem or MenuItem
+            item = self.mc.get_item(key)
+            menu_item = self.mc.get_menu_item(key) if not item else None
+            
+            if not item and not menu_item:
                 continue
-            # Check both ConfigItem and MenuItem
-            item = self.mc.get_item(r.key)
-            menu_item = self.mc.get_menu_item(r.key) if not item else None
-            target_item = item if item else menu_item
-            if target_item and target_item.ui_parent == parent_key:
-                ordered.append(r.key)
-        return ordered
+            
+            # Check visibility
+            if menu_item:
+                if not self.mc.is_menu_item_visible(key):
+                    continue
+                target_item = menu_item
+            else:
+                if not self.mc.is_item_visible(key):
+                    continue
+                target_item = item
+            
+            # Verify parent relationship
+            if target_item.ui_parent != parent_key:
+                continue
+            
+            # Get sort priority and label for sorting
+            priority = getattr(target_item, 'sort_priority', None)
+            priority_value = priority if priority is not None else 999999
+            label_lower = (target_item.label or key).lower()
+            
+            visible_items.append((priority_value, label_lower, key))
+        
+        # Sort by priority first, then alphabetically by label
+        visible_items.sort()
+        
+        # Return just the keys in sorted order
+        return [key for _, _, key in visible_items]
 
     def _make_choice_list(
         self, keys: List[str], include_actions: bool, parent_key: Optional[str] = None
@@ -175,13 +203,14 @@ class DialogConfigurationMenu:
                 continue
             elif mapped.startswith("GROUP:"):
                 grp_key = mapped.split(":", 1)[1]
-                # Check if it's a MenuItem - if so, toggle expansion
+                # Check if it's a MenuItem - if so, navigate into it to show only its children
                 menu_item = self.mc.get_menu_item(grp_key)
                 if menu_item:
-                    # Toggle expansion and continue (menu will rebuild)
-                    self.mc.toggle_menu_item_expanded(grp_key)
+                    # Navigate into the MenuItem to show only its children
+                    if not self._navigate(grp_key):
+                        return False
                     continue
-                # Otherwise navigate into the group
+                # Otherwise navigate into the group (for ConfigItem groups)
                 if not self._navigate(grp_key):
                     return False
                 continue
@@ -189,8 +218,9 @@ class DialogConfigurationMenu:
                 # fallback – check if it's a MenuItem
                 menu_item = self.mc.get_menu_item(result)
                 if menu_item:
-                    # Toggle expansion
-                    self.mc.toggle_menu_item_expanded(result)
+                    # Navigate into the MenuItem to show only its children
+                    if not self._navigate(result):
+                        return False
                     continue
                 # Otherwise treat as key
                 key = result
