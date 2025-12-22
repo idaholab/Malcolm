@@ -54,6 +54,8 @@ class DialogConfigurationMenu:
         all_menu_items = list(self.mc.get_visible_menu_items().items())
         combined_items = all_config_items + all_menu_items
         self.child_map: Dict[str, List[str]] = build_child_map(combined_items)
+        # Track selected tag at each menu level for position restoration
+        self.nav_stack: Dict[Optional[str], str] = {}
 
     def run(self) -> bool:
         try:
@@ -110,10 +112,12 @@ class DialogConfigurationMenu:
         return [key for _, _, key in visible_items]
 
     def _make_choice_list(
-        self, keys: List[str], include_actions: bool, parent_key: Optional[str] = None
+        self, keys: List[str], include_actions: bool, parent_key: Optional[str] = None, selected_tag: Optional[str] = None
     ) -> Tuple[List[Tuple[str, str, bool]], Dict[str, str]]:
         choices: List[Tuple[str, str, bool]] = []
         tag_map: Dict[str, str] = {}
+        has_default_selection = False
+        
         for key in keys:
             # Check if it's a MenuItem or ConfigItem
             item = self.mc.get_item(key)
@@ -123,18 +127,25 @@ class DialogConfigurationMenu:
                 continue
             
             if menu_item:
-                # MenuItem - display as group header (non-editable) without value
-                tag = menu_item.label or key
-                tag_map[tag] = f"GROUP:{key}"  # MenuItems are always groups
-                choices.append((tag, "", False))
+                label = menu_item.label or key
+                if not label.endswith(" Settings"):
+                    label = f"{label} Settings"
+                tag = label
+                is_selected = (selected_tag is not None and tag == selected_tag and not has_default_selection)
+                if is_selected:
+                    has_default_selection = True
+                tag_map[tag] = f"GROUP:{key}"
+                choices.append((tag, "", is_selected))
             else:
                 # ConfigItem - display with value
                 value_display = ValueFormatter.format_config_value(item.label, item.get_value())
                 desc = value_display if isinstance(value_display, str) else str(value_display)
                 tag = item.label or key
-                # map displayed tag back to real key
+                is_selected = (selected_tag is not None and tag == selected_tag and not has_default_selection)
+                if is_selected:
+                    has_default_selection = True
                 tag_map[tag] = f"KEY:{key}"
-                choices.append((tag, desc, False))
+                choices.append((tag, desc, is_selected))
 
         if include_actions:
             # add a non-selectable-looking separator label before actions
@@ -158,9 +169,11 @@ class DialogConfigurationMenu:
 
     def _navigate(self, parent_key: Optional[str]) -> bool:
         while True:
+            saved_tag = self.nav_stack.get(parent_key)
+
             keys = self._ordered_visible_children(parent_key)
             include_actions = parent_key is None
-            choices, tag_map = self._make_choice_list(keys, include_actions, parent_key)
+            choices, tag_map = self._make_choice_list(keys, include_actions, parent_key, selected_tag=saved_tag)
 
             if not choices:
                 return True if parent_key is None else True
@@ -172,6 +185,8 @@ class DialogConfigurationMenu:
                     parent_item = self.mc.get_item(parent_key)
                     parent_menu = self.mc.get_menu_item(parent_key) if not parent_item else None
                     label = (parent_item.label if parent_item else parent_menu.label if parent_menu else parent_key)
+                    if parent_menu and not label.endswith(" Settings"):
+                        label = f"{label} Settings"
                 prompt = re.sub(r'^(?:Enable |Use )| Mode$', '', label) + ": select an item to configure"
                 result = InstallerChooseOne(
                     prompt,
@@ -184,7 +199,9 @@ class DialogConfigurationMenu:
             except DialogCanceledException:
                 return False
 
+            selected_tag = result
             mapped = tag_map.get(result, "")
+            
             if mapped == "SEP":
                 continue
             if mapped == "ACTION:exit":
@@ -195,34 +212,30 @@ class DialogConfigurationMenu:
                 self._handle_search()
                 continue
 
-            # selected a key
             if mapped.startswith("KEY:"):
                 key = mapped.split(":", 1)[1]
-                # editing a key always prompts for value
+                self.nav_stack[parent_key] = selected_tag
                 self._prompt_for_item_value(key)
                 continue
             elif mapped.startswith("GROUP:"):
                 grp_key = mapped.split(":", 1)[1]
-                # Check if it's a MenuItem - if so, navigate into it to show only its children
+                self.nav_stack[parent_key] = selected_tag
                 menu_item = self.mc.get_menu_item(grp_key)
                 if menu_item:
-                    # Navigate into the MenuItem to show only its children
                     if not self._navigate(grp_key):
                         return False
                     continue
-                # Otherwise navigate into the group (for ConfigItem groups)
                 if not self._navigate(grp_key):
                     return False
                 continue
             else:
-                # fallback – check if it's a MenuItem
                 menu_item = self.mc.get_menu_item(result)
                 if menu_item:
-                    # Navigate into the MenuItem to show only its children
+                    self.nav_stack[parent_key] = selected_tag
                     if not self._navigate(result):
                         return False
                     continue
-                # Otherwise treat as key
+                self.nav_stack[parent_key] = selected_tag
                 key = result
                 self._prompt_for_item_value(key)
             continue

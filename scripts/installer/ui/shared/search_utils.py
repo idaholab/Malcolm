@@ -30,13 +30,51 @@ def _dependency_label_string(malcolm_config, keys: List[str]) -> str:
     return " -> ".join(labels)
 
 
+def _build_menu_item_path(malcolm_config, menu_item_key: str) -> List[str]:
+    """Build the full path from root to the given MenuItem by traversing up the hierarchy.
+    
+    Args:
+        malcolm_config: MalcolmConfig instance
+        menu_item_key: The key of the MenuItem to build the path for
+        
+    Returns:
+        List of MenuItem labels from root to the given MenuItem (most specific last)
+    """
+    path: List[str] = []
+    current_key = menu_item_key
+    
+    # Traverse up the MenuItem hierarchy
+    visited = set()  # Prevent infinite loops
+    while current_key and current_key not in visited:
+        visited.add(current_key)
+        menu_item = malcolm_config.get_menu_item(current_key)
+        if menu_item:
+            # Ensure "Settings" is appended for MenuItems
+            label = menu_item.label or current_key
+            if not label.endswith(" Settings"):
+                label = f"{label} Settings"
+            path.insert(0, label)  # Insert at beginning to build from root
+            current_key = menu_item.ui_parent
+        else:
+            break
+    
+    return path
+
+
 def _resolve_depends_on(malcolm_config, dep_chain: List[str], ui_parent: Optional[str]) -> str:
     dep_text = _dependency_label_string(malcolm_config, dep_chain)
     if dep_text:
         return dep_text
     if ui_parent:
+        parent_menu = malcolm_config.get_menu_item(ui_parent)
+        if parent_menu:
+            label = parent_menu.label or ui_parent
+            if not label.endswith(" Settings"):
+                label = f"{label} Settings"
+            return label
         parent_item = malcolm_config.get_item(ui_parent)
-        return parent_item.label if parent_item else ui_parent
+        if parent_item:
+            return parent_item.label if parent_item else ui_parent
     return "None"
 
 
@@ -102,18 +140,38 @@ def format_search_results_text(
         ui_parent = result["ui_parent"]
         dep_chain = result["dependency_chain"]
 
+        # Item is only visible in UI if dependency rules pass AND any MenuItem parent is expanded
+        is_visible_in_ui = visible
+        menu_item_parent = None
+        if ui_parent:
+            menu_item_parent = malcolm_config.get_menu_item(ui_parent)
+            if menu_item_parent:
+                is_visible_in_ui = visible and malcolm_config.is_menu_item_expanded(ui_parent)
+
         status: str
-        if visible:
+        depends_on: str
+        if is_visible_in_ui:
             visible_count += 1
             status = "visible"
             depends_on = "None"
         else:
             hidden_count += 1
             status = "hidden"
-            depends_on = _resolve_depends_on(malcolm_config, dep_chain, ui_parent)
+            if menu_item_parent and visible:
+                # Hidden because MenuItem parent not expanded
+                menu_path = _build_menu_item_path(malcolm_config, ui_parent)
+                if menu_path:
+                    depends_on = " -> ".join(menu_path)
+                else:
+                    menu_label = menu_item_parent.label or ui_parent
+                    if not menu_label.endswith(" Settings"):
+                        menu_label = f"{menu_label} Settings"
+                    depends_on = menu_label
+            else:
+                depends_on = _resolve_depends_on(malcolm_config, dep_chain, ui_parent)
 
         item_token = "-"
-        if visible:
+        if is_visible_in_ui:
             if include_numbers:
                 try:
                     item_number = displayed_keys.index(key) + 1

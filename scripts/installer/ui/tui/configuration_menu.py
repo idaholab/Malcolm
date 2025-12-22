@@ -66,12 +66,13 @@ class ConfigurationMenu(BaseMenu):
             if not item and not menu_item:
                 continue
             
-            # MenuItems are group headers (no value display), ConfigItems show values
             if menu_item:
-                # MenuItem - display as group header without value
+                label = menu_item.label or row.key
+                if not label.endswith(" Settings"):
+                    label = f"{label} Settings"
                 item_number = len(self.displayed_keys) + 1
                 self.displayed_keys.append(row.key)
-                self.menu_builder.add_tree_item(row.prefix, item_number, menu_item.label, "", show_value=False)
+                self.menu_builder.add_tree_item(row.prefix, item_number, label, "", show_value=False)
             else:
                 # ConfigItem - display with value
                 value_display = ValueFormatter.format_config_value(item.label, item.get_value())

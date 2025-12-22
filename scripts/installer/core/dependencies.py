@@ -918,7 +918,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_AUTO_ARKIME],
-            condition=lambda profile, _auto_arkime: profile == PROFILE_MALCOLM,
+            condition=lambda profile, auto_arkime: (profile == PROFILE_MALCOLM) and bool(auto_arkime),
             ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
         ),
         value=ValueRule(
@@ -931,7 +931,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     KEY_CONFIG_ITEM_ARKIME_ALLOW_WISE_CONFIG: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_AUTO_ARKIME],
-            condition=lambda profile, _auto_arkime: profile == PROFILE_MALCOLM,
+            condition=lambda profile, auto_arkime: (profile == PROFILE_MALCOLM) and bool(auto_arkime),
             ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
         ),
         value=ValueRule(
@@ -945,9 +945,9 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[
                 KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-                KEY_CONFIG_ITEM_LIVE_ARKIME,
+                KEY_CONFIG_ITEM_AUTO_ARKIME,
             ],
-            condition=lambda profile, live_arkime: (profile != PROFILE_MALCOLM) or bool(live_arkime),
+            condition=lambda profile, auto_arkime: (profile == PROFILE_MALCOLM) and bool(auto_arkime),
             ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
         ),
         value=ValueRule(
