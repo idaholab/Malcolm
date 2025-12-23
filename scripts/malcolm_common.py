@@ -206,6 +206,7 @@ class UserInputDefaultsBehavior(IntFlag):
 class UserInterfaceMode(IntFlag):
     InteractionDialog = auto()
     InteractionInput = auto()
+    InteractionGUI = auto()
 
 
 class DialogBackException(Exception):
