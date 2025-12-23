@@ -183,12 +183,37 @@ class BaseTab:
 
     def _update_widget_visibility(self, key: str):
         """Update widget visibility based on MalcolmConfig state."""
+        from tkinter import TclError
+        from scripts.installer.utils.logger_utils import InstallerLogger
+
         if key not in self.widget_map:
             return
 
         widget = self.widget_map[key]
+        is_visible = self.malcolm_config.is_item_visible(key)
 
-        if self.malcolm_config.is_item_visible(key):
-            widget.pack(fill="x", padx=10, pady=5)
+        # Instead of hiding invisible items, keep them visible but disabled/grayed
+        # This provides better UX - users can see all options even if some are disabled
+        if is_visible:
+            # Enable the widget
+            try:
+                widget.configure(state="normal")
+            except (AttributeError, TclError):
+                # Widget doesn't support state configuration (e.g., CTkLabel, CTkFrame)
+                # This is expected for container widgets
+                pass
         else:
-            widget.pack_forget()
+            # Disable the widget and gray it out
+            try:
+                widget.configure(state="disabled")
+            except (AttributeError, TclError):
+                # Widget doesn't support state configuration
+                pass
+
+            # Also gray out the appearance for visual feedback
+            try:
+                # For CTkFrame containers, adjust color to indicate disabled state
+                widget.configure(fg_color=("gray85", "gray25"))
+            except (AttributeError, TclError):
+                # Widget doesn't support fg_color (e.g., CTkEntry already grays when disabled)
+                pass

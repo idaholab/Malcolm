@@ -17,7 +17,8 @@ def create_config_item_widget(
     parent: customtkinter.CTkFrame,
     key: str,
     item: "ConfigItem",
-    malcolm_config: "MalcolmConfig"
+    malcolm_config: "MalcolmConfig",
+    label_override: Optional[str] = None,
 ) -> Optional[customtkinter.CTkFrame]:
     """Factory function to create appropriate widget for a ConfigItem.
 
@@ -28,7 +29,8 @@ def create_config_item_widget(
         parent: Parent CTk widget
         key: ConfigItem key
         item: ConfigItem instance
-        malcolm_config: MalcolmConfig instance
+        malcolm_config: MalcolmConfig instance (or InstallContext for installation items)
+        label_override: Optional label to use instead of item.label
 
     Returns:
         Container frame with label and widget, or None if widget type unsupported
@@ -38,9 +40,10 @@ def create_config_item_widget(
 
     container = customtkinter.CTkFrame(parent, fg_color="transparent")
 
+    label_text = label_override if label_override else item.label
     label = customtkinter.CTkLabel(
         container,
-        text=item.label,
+        text=label_text,
         anchor="w",
         width=200
     )
@@ -75,12 +78,19 @@ def _create_checkbox(
     var = customtkinter.BooleanVar(value=bool(item.get_value()))
 
     def on_change():
+        from scripts.installer.utils.logger_utils import InstallerLogger
         new_value = var.get()
         try:
             malcolm_config.set_value(key, new_value)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
+            # Expected validation errors
             var.set(not new_value)
             _show_error_dialog(parent, str(e))
+        except Exception as e:
+            # Unexpected error - log with traceback for debugging
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}", exc_info=True)
+            var.set(not new_value)
+            _show_error_dialog(parent, f"Error: {e}")
 
     checkbox = customtkinter.CTkCheckBox(
         parent,
@@ -107,12 +117,19 @@ def _create_entry(
     var = customtkinter.StringVar(value=str(item.get_value() or ""))
 
     def on_focus_out(_event=None):
+        from scripts.installer.utils.logger_utils import InstallerLogger
         new_value = var.get()
         try:
             malcolm_config.set_value(key, new_value)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
+            # Expected validation errors
             var.set(str(item.get_value() or ""))
             _show_error_dialog(parent, str(e))
+        except Exception as e:
+            # Unexpected error - log with traceback
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}", exc_info=True)
+            var.set(str(item.get_value() or ""))
+            _show_error_dialog(parent, f"Error: {e}")
 
     entry = customtkinter.CTkEntry(
         parent,
@@ -167,12 +184,19 @@ def _create_dropdown(
     var = customtkinter.StringVar(value=initial_display)
 
     def on_change(selected_display):
+        from scripts.installer.utils.logger_utils import InstallerLogger
         internal_value = value_map.get(selected_display)
         try:
             malcolm_config.set_value(key, internal_value)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
+            # Expected validation errors
             var.set(initial_display)
             _show_error_dialog(parent, str(e))
+        except Exception as e:
+            # Unexpected error - log with traceback
+            InstallerLogger.error(f"Unexpected error setting {key} to {internal_value}: {e}", exc_info=True)
+            var.set(initial_display)
+            _show_error_dialog(parent, f"Error: {e}")
 
     dropdown = customtkinter.CTkOptionMenu(
         parent,
@@ -203,15 +227,21 @@ def _create_number_entry(
     var = customtkinter.StringVar(value=str(item.get_value() or ""))
 
     def on_focus_out(_event=None):
+        from scripts.installer.utils.logger_utils import InstallerLogger
         new_value_str = var.get()
 
         if not new_value_str.strip():
             try:
                 malcolm_config.set_value(key, None)
                 return
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 var.set(str(item.get_value() or ""))
                 _show_error_dialog(parent, str(e))
+                return
+            except Exception as e:
+                InstallerLogger.error(f"Unexpected error clearing {key}: {e}", exc_info=True)
+                var.set(str(item.get_value() or ""))
+                _show_error_dialog(parent, f"Error: {e}")
                 return
 
         try:
@@ -224,9 +254,13 @@ def _create_number_entry(
         except ValueError:
             var.set(str(item.get_value() or ""))
             _show_error_dialog(parent, "Please enter a valid number")
-        except Exception as e:
+        except TypeError as e:
             var.set(str(item.get_value() or ""))
             _show_error_dialog(parent, str(e))
+        except Exception as e:
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value_str}: {e}", exc_info=True)
+            var.set(str(item.get_value() or ""))
+            _show_error_dialog(parent, f"Error: {e}")
 
     entry = customtkinter.CTkEntry(
         parent,
