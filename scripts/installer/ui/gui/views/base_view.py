@@ -12,9 +12,9 @@ Provides common functionality and structure for views.
 import customtkinter
 from typing import Dict, Any, Callable, List, Tuple
 
-from components.styles import PADDING_LARGE, PADDING_MEDIUM, PADDING_SMALL
-from components.frame import Frame
-from components.label import Label
+from scripts.installer.ui.gui.components.styles import PADDING_LARGE, PADDING_MEDIUM, PADDING_SMALL
+from scripts.installer.ui.gui.components.frame import Frame
+from scripts.installer.ui.gui.components.label import Label
 
 
 class BaseView:

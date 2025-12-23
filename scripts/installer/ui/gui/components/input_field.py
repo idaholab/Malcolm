@@ -13,10 +13,10 @@ import customtkinter
 from tkinter import filedialog
 from typing import Callable, Optional, Tuple, Any
 
-from components.styles import *
-from .frame import Frame
-from .button import Button
-from .label import Label
+from scripts.installer.ui.gui.components.styles import *
+from scripts.installer.ui.gui.components.frame import Frame
+from scripts.installer.ui.gui.components.button import Button
+from scripts.installer.ui.gui.components.label import Label
 
 
 class InputField:

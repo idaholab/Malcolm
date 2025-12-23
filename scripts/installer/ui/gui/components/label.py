@@ -9,8 +9,8 @@ Provides standard label components with consistent styling.
 """
 
 import customtkinter
-from components.styles import *
-from .font_manager import FontManager
+from scripts.installer.ui.gui.components.styles import *
+from scripts.installer.ui.gui.components.font_manager import FontManager
 
 
 class Label:

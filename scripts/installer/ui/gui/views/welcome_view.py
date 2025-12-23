@@ -13,7 +13,7 @@ import os
 from PIL import Image
 from controllers.welcome_controller import WelcomeController
 from scripts.malcolm_common import GetMalcolmDir
-from views.base_view import BaseView
+from scripts.installer.ui.gui.views.base_view import BaseView
 
 
 class WelcomeView(BaseView):

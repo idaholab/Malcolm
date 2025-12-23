@@ -13,7 +13,7 @@ View for Malcolm installation process, showing status and output of the installa
 import customtkinter
 
 from controllers.installation_controller import InstallationController
-from views.base_view import BaseView
+from scripts.installer.ui.gui.views.base_view import BaseView
 
 
 class InstallationView(BaseView):

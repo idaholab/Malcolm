@@ -8,5 +8,6 @@
 from .shared.installer_ui import InstallerUI
 from .tui.tui_installer_ui import TUIInstallerUI
 from .dui.dui_installer_ui import DialogInstallerUI
+from .gui.gui_installer_ui import GUIInstallerUI
 
-__all__ = ["InstallerUI", "TUIInstallerUI", "DialogInstallerUI"]
+__all__ = ["InstallerUI", "TUIInstallerUI", "DialogInstallerUI", "GUIInstallerUI"]

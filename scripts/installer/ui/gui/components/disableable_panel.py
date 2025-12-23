@@ -9,7 +9,7 @@ A panel that is enabled or disabled based on a condition.
 """
 
 import customtkinter
-from components.styles import *
+from scripts.installer.ui.gui.components.styles import *
 
 
 class DisableablePanel:
@@ -44,7 +44,7 @@ class DisableablePanel:
         Returns:
             tuple: (checkbox, panel_frame, contained_widgets) - The checkbox, panel frame, and list to add widgets to
         """
-        from .controlled_checkbox import ControlledCheckbox
+        from scripts.installer.ui.gui.components.controlled_checkbox import ControlledCheckbox
 
         # Determine indentation based on nesting level if not explicitly provided
         if indent is None:
