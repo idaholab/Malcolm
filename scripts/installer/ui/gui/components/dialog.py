@@ -11,6 +11,41 @@ Custom dialog components for the Malcolm installer GUI.
 import customtkinter
 
 
+def show_message_dialog(parent, message, title="Message", message_type="info", width=400, height=200):
+    """
+    Display a modal message dialog using customtkinter.
+
+    Args:
+        parent: The parent window/widget
+        message (str): The message to display
+        title (str): The dialog title (default: "Message")
+        message_type (str): Type of message - "info", "warning", "error" (default: "info")
+        width (int): Dialog width in pixels (default: 400)
+        height (int): Dialog height in pixels (default: 200)
+    """
+    dialog = customtkinter.CTkToplevel(parent)
+    dialog.title(title)
+    dialog.geometry(f"{width}x{height}")
+    dialog.transient(parent)
+
+    # Update to ensure window is created and viewable
+    dialog.update_idletasks()
+
+    # Make the window modal
+    dialog.grab_set()
+
+    # Message
+    label = customtkinter.CTkLabel(dialog, text=message, wraplength=width - 50)
+    label.pack(padx=20, pady=20, fill="both", expand=True)
+
+    # OK button
+    button = customtkinter.CTkButton(dialog, text="OK", command=dialog.destroy)
+    button.pack(pady=(0, 20))
+
+    # Wait for the dialog to be closed
+    dialog.wait_window()
+
+
 def show_error_dialog(parent, message, title="Error", width=400, height=200):
     """
     Display a modal error dialog using customtkinter.
@@ -22,22 +57,7 @@ def show_error_dialog(parent, message, title="Error", width=400, height=200):
         width (int): Dialog width in pixels (default: 400)
         height (int): Dialog height in pixels (default: 200)
     """
-    error_window = customtkinter.CTkToplevel(parent)
-    error_window.title(title)
-    error_window.geometry(f"{width}x{height}")
-
-    # Make the window modal
-    error_window.grab_set()
-
-    # Error message
-    label = customtkinter.CTkLabel(error_window, text=message, wraplength=width - 50)
-    label.pack(padx=20, pady=20)
-
-    # OK button
-    button = customtkinter.CTkButton(error_window, text="OK", command=error_window.destroy)
-    button.pack(pady=10)
-
-    return error_window
+    show_message_dialog(parent, message, title=title, message_type="error", width=width, height=height)
 
 
 def show_confirmation_dialog(
@@ -70,6 +90,10 @@ def show_confirmation_dialog(
     dialog = customtkinter.CTkToplevel(parent)
     dialog.title(title)
     dialog.geometry(f"{width}x{height}")
+    dialog.transient(parent)
+
+    # Update to ensure window is created and viewable
+    dialog.update_idletasks()
 
     # Make the window modal
     dialog.grab_set()

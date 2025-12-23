@@ -234,10 +234,18 @@ class GUIInstallerUI(InstallerUI):
         Returns:
             Updated InstallContext with user's installation choices, or None if cancelled
         """
-        # TODO: Implement InstallationDialog in Phase 4
-        # For now, return the install_context as-is
-        InstallerLogger.warning("GUI installation options dialog not yet implemented")
-        return install_context
+        from scripts.installer.ui.gui.dialogs.installation_dialog import show_installation_dialog
+
+        self._ensure_root()
+        self._root.withdraw()  # Keep root hidden during dialog
+
+        try:
+            result = show_installation_dialog(self._root, malcolm_config, install_context)
+            return result
+        finally:
+            if self._root:
+                self._root.destroy()
+                self._root = None
 
     def show_final_configuration_summary(
         self,
@@ -257,58 +265,21 @@ class GUIInstallerUI(InstallerUI):
         Returns:
             True if user confirms to proceed with installation, False otherwise
         """
-        # TODO: Implement SummaryDialog in Phase 4
-        from scripts.installer.utils.summary_utils import (
-            build_configuration_summary_items,
-            format_summary_value,
-        )
+        from scripts.installer.ui.gui.dialogs.summary_dialog import show_summary_dialog
 
         self._ensure_root()
+        self._root.withdraw()  # Keep root hidden during dialog
 
-        summary_items = build_configuration_summary_items(malcolm_config, config_dir)
-
-        if not install_context.config_only:
-            summary_items.insert(0, ("Auto Apply System Tweaks", "Yes" if install_context.auto_tweaks else "No"))
-        summary_items.insert(0, ("Configuration Only", "Yes" if install_context.config_only else "No"))
-
-        summary_lines = []
-        summary_lines.append("=" * 60)
-        summary_lines.append("FINAL CONFIGURATION SUMMARY" + (" (DRY RUN)" if is_dry_run else ""))
-        summary_lines.append("=" * 60)
-        summary_lines.append("")
-
-        for label, value in summary_items:
-            display_value = format_summary_value(label, value)
-            summary_lines.append(f"{label}: {display_value}")
-
-        summary_lines.append("")
-        summary_lines.append("=" * 60)
-
-        prompt = (
-            "Proceed with dry-run using the above configuration?"
-            if is_dry_run
-            else f"Proceed {'' if install_context.config_only else 'with Malcolm installation '}using the above configuration?"
-        )
-
-        while True:
-            proceed_response = show_confirmation_dialog(
+        try:
+            result = show_summary_dialog(
                 self._root,
-                "\n".join(summary_lines) + "\n\n" + prompt,
-                title="Configuration Summary",
-                ok_text="Yes",
-                cancel_text="No",
+                malcolm_config,
+                config_dir,
+                install_context,
+                is_dry_run
             )
-
-            if (not proceed_response) and (not is_dry_run):
-                if show_confirmation_dialog(
-                    self._root,
-                    "The above changes to configuration will be discarded, are you sure?",
-                    title="Confirm Cancel",
-                    ok_text="Yes",
-                    cancel_text="No",
-                ):
-                    break
-            else:
-                break
-
-        return proceed_response
+            return result
+        finally:
+            if self._root:
+                self._root.destroy()
+                self._root = None
