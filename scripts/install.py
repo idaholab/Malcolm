@@ -130,7 +130,8 @@ def create_ui_implementation(presentation_mode: PresentationMode, ui_mode_flag: 
     elif presentation_mode == PresentationMode.MODE_DUI:
         return DialogInstallerUI(UserInterfaceMode.InteractionDialog)
     elif presentation_mode == PresentationMode.MODE_GUI:
-        raise NotImplementedError("GUI is not implemented yet")
+        from scripts.installer.ui.gui.gui_installer_ui import GUIInstallerUI
+        return GUIInstallerUI()
     elif presentation_mode == PresentationMode.MODE_SILENT:
         return None
     else:
@@ -371,17 +372,47 @@ def handle_config_directories_gui_mode(malcolm_config):
     Returns:
         tuple: (success, config_dir_input, config_dir_output) or (False, None, None)
     """
-    # TODO: This will be implemented when GUI is added
-    # For now, this is a placeholder that shows the intended interface
-    raise NotImplementedError("GUI config directory handling not yet implemented")
+    import customtkinter
+    import signal
+    from scripts.installer.ui.gui.dialogs.config_ingest_dialog import show_config_ingest_dialog
 
-    # Future GUI implementation would:
-    # 1. Show directory picker for input dir (with .env.example files)
-    # 2. Validate input dir has required .env.example files
-    # 3. Show directory picker for output dir
-    # 4. Ask about creating output dir if it doesn't exist
-    # 5. Ask about loading existing .env files if they exist in input dir
-    # 6. Return (True, input_dir, output_dir) on success
+    # Set customtkinter appearance
+    customtkinter.set_appearance_mode("system")
+    customtkinter.set_default_color_theme("blue")
+
+    # Create temporary root window for the dialog
+    root = customtkinter.CTk()
+    root.withdraw()  # Hide the main root window
+
+    # Handle Ctrl+C gracefully
+    def signal_handler(sig, frame):
+        InstallerLogger.info("Installation cancelled by user (Ctrl+C)")
+        try:
+            root.quit()
+            root.destroy()
+        except:
+            pass
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Force update to ensure window is created
+    root.update()
+
+    try:
+        # Show config ingestion dialog
+        default_dir = get_default_config_dir()
+        success, input_dir, output_dir = show_config_ingest_dialog(root, malcolm_config, default_dir)
+
+        return (success, input_dir, output_dir)
+
+    finally:
+        # Clean up temporary root window
+        try:
+            root.quit()  # Stop the mainloop if running
+        except:
+            pass
+        root.destroy()
 
 
 def handle_config_export(parsed_args, malcolm_config, install_context):
@@ -457,7 +488,7 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
             return dui_mode
         raise RuntimeError("DUI mode was requested but python-dialog is not available")
     if parsed_args.gui:
-        raise NotImplementedError("GUI mode is not yet supported")
+        return PresentationMode.MODE_GUI
 
     # if nothing was explicitly requested attempt python dialogs else default to TUI
     if dui_mode:
@@ -780,7 +811,7 @@ def main():
 
     # Configuration gathering user input (conditional on presentation mode)
     config_success = True
-    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI]:
+    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI, PresentationMode.MODE_GUI]:
         # Interactive mode: Run configuration menu
         config_success = ui_impl.run_configuration_menu(
             malcolm_config,
@@ -846,9 +877,6 @@ def main():
         if install_context is None:
             InstallerLogger.info("Installation cancelled by user.") # fmt: skip
             return
-    elif presentation_mode == PresentationMode.MODE_GUI:
-        InstallerLogger.error("GUI mode is not yet implemented.") # fmt: skip
-        return
     else:
         # Silent/non-interactive: enforce validation before proceeding
         issues = validate_required(malcolm_config)
@@ -862,7 +890,7 @@ def main():
         exported_config_file = handle_config_export(parsed_args, malcolm_config, install_context)
 
     # Final summary and confirmation (interactive modes only)
-    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI]:
+    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI, PresentationMode.MODE_GUI]:
         try:
             proceed = ui_impl.show_final_configuration_summary(
                 malcolm_config,
