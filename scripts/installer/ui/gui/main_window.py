@@ -5,10 +5,11 @@
 
 """Main window for the Malcolm GUI installer with tab-based interface."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import customtkinter
 
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.tabs.base_tab import BaseTab
 
 if TYPE_CHECKING:
     from scripts.installer.core.malcolm_config import MalcolmConfig
@@ -24,6 +25,7 @@ class MainWindow:
         install_context: "InstallContext",
         main_menu_keys: list[str],
         debug_mode: bool = False,
+        root: Optional[customtkinter.CTk] = None,
     ):
         """Initialize the main window with tabs.
 
@@ -38,8 +40,9 @@ class MainWindow:
         self.main_menu_keys = main_menu_keys
         self.debug_mode = debug_mode
         self.result = False
+        self.tabs = {}
 
-        self.root = customtkinter.CTk()
+        self.root = root or customtkinter.CTk()
         self.root.title("Malcolm Installer Configuration")
         self.root.geometry("900x700")
 
@@ -60,20 +63,19 @@ class MainWindow:
         """Create tabs for all MenuItems in main_menu_keys."""
         for menu_key in self.main_menu_keys:
             menu_item = self.malcolm_config.get_menu_item(menu_key)
-            if not menu_item:
-                InstallerLogger.warning(f"Menu item not found for key: {menu_key}")
+            config_item = self.malcolm_config.get_item(menu_key)
+
+            if menu_item:
+                tab_label = menu_item.label
+            elif config_item:
+                tab_label = config_item.label
+            else:
+                InstallerLogger.warning(f"Menu/config item not found for key: {menu_key}")
                 continue
 
-            tab_label = menu_item.label
             tab_frame = self.tab_view.add(tab_label)
 
-            # TODO: Phase 3 - Create actual tab content using BaseTab and specific tab implementations
-            placeholder_label = customtkinter.CTkLabel(
-                tab_frame,
-                text=f"{tab_label} configuration will be implemented in Phase 3",
-                font=("Helvetica", 14),
-            )
-            placeholder_label.pack(padx=20, pady=20)
+            self.tabs[menu_key] = BaseTab(tab_frame, self.malcolm_config, menu_key)
 
     def _create_button_bar(self, parent):
         """Create bottom button bar with Save, Search, Exit buttons.

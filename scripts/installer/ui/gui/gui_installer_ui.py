@@ -211,8 +211,12 @@ class GUIInstallerUI(InstallerUI):
         # TODO: Implement MainWindow in Phase 3
         from scripts.installer.ui.gui.main_window import MainWindow
 
-        main_window = MainWindow(malcolm_config, install_context, main_menu_keys, debug_mode)
-        return main_window.run()
+        self._ensure_root()
+        self._root.deiconify()
+        main_window = MainWindow(malcolm_config, install_context, main_menu_keys, debug_mode, root=self._root)
+        result = main_window.run()
+        self._root = None
+        return result
 
     def gather_install_options(
         self,
