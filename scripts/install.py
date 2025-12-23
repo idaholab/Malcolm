@@ -452,8 +452,10 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
     if parsed_args.tui:
         return PresentationMode.MODE_TUI
     dui_mode = check_for_python_dialog()
-    if parsed_args.dui and dui_mode:
-        return dui_mode
+    if parsed_args.dui:
+        if dui_mode:
+            return dui_mode
+        raise RuntimeError("DUI mode was requested but python-dialog is not available")
     if parsed_args.gui:
         raise NotImplementedError("GUI mode is not yet supported")
 
