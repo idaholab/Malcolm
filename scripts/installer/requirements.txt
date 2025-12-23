@@ -7,3 +7,5 @@ requests>=2.31
 psutil>=5.9
 colorama>=0.4.6
 distro==1.9.0
+python-dotenv>=1.2.1
+ruamel.yaml>=0.18.17
