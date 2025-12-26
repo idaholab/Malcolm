@@ -380,7 +380,7 @@ def handle_config_directories_gui_mode(malcolm_config):
     customtkinter.set_appearance_mode("system")
     customtkinter.set_default_color_theme("blue")
 
-    # Create temporary root window for the dialog
+    # Create temporary root window for the dialogs
     root = customtkinter.CTk()
     root.withdraw()  # Hide the main root window
 
@@ -400,6 +400,9 @@ def handle_config_directories_gui_mode(malcolm_config):
     root.update()
 
     try:
+        # Welcome content is now shown as the first tab in the main window
+        # (skipping the splash dialog as requested)
+
         # Show config ingestion dialog
         default_dir = get_default_config_dir()
         success, input_dir, output_dir = show_config_ingest_dialog(root, malcolm_config, default_dir)
