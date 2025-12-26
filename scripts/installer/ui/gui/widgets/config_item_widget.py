@@ -39,18 +39,40 @@ def create_config_item_widget(
         return None
 
     container = customtkinter.CTkFrame(parent, fg_color="transparent")
+    container.grid_columnconfigure(0, weight=0)
+    container.grid_columnconfigure(1, weight=1)
 
     label_text = label_override if label_override else item.label
     label = customtkinter.CTkLabel(
         container,
         text=label_text,
         anchor="w",
-        width=200
+        width=240
     )
-    label.pack(side="left", padx=(0, 10))
+    label.grid(row=0, column=0, sticky="w", padx=(0, 12), pady=2)
 
     widget_frame = customtkinter.CTkFrame(container, fg_color="transparent")
-    widget_frame.pack(side="left", fill="x", expand=True)
+    widget_frame.grid(row=0, column=1, sticky="ew", pady=2)
+
+    if item.widget_type == WidgetType.TEXT:
+        helper_text = item.question
+        if helper_text:
+            helper_label = customtkinter.CTkLabel(
+                container,
+                text=helper_text,
+                anchor="w",
+                text_color=("gray50", "gray70"),
+                wraplength=620,
+                justify="left",
+            )
+            helper_label.grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                padx=(0, 12),
+                pady=(0, 6),
+            )
 
     if item.widget_type == WidgetType.CHECKBOX:
         _create_checkbox(widget_frame, key, item, malcolm_config)
@@ -109,7 +131,7 @@ def _create_checkbox(
     # Only register observer if config object supports it (MalcolmConfig has observe, InstallContext doesn't)
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
-            var.set(bool(value))
+            var.set(bool(malcolm_config.get_value(key)))
 
         malcolm_config.observe(key, update_from_model)
 
@@ -154,7 +176,7 @@ def _create_entry(
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
-            var.set(str(value or ""))
+            var.set(str(malcolm_config.get_value(key) or ""))
 
         malcolm_config.observe(key, update_from_model)
 
@@ -224,8 +246,9 @@ def _create_dropdown(
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            current_value = malcolm_config.get_value(key)
             for display_text, internal_value in value_map.items():
-                if internal_value == value:
+                if internal_value == current_value:
                     var.set(display_text)
                     dropdown.set(display_text)
                     break
@@ -284,7 +307,7 @@ def _create_radio_group(
 
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
-            var.set(str(value))
+            var.set(str(malcolm_config.get_value(key)))
 
         malcolm_config.observe(key, update_from_model)
 
@@ -349,7 +372,7 @@ def _create_number_entry(
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
-            var.set(str(value or ""))
+            var.set(str(malcolm_config.get_value(key) or ""))
 
         malcolm_config.observe(key, update_from_model)
 
@@ -409,7 +432,7 @@ def _create_directory_entry(
 
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
-            var.set(str(value or ""))
+            var.set(str(malcolm_config.get_value(key) or ""))
 
         malcolm_config.observe(key, update_from_model)
 
