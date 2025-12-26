@@ -1386,7 +1386,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
             condition=lambda cleanup: bool(cleanup),
-            ui_parent=KEY_MENU_ITEM_STORAGE,
+            ui_parent=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
@@ -1409,7 +1409,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
             ],
             condition=lambda profile, cleanup: (profile == PROFILE_MALCOLM) and bool(cleanup),
-            ui_parent=KEY_MENU_ITEM_STORAGE,
+            ui_parent=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
@@ -1625,6 +1625,13 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=None,
             condition=True,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
+        )
+    ),
+    KEY_CONFIG_ITEM_IMAGE_ARCH: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=False,
             ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
         )
     ),
