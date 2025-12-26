@@ -147,6 +147,9 @@ class MalcolmConfig(ObservableStoreMixin):
 
         target_item.set_visible(visible)
 
+        # Notify observers so UI can react to visibility changes
+        self._notify_observers(key, visible)
+
         # For config items, ensure parent map entries exist for ad-hoc relationships
         if item and item.ui_parent:
             children = self._parent_map.setdefault(item.ui_parent, [])
@@ -262,6 +265,14 @@ class MalcolmConfig(ObservableStoreMixin):
         if key in self._menu_items:
             return self.get_menu_item(key).is_visible
         return False
+
+    def get_all_menu_items(self) -> Dict[str, MenuItem]:
+        """Get all menu items.
+
+        Returns:
+            Dictionary of all menu items
+        """
+        return copy.deepcopy(self._menu_items)
 
     def get_visible_menu_items(self) -> Dict[str, MenuItem]:
         """Get all menu items that should be visible.
