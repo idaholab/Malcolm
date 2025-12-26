@@ -129,15 +129,38 @@ class ConfigIngestDialog:
         button_frame.pack(fill="x", pady=(10, 0))
 
         def on_browse():
-            """Handle Browse button click."""
-            config_dir = filedialog.askdirectory(
+            """Handle Browse button click - supports both directories and tarballs."""
+            # First try directory selection
+            config_path = filedialog.askdirectory(
                 parent=dialog,
-                title="Select Malcolm Configuration Directory",
+                title="Select Malcolm Configuration Directory (or Cancel to select tarball)",
                 initialdir=self.default_config_dir,
             )
 
-            if config_dir:
-                success, input_dir, output_dir = self._validate_and_load_config(dialog, config_dir)
+            # If user cancelled directory selection, offer to select tarball
+            if not config_path:
+                from scripts.installer.ui.gui.components.dialog import show_confirmation_dialog
+                select_tarball = show_confirmation_dialog(
+                    dialog,
+                    "No directory selected. Do you want to select a Malcolm tarball (.tar.gz) instead?",
+                    title="Select Tarball?",
+                    ok_text="Yes, Select Tarball",
+                    cancel_text="Cancel"
+                )
+
+                if select_tarball:
+                    config_path = filedialog.askopenfilename(
+                        parent=dialog,
+                        title="Select Malcolm Tarball",
+                        initialdir=self.default_config_dir,
+                        filetypes=[("Malcolm Tarballs", "*.tar.gz"), ("All Files", "*.*")]
+                    )
+
+                if not config_path:
+                    return  # User cancelled
+
+            if config_path:
+                success, input_dir, output_dir = self._handle_selected_path(dialog, config_path)
                 if success:
                     self.result = (True, input_dir, output_dir)
                     dialog.destroy()
@@ -184,6 +207,78 @@ class ConfigIngestDialog:
         dialog.wait_window()
 
         return self.result
+
+    def _handle_selected_path(
+        self,
+        dialog: customtkinter.CTkToplevel,
+        path: str,
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """Handle selected path - could be directory or tarball.
+
+        Args:
+            dialog: The dialog window
+            path: Path to directory or tarball file
+
+        Returns:
+            Tuple of (success, input_dir, output_dir)
+        """
+        from scripts.installer.utils.file_utils import validate_malcolm_tarball, extract_malcolm_tarball
+        from scripts.installer.ui.gui.components.dialog import show_confirmation_dialog
+
+        # Check if it's a tarball file
+        if os.path.isfile(path):
+            # Validate tarball
+            is_valid, error_msg = validate_malcolm_tarball(path)
+            if not is_valid:
+                show_message_dialog(
+                    dialog,
+                    f"Invalid Malcolm tarball:\\n{error_msg}",
+                    title="Invalid Tarball",
+                    message_type="error",
+                )
+                return (False, None, None)
+
+            # Ask user where to extract
+            extract_confirmed = show_confirmation_dialog(
+                dialog,
+                f"Found valid Malcolm tarball:\\n{path}\\n\\nExtract to default directory?",
+                title="Extract Tarball",
+                ok_text="Yes, Extract",
+                cancel_text="Cancel"
+            )
+
+            if not extract_confirmed:
+                return (False, None, None)
+
+            # Extract tarball
+            extract_dir = self.default_config_dir
+            success, config_dir = extract_malcolm_tarball(path, extract_dir)
+
+            if not success:
+                show_message_dialog(
+                    dialog,
+                    f"Failed to extract tarball to:\\n{extract_dir}",
+                    title="Extraction Failed",
+                    message_type="error",
+                )
+                return (False, None, None)
+
+            # Validate and load the extracted directory
+            return self._validate_and_load_config(dialog, config_dir)
+
+        # It's a directory
+        elif os.path.isdir(path):
+            return self._validate_and_load_config(dialog, path)
+
+        # Unknown path type
+        else:
+            show_message_dialog(
+                dialog,
+                f"Path is neither a file nor directory:\\n{path}",
+                title="Invalid Path",
+                message_type="error",
+            )
+            return (False, None, None)
 
     def _validate_and_load_config(
         self,
@@ -266,7 +361,7 @@ class ConfigIngestDialog:
                     InstallerLogger.info(f"Loaded existing .env files from: {config_dir}")
 
                     # Also try to load from orchestration file (docker-compose.yml)
-                    from scripts.installer.core.malcolm_config import OrchestrationFramework
+                    from scripts.malcolm_constants import OrchestrationFramework
                     from scripts.installer.configs.constants.configuration_item_keys import (
                         KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
                     )

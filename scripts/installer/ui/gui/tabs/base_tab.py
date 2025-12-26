@@ -29,148 +29,167 @@ class BaseTab:
         self.malcolm_config = malcolm_config
         self.menu_item_key = menu_item_key
         self.widget_map: Dict[str, customtkinter.CTkBaseClass] = {}
-        self.section_frames: Dict[str, customtkinter.CTkFrame] = {}
+        self.panel_map: Dict[str, customtkinter.CTkFrame] = {}
+        self.depth_map: Dict[str, int] = {}
 
         self._build_ui()
 
     def _build_ui(self):
-        """Build the tab UI by grouping items by nested MenuItems."""
+        """Build the tab UI with all items in priority order, using indentation for hierarchy.
+
+        Uses tree-walking logic from store_view_model.py to ensure items appear in the
+        correct priority-based order with proper visual hierarchy through indentation.
+        """
         scrollable_frame = customtkinter.CTkScrollableFrame(
             self.parent_frame,
             fg_color="transparent"
         )
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self._bind_mousewheel(scrollable_frame)
 
+        # Get all items for this tab with depth information (already sorted by priority)
         items = self._get_tab_items()
-        sections = self._group_by_menu_items(items)
 
-        for section_key, section_items in sections:
-            section_frame = self._create_section(scrollable_frame, section_key)
+        # Render all items in tree order with depth-based indentation
+        section_index = -1
+        section_content = None
 
-            for key, item in section_items:
-                widget_container = self._create_config_widget(section_frame, key, item)
+        for key, item, depth in items:
+            # Calculate indentation based on depth in tree
+            # Base padding: 10px, each level adds 20px
+            left_padding = 10 + (depth * 20)
+
+            if depth == 0:
+                section_index += 1
+                section_frame = customtkinter.CTkFrame(
+                    scrollable_frame,
+                    fg_color=self._section_bg_color(section_index),
+                    corner_radius=8,
+                    border_width=1,
+                    border_color=self._section_border_color(section_index),
+                )
+                section_frame.pack(fill="x", padx=6, pady=6)
+                section_content = customtkinter.CTkFrame(section_frame, fg_color="transparent")
+                section_content.pack(fill="x", padx=8, pady=6)
+
+            parent_frame = section_content if section_content else scrollable_frame
+
+            # Children render inside a panel with a distinct background
+            if depth > 0:
+                panel = customtkinter.CTkFrame(
+                    parent_frame,
+                    fg_color=self._panel_bg_color(depth, enabled=True),
+                    corner_radius=6,
+                    border_width=1,
+                    border_color=self._panel_border_color(depth, enabled=True),
+                )
+                panel.pack(fill="x", padx=(left_padding, 10), pady=5)
+                widget_container = self._create_config_widget(panel, key, item)
+                if not widget_container:
+                    panel.destroy()
+                    continue
+                widget_container.pack(fill="x", padx=10, pady=6)
+                self.panel_map[key] = panel
+            else:
+                widget_container = self._create_config_widget(parent_frame, key, item)
                 if widget_container:
-                    self.widget_map[key] = widget_container
+                    widget_container.pack(fill="x", padx=(left_padding, 10), pady=5)
+                else:
+                    continue
 
-                    if self.malcolm_config.is_item_visible(key):
-                        widget_container.pack(fill="x", padx=10, pady=5)
+            if widget_container:
+                self.widget_map[key] = widget_container
+                self.depth_map[key] = depth
 
-                    self.malcolm_config.observe(
-                        key,
-                        lambda _value, k=key: self._update_widget_visibility(k)
-                    )
+                # Set initial enabled/disabled state based on visibility
+                is_visible = self.malcolm_config.is_item_visible(key)
+                self._set_widget_state_recursive(
+                    widget_container,
+                    "normal" if is_visible else "disabled"
+                )
+                self._update_panel_style(key, is_visible)
 
-    def _get_tab_items(self) -> List[Tuple[str, object]]:
-        """Get all ConfigItems that belong to this tab.
-
-        Returns items whose ui_parent is either this MenuItem or any nested MenuItem
-        under this MenuItem.
-        """
-        items = []
-        menu_item_keys = {self.menu_item_key}
-        menu_item = self.malcolm_config.get_menu_item(self.menu_item_key)
-
-        if not menu_item:
-            config_item = self.malcolm_config.get_item(self.menu_item_key)
-            if config_item:
-                items.append((self.menu_item_key, config_item))
-
-        for key, menu_item in self.malcolm_config.get_visible_menu_items().items():
-            if menu_item.ui_parent == self.menu_item_key:
-                menu_item_keys.add(key)
-
-        for key, item in self.malcolm_config.get_all_config_items().items():
-            if item.ui_parent in menu_item_keys:
-                items.append((key, item))
-
-        items.sort(key=lambda x: (
-            x[1].sort_priority if x[1].sort_priority is not None else 999999,
-            x[1].label.lower()
-        ))
-
-        return items
-
-    def _group_by_menu_items(self, items: List[Tuple[str, object]]) -> List[Tuple[Optional[str], List[Tuple[str, object]]]]:
-        """Group ConfigItems by their nested MenuItem parent.
-
-        Returns list of (menu_item_key, items) tuples in sorted order.
-        """
-        groups: Dict[Optional[str], List[Tuple[str, object]]] = {}
-
-        for key, item in items:
-            parent = item.ui_parent
-
-            if parent is None and key == self.menu_item_key:
-                parent = self.menu_item_key
-
-            if parent not in groups:
-                groups[parent] = []
-            groups[parent].append((key, item))
-
-        sorted_groups = []
-
-        if self.menu_item_key in groups:
-            sorted_groups.append((self.menu_item_key, groups[self.menu_item_key]))
-
-        nested_menus = []
-        for key, menu_item in self.malcolm_config.get_visible_menu_items().items():
-            if menu_item.ui_parent == self.menu_item_key and key in groups:
-                nested_menus.append((
-                    menu_item.sort_priority if menu_item.sort_priority is not None else 999999,
-                    menu_item.label.lower(),
+                # Observe changes to update enabled/disabled state
+                self.malcolm_config.observe(
                     key,
-                    groups[key]
-                ))
+                    lambda _value, k=key: self._update_widget_visibility(k)
+                )
 
-        nested_menus.sort()
-        for _, _, key, group_items in nested_menus:
-            sorted_groups.append((key, group_items))
+    def _get_tab_items(self) -> List[Tuple[str, object, int]]:
+        """Get all ConfigItems that belong to this tab with depth information.
 
-        return sorted_groups
+        Uses tree-walking logic adapted from store_view_model.py to maintain
+        proper parent-child hierarchy and sorting.
 
-    def _create_section(
-        self,
-        parent: customtkinter.CTkFrame,
-        section_key: Optional[str]
-    ) -> customtkinter.CTkFrame:
-        """Create a bordered section for a nested MenuItem.
-
-        If section_key matches this tab's MenuItem, render items directly.
-        Otherwise, create a bordered frame with header.
+        Returns:
+            List of (key, item, depth) tuples in display order
         """
-        if section_key == self.menu_item_key:
-            section_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
-            section_frame.pack(fill="x", padx=5, pady=5)
-            self.section_frames[section_key] = section_frame
-            return section_frame
+        # Build item lookup including both ConfigItems and MenuItems
+        item_by_key = {}
 
-        menu_item = self.malcolm_config.get_menu_item(section_key)
-        if not menu_item:
-            section_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
-            section_frame.pack(fill="x", padx=5, pady=5)
-            self.section_frames[section_key] = section_frame
-            return section_frame
+        # Add all ConfigItems
+        for key, item in self.malcolm_config.get_all_config_items().items():
+            item_by_key[key] = item
 
-        border_frame = customtkinter.CTkFrame(
-            parent,
-            corner_radius=8,
-            border_width=2,
-            border_color=("gray70", "gray30")
-        )
-        border_frame.pack(fill="x", padx=5, pady=10)
+        # Add all MenuItems
+        for key, item in self.malcolm_config.get_all_menu_items().items():
+            item_by_key[key] = item
 
-        header = customtkinter.CTkLabel(
-            border_frame,
-            text=menu_item.label,
-            font=customtkinter.CTkFont(size=14, weight="bold")
-        )
-        header.pack(anchor="w", padx=15, pady=(10, 5))
+        # Build parent → children map
+        children = {}
+        for key, item in item_by_key.items():
+            parent = item.ui_parent
+            if parent and parent in item_by_key:
+                children.setdefault(parent, []).append(key)
 
-        section_frame = customtkinter.CTkFrame(border_frame, fg_color="transparent")
-        section_frame.pack(fill="x", padx=5, pady=(0, 10))
+        # Helper to sort keys by priority then alphabetically
+        def _sorted_keys(keys: List[str]) -> List[str]:
+            def sort_key(k: str):
+                item = item_by_key.get(k)
+                if not item:
+                    return (999999, k.lower())
+                priority = getattr(item, 'sort_priority', None)
+                label = (item.label or k).lower()
+                return (priority if priority is not None else 999999, label)
+            return sorted(keys, key=sort_key)
 
-        self.section_frames[section_key] = border_frame
-        return section_frame
+        # Collect items via recursive tree walk
+        result = []
+
+        def walk(key: str, depth: int) -> None:
+            """Recursively walk tree and collect items with depth."""
+            item = item_by_key.get(key)
+            if not item:
+                return
+
+            # Only add ConfigItems to result (MenuItems are just for organization)
+            from scripts.installer.core.menu_item import MenuItem
+            if not isinstance(item, MenuItem):
+                result.append((key, item, depth))
+
+            # Recursively walk children in priority order
+            child_keys = children.get(key, [])
+            sorted_children = _sorted_keys(child_keys)
+            for child_key in sorted_children:
+                walk(child_key, depth + 1)
+
+        # Start from this tab's root
+        # If tab key is a ConfigItem, start with it at depth 0
+        # If tab key is a MenuItem, start with its children at depth 0
+        root_item = item_by_key.get(self.menu_item_key)
+        if root_item:
+            from scripts.installer.core.menu_item import MenuItem
+            if isinstance(root_item, MenuItem):
+                # Start with children of this MenuItem at depth 0
+                child_keys = children.get(self.menu_item_key, [])
+                sorted_children = _sorted_keys(child_keys)
+                for child_key in sorted_children:
+                    walk(child_key, 0)
+            else:
+                # Tab key is a ConfigItem, start with it
+                walk(self.menu_item_key, 0)
+
+        return result
 
     def _create_config_widget(
         self,
@@ -182,38 +201,118 @@ class BaseTab:
         return create_config_item_widget(parent, key, item, self.malcolm_config)
 
     def _update_widget_visibility(self, key: str):
-        """Update widget visibility based on MalcolmConfig state."""
+        """Update widget enabled/disabled state based on MalcolmConfig visibility.
+
+        Items are always shown (packed) but disabled when their visibility condition is false.
+        This keeps all options visible with a clear disabled state.
+
+        Args:
+            key: The ConfigItem key
+        """
         from tkinter import TclError
-        from scripts.installer.utils.logger_utils import InstallerLogger
 
         if key not in self.widget_map:
             return
 
-        widget = self.widget_map[key]
+        container = self.widget_map[key]
         is_visible = self.malcolm_config.is_item_visible(key)
 
-        # Instead of hiding invisible items, keep them visible but disabled/grayed
-        # This provides better UX - users can see all options even if some are disabled
-        if is_visible:
-            # Enable the widget
-            try:
-                widget.configure(state="normal")
-            except (AttributeError, TclError):
-                # Widget doesn't support state configuration (e.g., CTkLabel, CTkFrame)
-                # This is expected for container widgets
-                pass
-        else:
-            # Disable the widget and gray it out
-            try:
-                widget.configure(state="disabled")
-            except (AttributeError, TclError):
-                # Widget doesn't support state configuration
-                pass
+        # Get the item to check if it has dependencies
+        item = self.malcolm_config.get_item(key)
+        if not item:
+            return
 
-            # Also gray out the appearance for visual feedback
-            try:
-                # For CTkFrame containers, adjust color to indicate disabled state
-                widget.configure(fg_color=("gray85", "gray25"))
-            except (AttributeError, TclError):
-                # Widget doesn't support fg_color (e.g., CTkEntry already grays when disabled)
-                pass
+        # Enable or disable based on visibility condition
+        if is_visible:
+            # Enable all child widgets recursively
+            self._set_widget_state_recursive(container, "normal")
+        else:
+            # Disable all child widgets recursively (grey them out)
+            self._set_widget_state_recursive(container, "disabled")
+        self._update_panel_style(key, is_visible)
+
+    def _set_widget_state_recursive(self, widget, state: str):
+        """Recursively set state for all child widgets that support it.
+
+        Args:
+            widget: Parent widget to process
+            state: State to set ("normal" or "disabled")
+        """
+        from tkinter import TclError
+
+        # Try to set state on this widget
+        try:
+            widget.configure(state=state)
+        except (AttributeError, TclError, ValueError):
+            # Widget doesn't support state configuration (e.g., CTkFrame, CTkLabel)
+            pass
+
+        # Recursively process children
+        try:
+            for child in widget.winfo_children():
+                self._set_widget_state_recursive(child, state)
+        except (AttributeError, TclError):
+            # Widget doesn't have children
+            pass
+
+    def _panel_bg_color(self, depth: int, enabled: bool) -> tuple:
+        """Get panel background color for depth and enabled state."""
+        is_nested = depth > 1
+        if enabled:
+            return ("gray92", "gray17") if is_nested else ("gray94", "gray18")
+        return ("gray88", "gray22") if is_nested else ("gray90", "gray21")
+
+    def _panel_border_color(self, depth: int, enabled: bool) -> tuple:
+        """Get panel border color for depth and enabled state."""
+        is_nested = depth > 1
+        if enabled:
+            return ("gray80", "gray30") if is_nested else ("gray82", "gray28")
+        return ("gray75", "gray40") if is_nested else ("gray78", "gray38")
+
+    def _section_bg_color(self, index: int) -> tuple:
+        """Get alternating section background color."""
+        return ("gray96", "gray14") if index % 2 == 0 else ("gray94", "gray16")
+
+    def _section_border_color(self, index: int) -> tuple:
+        """Get alternating section border color."""
+        return ("gray85", "gray28") if index % 2 == 0 else ("gray83", "gray30")
+
+    def _bind_mousewheel(self, scrollable_frame: customtkinter.CTkScrollableFrame) -> None:
+        """Bind mouse wheel to the scrollable frame for cross-platform scrolling."""
+        canvas = getattr(scrollable_frame, "_parent_canvas", None)
+        if canvas is None:
+            return
+
+        def on_mousewheel(event):
+            if event.delta:
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        def on_linux_scroll(event):
+            if event.num == 4:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(1, "units")
+
+        def bind_events(_event):
+            scrollable_frame.bind_all("<MouseWheel>", on_mousewheel)
+            scrollable_frame.bind_all("<Button-4>", on_linux_scroll)
+            scrollable_frame.bind_all("<Button-5>", on_linux_scroll)
+
+        def unbind_events(_event):
+            scrollable_frame.unbind_all("<MouseWheel>")
+            scrollable_frame.unbind_all("<Button-4>")
+            scrollable_frame.unbind_all("<Button-5>")
+
+        scrollable_frame.bind("<Enter>", bind_events)
+        scrollable_frame.bind("<Leave>", unbind_events)
+
+    def _update_panel_style(self, key: str, is_visible: bool) -> None:
+        """Update child panel style to reflect enabled/disabled state."""
+        panel = self.panel_map.get(key)
+        if not panel:
+            return
+        depth = self.depth_map.get(key, 1)
+        panel.configure(
+            fg_color=self._panel_bg_color(depth, enabled=is_visible),
+            border_color=self._panel_border_color(depth, enabled=is_visible),
+        )

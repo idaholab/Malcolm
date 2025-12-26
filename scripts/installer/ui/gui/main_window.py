@@ -10,6 +10,7 @@ import customtkinter
 
 from scripts.installer.utils.logger_utils import InstallerLogger
 from scripts.installer.ui.gui.tabs.base_tab import BaseTab
+from scripts.installer.ui.gui.tabs.welcome_tab import WelcomeTab
 
 if TYPE_CHECKING:
     from scripts.installer.core.malcolm_config import MalcolmConfig
@@ -61,6 +62,11 @@ class MainWindow:
 
     def _create_tabs(self):
         """Create tabs for all MenuItems in main_menu_keys."""
+        # Add Welcome tab as the first tab
+        welcome_frame = self.tab_view.add("Welcome")
+        WelcomeTab(welcome_frame)
+
+        # Add configuration tabs
         for menu_key in self.main_menu_keys:
             menu_item = self.malcolm_config.get_menu_item(menu_key)
             config_item = self.malcolm_config.get_item(menu_key)

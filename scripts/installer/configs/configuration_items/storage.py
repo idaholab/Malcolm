@@ -43,6 +43,7 @@ CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Should Malcolm manage storage by removing the oldest data when necessary?",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=70,
 )
 
 KEY_CONFIG_ITEM_CLEAN_UP_OLD_INDICES = ConfigItem(
@@ -52,6 +53,7 @@ KEY_CONFIG_ITEM_CLEAN_UP_OLD_INDICES = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Delete the oldest indices when the database exceeds a certain size?",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=73,
 )
 
 CONFIG_ITEM_USE_DEFAULT_STORAGE_LOCATIONS = ConfigItem(
@@ -61,6 +63,7 @@ CONFIG_ITEM_USE_DEFAULT_STORAGE_LOCATIONS = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question=lambda: f"Store pcap, log, and index files in {get_malcolm_dir()}?",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=90,
 )
 
 CONFIG_ITEM_PCAP_DIR = ConfigItem(
@@ -70,6 +73,7 @@ CONFIG_ITEM_PCAP_DIR = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="PCAP storage directory",
     widget_type=WidgetType.DIRECTORY,
+    sort_priority=91,
 )
 
 CONFIG_ITEM_ZEEK_LOG_DIR = ConfigItem(
@@ -79,6 +83,7 @@ CONFIG_ITEM_ZEEK_LOG_DIR = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Zeek log storage directory",
     widget_type=WidgetType.DIRECTORY,
+    sort_priority=92,
 )
 
 CONFIG_ITEM_SURICATA_LOG_DIR = ConfigItem(
@@ -88,6 +93,7 @@ CONFIG_ITEM_SURICATA_LOG_DIR = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Suricata log storage directory",
     widget_type=WidgetType.DIRECTORY,
+    sort_priority=93,
 )
 
 CONFIG_ITEM_ARKIME_MANAGE_PCAP = ConfigItem(
@@ -97,6 +103,7 @@ CONFIG_ITEM_ARKIME_MANAGE_PCAP = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Should Arkime delete PCAP files based on available storage? (see https://arkime.com/faq#pcap-deletion)",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=71,
 )
 
 CONFIG_ITEM_ARKIME_FREE_SPACE_G = ConfigItem(
@@ -106,6 +113,7 @@ CONFIG_ITEM_ARKIME_FREE_SPACE_G = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Threshold for Arkime PCAP deletion (see https://arkime.com/faq#pcap-deletion)",
     widget_type=WidgetType.TEXT,
+    sort_priority=72,
 )
 
 CONFIG_ITEM_EXTRACTED_FILE_MAX_SIZE_THRESHOLD = ConfigItem(
@@ -133,6 +141,7 @@ CONFIG_ITEM_INDEX_PRUNE_THRESHOLD = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Delete the oldest indices when the database exceeds this threshold (e.g., 250GB, 1TB, 60%, etc.)",
     widget_type=WidgetType.TEXT,
+    sort_priority=74,
 )
 
 CONFIG_ITEM_INDEX_PRUNE_NAME_SORT = ConfigItem(
@@ -142,6 +151,7 @@ CONFIG_ITEM_INDEX_PRUNE_NAME_SORT = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Determine oldest indices by name (instead of creation time)?",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=75,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_POLICY = ConfigItem(
@@ -151,6 +161,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_POLICY = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Enable index management policies (ILM/ISM) in Arkime? (see https://https://arkime.com/faq#ilm)",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=80,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_HOT_WARM = ConfigItem(
@@ -160,6 +171,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_HOT_WARM = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Should Arkime use a hot/warm design in which non-session data is stored in a warm index?",
     widget_type=WidgetType.CHECKBOX,
+    sort_priority=83,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_OPTIMIZATION_TIME_PERIOD = ConfigItem(
@@ -169,6 +181,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_OPTIMIZATION_TIME_PERIOD = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="How long should Arkime keep an index in the hot node? (e.g. 25h, 5d, etc.)",
     widget_type=WidgetType.TEXT,
+    sort_priority=82,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_SPI_DATA_RETENTION = ConfigItem(
@@ -178,6 +191,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_SPI_DATA_RETENTION = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="How long should Arkime retain SPI data before deleting it? (e.g. 25h, 90d, etc.)",
     widget_type=WidgetType.TEXT,
+    sort_priority=84,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_REPLICAS = ConfigItem(
@@ -187,6 +201,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_REPLICAS = ConfigItem(
     validator=lambda x: isinstance(x, int),
     question="How many replicas should Arkime maintain for older session indices?",
     widget_type=WidgetType.NUMBER,
+    sort_priority=85,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_HISTORY_IN_WEEKS = ConfigItem(
@@ -196,6 +211,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_HISTORY_IN_WEEKS = ConfigItem(
     validator=lambda x: isinstance(x, int),
     question="How many weeks of history should Arkime keep?",
     widget_type=WidgetType.NUMBER,
+    sort_priority=81,
 )
 
 CONFIG_ITEM_INDEX_MANAGEMENT_OPTIMIZE_SESSION_SEGMENTS = ConfigItem(
@@ -205,6 +221,7 @@ CONFIG_ITEM_INDEX_MANAGEMENT_OPTIMIZE_SESSION_SEGMENTS = ConfigItem(
     validator=lambda x: isinstance(x, int),
     question="How many segments should Arkime use to optimize?",
     widget_type=WidgetType.NUMBER,
+    sort_priority=86,
 )
 
 # CONFIG_ITEM_PRUNE_PCAP and CONFIG_ITEM_PRUNE_LOGS *only* apply

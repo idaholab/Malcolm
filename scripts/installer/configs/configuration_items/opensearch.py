@@ -71,6 +71,7 @@ CONFIG_ITEM_INDEX_DIR = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="OpenSearch index directory",
     widget_type=WidgetType.DIRECTORY,
+    sort_priority=94,
 )
 
 CONFIG_ITEM_INDEX_SNAPSHOT_DIR = ConfigItem(
@@ -80,6 +81,7 @@ CONFIG_ITEM_INDEX_SNAPSHOT_DIR = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="OpenSearch index snapshots directory",
     widget_type=WidgetType.DIRECTORY,
+    sort_priority=95,
 )
 
 CONFIG_ITEM_OPENSEARCH_PRIMARY_URL = ConfigItem(

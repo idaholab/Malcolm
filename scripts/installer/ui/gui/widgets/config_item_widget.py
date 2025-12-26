@@ -60,8 +60,12 @@ def create_config_item_widget(
         _create_entry(widget_frame, key, item, malcolm_config, is_password=True)
     elif item.widget_type == WidgetType.SELECT:
         _create_dropdown(widget_frame, key, item, malcolm_config)
+    elif item.widget_type == WidgetType.RADIO:
+        _create_radio_group(widget_frame, key, item, malcolm_config)
     elif item.widget_type == WidgetType.NUMBER:
         _create_number_entry(widget_frame, key, item, malcolm_config)
+    elif item.widget_type == WidgetType.DIRECTORY:
+        _create_directory_entry(widget_frame, key, item, malcolm_config)
     else:
         return None
 
@@ -79,6 +83,7 @@ def _create_checkbox(
 
     def on_change():
         from scripts.installer.utils.logger_utils import InstallerLogger
+        import traceback
         new_value = var.get()
         try:
             malcolm_config.set_value(key, new_value)
@@ -88,7 +93,8 @@ def _create_checkbox(
             _show_error_dialog(parent, str(e))
         except Exception as e:
             # Unexpected error - log with traceback for debugging
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}", exc_info=True)
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
+            InstallerLogger.error(traceback.format_exc())
             var.set(not new_value)
             _show_error_dialog(parent, f"Error: {e}")
 
@@ -100,10 +106,12 @@ def _create_checkbox(
     )
     checkbox.pack(anchor="w")
 
-    def update_from_model(value):
-        var.set(bool(value))
+    # Only register observer if config object supports it (MalcolmConfig has observe, InstallContext doesn't)
+    if hasattr(malcolm_config, 'observe'):
+        def update_from_model(value):
+            var.set(bool(value))
 
-    malcolm_config.observe(key, update_from_model)
+        malcolm_config.observe(key, update_from_model)
 
 
 def _create_entry(
@@ -118,6 +126,7 @@ def _create_entry(
 
     def on_focus_out(_event=None):
         from scripts.installer.utils.logger_utils import InstallerLogger
+        import traceback
         new_value = var.get()
         try:
             malcolm_config.set_value(key, new_value)
@@ -127,7 +136,8 @@ def _create_entry(
             _show_error_dialog(parent, str(e))
         except Exception as e:
             # Unexpected error - log with traceback
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}", exc_info=True)
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
+            InstallerLogger.error(traceback.format_exc())
             var.set(str(item.get_value() or ""))
             _show_error_dialog(parent, f"Error: {e}")
 
@@ -141,10 +151,12 @@ def _create_entry(
     entry.bind("<FocusOut>", on_focus_out)
     entry.bind("<Return>", on_focus_out)
 
-    def update_from_model(value):
-        var.set(str(value or ""))
+    # Only register observer if config object supports it
+    if hasattr(malcolm_config, 'observe'):
+        def update_from_model(value):
+            var.set(str(value or ""))
 
-    malcolm_config.observe(key, update_from_model)
+        malcolm_config.observe(key, update_from_model)
 
 
 def _create_dropdown(
@@ -185,6 +197,7 @@ def _create_dropdown(
 
     def on_change(selected_display):
         from scripts.installer.utils.logger_utils import InstallerLogger
+        import traceback
         internal_value = value_map.get(selected_display)
         try:
             malcolm_config.set_value(key, internal_value)
@@ -194,7 +207,8 @@ def _create_dropdown(
             _show_error_dialog(parent, str(e))
         except Exception as e:
             # Unexpected error - log with traceback
-            InstallerLogger.error(f"Unexpected error setting {key} to {internal_value}: {e}", exc_info=True)
+            InstallerLogger.error(f"Unexpected error setting {key} to {internal_value}: {e}")
+            InstallerLogger.error(traceback.format_exc())
             var.set(initial_display)
             _show_error_dialog(parent, f"Error: {e}")
 
@@ -207,14 +221,72 @@ def _create_dropdown(
     )
     dropdown.pack(fill="x", expand=True)
 
-    def update_from_model(value):
-        for display_text, internal_value in value_map.items():
-            if internal_value == value:
-                var.set(display_text)
-                dropdown.set(display_text)
-                break
+    # Only register observer if config object supports it
+    if hasattr(malcolm_config, 'observe'):
+        def update_from_model(value):
+            for display_text, internal_value in value_map.items():
+                if internal_value == value:
+                    var.set(display_text)
+                    dropdown.set(display_text)
+                    break
 
-    malcolm_config.observe(key, update_from_model)
+        malcolm_config.observe(key, update_from_model)
+
+
+def _create_radio_group(
+    parent: customtkinter.CTkFrame,
+    key: str,
+    item: "ConfigItem",
+    malcolm_config: "MalcolmConfig"
+):
+    """Create radio button group with two-way binding."""
+    from scripts.installer.utils.logger_utils import InstallerLogger
+    import traceback
+
+    choices = item.choices
+    if not choices and isinstance(item.default_value, bool):
+        choices = [(True, "Yes"), (False, "No")]
+
+    if not choices:
+        return
+
+    value_map = {}
+    var = customtkinter.StringVar(value=str(item.get_value()))
+
+    def on_change():
+        selected_key = var.get()
+        new_value = value_map.get(selected_key, selected_key)
+        try:
+            malcolm_config.set_value(key, new_value)
+        except (ValueError, TypeError) as e:
+            var.set(str(item.get_value()))
+            _show_error_dialog(parent, str(e))
+        except Exception as e:
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
+            InstallerLogger.error(traceback.format_exc())
+            var.set(str(item.get_value()))
+            _show_error_dialog(parent, f"Error: {e}")
+
+    for choice in choices:
+        if isinstance(choice, tuple) and len(choice) >= 2:
+            raw_value, label = choice[0], choice[1]
+        else:
+            raw_value, label = choice, str(choice)
+        value_map[str(raw_value)] = raw_value
+        radio = customtkinter.CTkRadioButton(
+            parent,
+            text=str(label),
+            variable=var,
+            value=str(raw_value),
+            command=on_change,
+        )
+        radio.pack(side="left", padx=(0, 12))
+
+    if hasattr(malcolm_config, 'observe'):
+        def update_from_model(value):
+            var.set(str(value))
+
+        malcolm_config.observe(key, update_from_model)
 
 
 def _create_number_entry(
@@ -228,6 +300,7 @@ def _create_number_entry(
 
     def on_focus_out(_event=None):
         from scripts.installer.utils.logger_utils import InstallerLogger
+        import traceback
         new_value_str = var.get()
 
         if not new_value_str.strip():
@@ -239,7 +312,8 @@ def _create_number_entry(
                 _show_error_dialog(parent, str(e))
                 return
             except Exception as e:
-                InstallerLogger.error(f"Unexpected error clearing {key}: {e}", exc_info=True)
+                InstallerLogger.error(f"Unexpected error clearing {key}: {e}")
+                InstallerLogger.error(traceback.format_exc())
                 var.set(str(item.get_value() or ""))
                 _show_error_dialog(parent, f"Error: {e}")
                 return
@@ -258,7 +332,8 @@ def _create_number_entry(
             var.set(str(item.get_value() or ""))
             _show_error_dialog(parent, str(e))
         except Exception as e:
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value_str}: {e}", exc_info=True)
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value_str}: {e}")
+            InstallerLogger.error(traceback.format_exc())
             var.set(str(item.get_value() or ""))
             _show_error_dialog(parent, f"Error: {e}")
 
@@ -271,10 +346,72 @@ def _create_number_entry(
     entry.bind("<FocusOut>", on_focus_out)
     entry.bind("<Return>", on_focus_out)
 
-    def update_from_model(value):
-        var.set(str(value or ""))
+    # Only register observer if config object supports it
+    if hasattr(malcolm_config, 'observe'):
+        def update_from_model(value):
+            var.set(str(value or ""))
 
-    malcolm_config.observe(key, update_from_model)
+        malcolm_config.observe(key, update_from_model)
+
+
+def _create_directory_entry(
+    parent: customtkinter.CTkFrame,
+    key: str,
+    item: "ConfigItem",
+    malcolm_config: "MalcolmConfig"
+):
+    """Create directory entry widget with browse button and two-way binding."""
+    import os
+    from tkinter import filedialog
+
+    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+
+    def on_focus_out(_event=None):
+        from scripts.installer.utils.logger_utils import InstallerLogger
+        import traceback
+        new_value = var.get()
+        try:
+            malcolm_config.set_value(key, new_value)
+        except (ValueError, TypeError) as e:
+            var.set(str(item.get_value() or ""))
+            _show_error_dialog(parent, str(e))
+        except Exception as e:
+            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
+            InstallerLogger.error(traceback.format_exc())
+            var.set(str(item.get_value() or ""))
+            _show_error_dialog(parent, f"Error: {e}")
+
+    entry = customtkinter.CTkEntry(
+        parent,
+        textvariable=var,
+        width=300
+    )
+    entry.pack(side="left", fill="x", expand=True)
+    entry.bind("<FocusOut>", on_focus_out)
+    entry.bind("<Return>", on_focus_out)
+
+    def browse_for_directory():
+        initial_dir = var.get().strip()
+        if not initial_dir or not os.path.exists(initial_dir):
+            initial_dir = os.path.expanduser("~")
+        selected = filedialog.askdirectory(initialdir=initial_dir)
+        if selected:
+            var.set(selected)
+            on_focus_out()
+
+    browse_button = customtkinter.CTkButton(
+        parent,
+        text="Browse",
+        command=browse_for_directory,
+        width=80
+    )
+    browse_button.pack(side="left", padx=(10, 0))
+
+    if hasattr(malcolm_config, 'observe'):
+        def update_from_model(value):
+            var.set(str(value or ""))
+
+        malcolm_config.observe(key, update_from_model)
 
 
 def _show_error_dialog(parent, message: str):

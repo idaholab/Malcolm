@@ -31,8 +31,12 @@ def show_message_dialog(parent, message, title="Message", message_type="info", w
     # Update to ensure window is created and viewable
     dialog.update_idletasks()
 
-    # Make the window modal
-    dialog.grab_set()
+    # Make the window modal (try to grab, but don't fail if parent isn't viewable)
+    try:
+        dialog.grab_set()
+    except Exception:
+        # If grab fails (parent not viewable), dialog will still work but won't be modal
+        pass
 
     # Message
     label = customtkinter.CTkLabel(dialog, text=message, wraplength=width - 50)
@@ -95,8 +99,12 @@ def show_confirmation_dialog(
     # Update to ensure window is created and viewable
     dialog.update_idletasks()
 
-    # Make the window modal
-    dialog.grab_set()
+    # Make the window modal (try to grab, but don't fail if parent isn't viewable)
+    try:
+        dialog.grab_set()
+    except Exception:
+        # If grab fails (parent not viewable), dialog will still work but won't be modal
+        pass
 
     # Message
     label = customtkinter.CTkLabel(dialog, text=message, wraplength=width - 50)
