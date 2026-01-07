@@ -388,12 +388,24 @@ class DisableablePanel:
             border_color = ("gray80", "gray30") if is_nested else ("gray85", "gray25")
 
             panel.configure(fg_color=bg_color, border_width=1, border_color=border_color)
-        else:
-            # Disabled appearance
-            bg_color = ("gray88", "gray22") if is_nested else ("gray90", "gray20")
-            border_color = ("gray75", "gray40") if is_nested else ("gray80", "gray35")
 
-            panel.configure(fg_color=bg_color, border_width=1, border_color=border_color)
+            # Remove lock icon if it exists
+            if hasattr(panel, "_dp_disabled_indicator"):
+                panel._dp_disabled_indicator.destroy()
+                delattr(panel, "_dp_disabled_indicator")
+        else:
+            # Disabled appearance - more distinct colors
+            bg_color = ("gray70", "gray35") if is_nested else ("gray75", "gray30")
+            border_color = ("gray60", "gray50") if is_nested else ("gray65", "gray45")
+
+            panel.configure(fg_color=bg_color, border_width=2, border_color=border_color)
+
+            # Add lock icon visual indicator
+            if not hasattr(panel, "_dp_disabled_indicator"):
+                panel._dp_disabled_indicator = customtkinter.CTkLabel(
+                    panel, text="🔒", font=("", 14), text_color=("gray50", "gray60")
+                )
+                panel._dp_disabled_indicator.grid(row=0, column=0, sticky="ne", padx=5, pady=5)
 
         # Process any child panels
         if hasattr(panel, "_dp_child_panels"):
