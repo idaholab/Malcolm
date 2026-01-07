@@ -7,10 +7,95 @@ from typing import TYPE_CHECKING, Optional
 import customtkinter
 
 from scripts.malcolm_constants import WidgetType
+from scripts.installer.ui.gui.components.validation_state import (
+    show_validation_error,
+    clear_validation_error,
+)
+from scripts.installer.ui.gui.components.tooltip import add_tooltip, remove_tooltip
 
 if TYPE_CHECKING:
     from scripts.installer.core.malcolm_config import MalcolmConfig
     from scripts.installer.core.config_item import ConfigItem
+
+
+def _handle_set_value(widget, error_label, key, value, malcolm_config):
+    """Handle setting a configuration value with inline error display.
+
+    Args:
+        widget: Input widget to mark with error state
+        error_label: Label widget to display error message
+        key: Configuration item key
+        value: New value to set
+        malcolm_config: MalcolmConfig instance
+
+    Returns:
+        True if value was set successfully, False otherwise
+    """
+    from scripts.installer.utils.logger_utils import InstallerLogger
+    import traceback
+
+    try:
+        malcolm_config.set_value(key, value)
+        clear_validation_error(widget, error_label)
+        return True
+    except (ValueError, TypeError) as e:
+        # Expected validation errors - show inline error
+        show_validation_error(widget, error_label, str(e))
+        return False
+    except Exception as e:
+        # Unexpected error - log with traceback for debugging
+        InstallerLogger.error(f"Unexpected error setting {key} to {value}: {e}")
+        InstallerLogger.error(traceback.format_exc())
+        show_validation_error(widget, error_label, f"Error: {e}")
+        return False
+
+
+def _setup_visibility_observer(widget, key, malcolm_config):
+    """Set up observer to handle widget visibility changes with tooltips.
+
+    Args:
+        widget: The input widget to enable/disable
+        key: Configuration item key
+        malcolm_config: MalcolmConfig instance
+    """
+
+    def on_visibility_change(_):
+        """Update widget state and tooltip based on visibility."""
+        visible = malcolm_config.is_item_visible(key)
+
+        if visible:
+            # Enable widget and remove tooltip
+            if hasattr(widget, "configure"):
+                try:
+                    widget.configure(state="normal")
+                except ValueError:
+                    pass  # Widget doesn't support state
+            remove_tooltip(widget)
+        else:
+            # Disable widget and add tooltip explaining why
+            if hasattr(widget, "configure"):
+                try:
+                    widget.configure(state="disabled")
+                except ValueError:
+                    pass  # Widget doesn't support state
+
+            # Get dependency info to explain why disabled
+            dep_info = malcolm_config.get_dependency_info(key)
+            if dep_info.get("has_visibility_rule"):
+                depends_on = dep_info.get("visibility_depends_on")
+                if isinstance(depends_on, list):
+                    depends_str = ", ".join(depends_on)
+                else:
+                    depends_str = str(depends_on)
+
+                tooltip_text = f"Disabled: depends on {depends_str}"
+                add_tooltip(widget, tooltip_text)
+
+    # Only register observer if config object supports it (MalcolmConfig has observe, InstallContext doesn't)
+    if hasattr(malcolm_config, 'observe'):
+        malcolm_config.observe(key, on_visibility_change)
+        # Trigger initial evaluation
+        on_visibility_change(None)
 
 
 def create_config_item_widget(
@@ -74,22 +159,28 @@ def create_config_item_widget(
                 pady=(0, 6),
             )
 
+    # Create widget and get reference to the actual input element
+    input_widget = None
     if item.widget_type == WidgetType.CHECKBOX:
-        _create_checkbox(widget_frame, key, item, malcolm_config)
+        input_widget = _create_checkbox(widget_frame, key, item, malcolm_config)
     elif item.widget_type == WidgetType.TEXT:
-        _create_entry(widget_frame, key, item, malcolm_config, is_password=False)
+        input_widget = _create_entry(widget_frame, key, item, malcolm_config, is_password=False)
     elif item.widget_type == WidgetType.PASSWORD:
-        _create_entry(widget_frame, key, item, malcolm_config, is_password=True)
+        input_widget = _create_entry(widget_frame, key, item, malcolm_config, is_password=True)
     elif item.widget_type == WidgetType.SELECT:
-        _create_dropdown(widget_frame, key, item, malcolm_config)
+        input_widget = _create_dropdown(widget_frame, key, item, malcolm_config)
     elif item.widget_type == WidgetType.RADIO:
-        _create_radio_group(widget_frame, key, item, malcolm_config)
+        input_widget = _create_radio_group(widget_frame, key, item, malcolm_config)
     elif item.widget_type == WidgetType.NUMBER:
-        _create_number_entry(widget_frame, key, item, malcolm_config)
+        input_widget = _create_number_entry(widget_frame, key, item, malcolm_config)
     elif item.widget_type == WidgetType.DIRECTORY:
-        _create_directory_entry(widget_frame, key, item, malcolm_config)
+        input_widget = _create_directory_entry(widget_frame, key, item, malcolm_config)
     else:
         return None
+
+    # Store reference to the actual input widget on the outer container for focus/validation
+    if input_widget:
+        container._input_widget = input_widget
 
     return container
 
@@ -100,40 +191,51 @@ def _create_checkbox(
     item: "ConfigItem",
     malcolm_config: "MalcolmConfig"
 ):
-    """Create checkbox widget with two-way binding."""
-    var = customtkinter.BooleanVar(value=bool(item.get_value()))
+    """Create checkbox widget with two-way binding and inline error display."""
+    container = customtkinter.CTkFrame(parent, fg_color="transparent")
 
-    def on_change():
-        from scripts.installer.utils.logger_utils import InstallerLogger
-        import traceback
-        new_value = var.get()
-        try:
-            malcolm_config.set_value(key, new_value)
-        except (ValueError, TypeError) as e:
-            # Expected validation errors
-            var.set(not new_value)
-            _show_error_dialog(parent, str(e))
-        except Exception as e:
-            # Unexpected error - log with traceback for debugging
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
-            InstallerLogger.error(traceback.format_exc())
-            var.set(not new_value)
-            _show_error_dialog(parent, f"Error: {e}")
+    var = customtkinter.BooleanVar(value=bool(item.get_value()))
+    _updating = [False]  # Guard flag to prevent observer loops
 
     checkbox = customtkinter.CTkCheckBox(
-        parent,
+        container,
         text="",
         variable=var,
-        command=on_change
     )
-    checkbox.pack(anchor="w")
+    checkbox.grid(row=0, column=0, sticky="w")
+
+    # Error label below checkbox
+    error_label = customtkinter.CTkLabel(
+        container,
+        text="",
+        font=("", 10),
+        anchor="w"
+    )
+    error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
+    error_label.grid_remove()  # Hidden by default
+
+    def on_change():
+        if _updating[0]:
+            return
+        _handle_set_value(checkbox, error_label, key, var.get(), malcolm_config)
+
+    checkbox.configure(command=on_change)
 
     # Only register observer if config object supports it (MalcolmConfig has observe, InstallContext doesn't)
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            _updating[0] = True
             var.set(bool(malcolm_config.get_value(key)))
+            _updating[0] = False
 
         malcolm_config.observe(key, update_from_model)
+
+    # Set up visibility observer with tooltips for disabled state
+    _setup_visibility_observer(checkbox, key, malcolm_config)
+
+    container.pack(anchor="w")
+
+    return checkbox
 
 
 def _create_entry(
@@ -143,42 +245,58 @@ def _create_entry(
     malcolm_config: "MalcolmConfig",
     is_password: bool = False
 ):
-    """Create text entry widget with two-way binding."""
-    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+    """Create text entry widget with two-way binding and inline error display."""
+    container = customtkinter.CTkFrame(parent, fg_color="transparent")
 
-    def on_focus_out(_event=None):
-        from scripts.installer.utils.logger_utils import InstallerLogger
-        import traceback
-        new_value = var.get()
-        try:
-            malcolm_config.set_value(key, new_value)
-        except (ValueError, TypeError) as e:
-            # Expected validation errors
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, str(e))
-        except Exception as e:
-            # Unexpected error - log with traceback
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
-            InstallerLogger.error(traceback.format_exc())
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, f"Error: {e}")
+    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+    _updating = [False]  # Guard flag to prevent observer loops
 
     entry = customtkinter.CTkEntry(
-        parent,
+        container,
         textvariable=var,
         show="*" if is_password else "",
         width=300
     )
-    entry.pack(fill="x", expand=True)
-    entry.bind("<FocusOut>", on_focus_out)
-    entry.bind("<Return>", on_focus_out)
+    entry.grid(row=0, column=0, sticky="ew")
+    container.grid_columnconfigure(0, weight=1)
+
+    # Error label below entry
+    error_label = customtkinter.CTkLabel(
+        container,
+        text="",
+        font=("", 10),
+        anchor="w"
+    )
+    error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
+    error_label.grid_remove()  # Hidden by default
+
+    def on_change(*args):
+        if _updating[0]:
+            return
+        _handle_set_value(entry, error_label, key, var.get(), malcolm_config)
+
+    # Validate on every keystroke
+    var.trace_add("write", on_change)
+
+    # Also validate on focus out and return
+    entry.bind("<FocusOut>", lambda e: on_change())
+    entry.bind("<Return>", lambda e: on_change())
 
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            _updating[0] = True
             var.set(str(malcolm_config.get_value(key) or ""))
+            _updating[0] = False
 
         malcolm_config.observe(key, update_from_model)
+
+    # Set up visibility observer with tooltips for disabled state
+    _setup_visibility_observer(entry, key, malcolm_config)
+
+    container.pack(fill="x", expand=True)
+
+    return entry
 
 
 def _create_dropdown(
@@ -187,9 +305,11 @@ def _create_dropdown(
     item: "ConfigItem",
     malcolm_config: "MalcolmConfig"
 ):
-    """Create dropdown widget with two-way binding."""
+    """Create dropdown widget with two-way binding and inline error display."""
     if not item.choices:
         return
+
+    container = customtkinter.CTkFrame(parent, fg_color="transparent")
 
     values = []
     value_map = {}
@@ -216,44 +336,55 @@ def _create_dropdown(
         initial_display = values[0]
 
     var = customtkinter.StringVar(value=initial_display)
-
-    def on_change(selected_display):
-        from scripts.installer.utils.logger_utils import InstallerLogger
-        import traceback
-        internal_value = value_map.get(selected_display)
-        try:
-            malcolm_config.set_value(key, internal_value)
-        except (ValueError, TypeError) as e:
-            # Expected validation errors
-            var.set(initial_display)
-            _show_error_dialog(parent, str(e))
-        except Exception as e:
-            # Unexpected error - log with traceback
-            InstallerLogger.error(f"Unexpected error setting {key} to {internal_value}: {e}")
-            InstallerLogger.error(traceback.format_exc())
-            var.set(initial_display)
-            _show_error_dialog(parent, f"Error: {e}")
+    _updating = [False]  # Guard flag to prevent observer loops
 
     dropdown = customtkinter.CTkOptionMenu(
-        parent,
+        container,
         values=values,
         variable=var,
-        command=on_change,
         width=300
     )
-    dropdown.pack(fill="x", expand=True)
+    dropdown.grid(row=0, column=0, sticky="ew")
+    container.grid_columnconfigure(0, weight=1)
+
+    # Error label below dropdown
+    error_label = customtkinter.CTkLabel(
+        container,
+        text="",
+        font=("", 10),
+        anchor="w"
+    )
+    error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
+    error_label.grid_remove()  # Hidden by default
+
+    def on_change(selected_display):
+        if _updating[0]:
+            return
+        internal_value = value_map.get(selected_display)
+        _handle_set_value(dropdown, error_label, key, internal_value, malcolm_config)
+
+    dropdown.configure(command=on_change)
 
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            _updating[0] = True
             current_value = malcolm_config.get_value(key)
             for display_text, internal_value in value_map.items():
                 if internal_value == current_value:
                     var.set(display_text)
                     dropdown.set(display_text)
                     break
+            _updating[0] = False
 
         malcolm_config.observe(key, update_from_model)
+
+    # Set up visibility observer with tooltips for disabled state
+    _setup_visibility_observer(dropdown, key, malcolm_config)
+
+    container.pack(fill="x", expand=True)
+
+    return dropdown
 
 
 def _create_radio_group(
@@ -262,10 +393,7 @@ def _create_radio_group(
     item: "ConfigItem",
     malcolm_config: "MalcolmConfig"
 ):
-    """Create radio button group with two-way binding."""
-    from scripts.installer.utils.logger_utils import InstallerLogger
-    import traceback
-
+    """Create radio button group with two-way binding and inline error display."""
     choices = item.choices
     if not choices and isinstance(item.default_value, bool):
         choices = [(True, "Yes"), (False, "No")]
@@ -273,22 +401,25 @@ def _create_radio_group(
     if not choices:
         return
 
+    container = customtkinter.CTkFrame(parent, fg_color="transparent")
+
     value_map = {}
     var = customtkinter.StringVar(value=str(item.get_value()))
+    _updating = [False]  # Guard flag to prevent observer loops
+
+    # Radio buttons container
+    radio_container = customtkinter.CTkFrame(container, fg_color="transparent")
+    radio_container.grid(row=0, column=0, sticky="w")
+
+    # Store all radio buttons for visibility control
+    radio_buttons = []
 
     def on_change():
+        if _updating[0]:
+            return
         selected_key = var.get()
         new_value = value_map.get(selected_key, selected_key)
-        try:
-            malcolm_config.set_value(key, new_value)
-        except (ValueError, TypeError) as e:
-            var.set(str(item.get_value()))
-            _show_error_dialog(parent, str(e))
-        except Exception as e:
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
-            InstallerLogger.error(traceback.format_exc())
-            var.set(str(item.get_value()))
-            _show_error_dialog(parent, f"Error: {e}")
+        _handle_set_value(radio_buttons[0] if radio_buttons else None, error_label, key, new_value, malcolm_config)
 
     for choice in choices:
         if isinstance(choice, tuple) and len(choice) >= 2:
@@ -297,19 +428,73 @@ def _create_radio_group(
             raw_value, label = choice, str(choice)
         value_map[str(raw_value)] = raw_value
         radio = customtkinter.CTkRadioButton(
-            parent,
+            radio_container,
             text=str(label),
             variable=var,
             value=str(raw_value),
             command=on_change,
         )
         radio.pack(side="left", padx=(0, 12))
+        radio_buttons.append(radio)
+
+    # Error label below radio group
+    error_label = customtkinter.CTkLabel(
+        container,
+        text="",
+        font=("", 10),
+        anchor="w"
+    )
+    error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
+    error_label.grid_remove()  # Hidden by default
 
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            _updating[0] = True
             var.set(str(malcolm_config.get_value(key)))
+            _updating[0] = False
 
         malcolm_config.observe(key, update_from_model)
+
+    # Set up visibility observer for entire radio group
+    if radio_buttons:
+        def on_visibility_change(_):
+            """Update state and tooltip for entire radio group."""
+            visible = malcolm_config.is_item_visible(key)
+
+            for radio in radio_buttons:
+                if visible:
+                    # Enable all radio buttons
+                    radio.configure(state="normal")
+                else:
+                    # Disable all radio buttons
+                    radio.configure(state="disabled")
+
+            # Tooltip only on first radio button (logical group indicator)
+            first_radio = radio_buttons[0]
+            if visible:
+                remove_tooltip(first_radio)
+            else:
+                # Get dependency info to explain why disabled
+                dep_info = malcolm_config.get_dependency_info(key)
+                if dep_info.get("has_visibility_rule"):
+                    depends_on = dep_info.get("visibility_depends_on")
+                    if isinstance(depends_on, list):
+                        depends_str = ", ".join(depends_on)
+                    else:
+                        depends_str = str(depends_on)
+
+                    tooltip_text = f"Disabled: depends on {depends_str}"
+                    add_tooltip(first_radio, tooltip_text)
+
+        if hasattr(malcolm_config, 'observe'):
+            malcolm_config.observe(key, on_visibility_change)
+            # Trigger initial evaluation
+            on_visibility_change(None)
+
+    container.pack(anchor="w")
+
+    # Return first radio button for focus
+    return radio_buttons[0] if radio_buttons else None
 
 
 def _create_number_entry(
@@ -318,63 +503,69 @@ def _create_number_entry(
     item: "ConfigItem",
     malcolm_config: "MalcolmConfig"
 ):
-    """Create number entry widget with validation and two-way binding."""
-    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+    """Create number entry widget with validation and inline error display."""
+    container = customtkinter.CTkFrame(parent, fg_color="transparent")
 
-    def on_focus_out(_event=None):
-        from scripts.installer.utils.logger_utils import InstallerLogger
-        import traceback
+    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+    _updating = [False]  # Guard flag to prevent observer loops
+
+    entry = customtkinter.CTkEntry(
+        container,
+        textvariable=var,
+        width=150
+    )
+    entry.grid(row=0, column=0, sticky="w")
+
+    # Error label below entry
+    error_label = customtkinter.CTkLabel(
+        container,
+        text="",
+        font=("", 10),
+        anchor="w"
+    )
+    error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
+    error_label.grid_remove()  # Hidden by default
+
+    def on_change(*args):
+        if _updating[0]:
+            return
         new_value_str = var.get()
 
         if not new_value_str.strip():
-            try:
-                malcolm_config.set_value(key, None)
-                return
-            except (ValueError, TypeError) as e:
-                var.set(str(item.get_value() or ""))
-                _show_error_dialog(parent, str(e))
-                return
-            except Exception as e:
-                InstallerLogger.error(f"Unexpected error clearing {key}: {e}")
-                InstallerLogger.error(traceback.format_exc())
-                var.set(str(item.get_value() or ""))
-                _show_error_dialog(parent, f"Error: {e}")
-                return
+            _handle_set_value(entry, error_label, key, None, malcolm_config)
+            return
 
         try:
             if '.' in new_value_str:
                 new_value = float(new_value_str)
             else:
                 new_value = int(new_value_str)
-
-            malcolm_config.set_value(key, new_value)
+            _handle_set_value(entry, error_label, key, new_value, malcolm_config)
         except ValueError:
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, "Please enter a valid number")
-        except TypeError as e:
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, str(e))
-        except Exception as e:
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value_str}: {e}")
-            InstallerLogger.error(traceback.format_exc())
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, f"Error: {e}")
+            show_validation_error(entry, error_label, "Please enter a valid number")
 
-    entry = customtkinter.CTkEntry(
-        parent,
-        textvariable=var,
-        width=150
-    )
-    entry.pack(anchor="w")
-    entry.bind("<FocusOut>", on_focus_out)
-    entry.bind("<Return>", on_focus_out)
+    # Validate on every keystroke
+    var.trace_add("write", on_change)
+
+    # Also validate on focus out and return
+    entry.bind("<FocusOut>", lambda e: on_change())
+    entry.bind("<Return>", lambda e: on_change())
 
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            _updating[0] = True
             var.set(str(malcolm_config.get_value(key) or ""))
+            _updating[0] = False
 
         malcolm_config.observe(key, update_from_model)
+
+    # Set up visibility observer with tooltips for disabled state
+    _setup_visibility_observer(entry, key, malcolm_config)
+
+    container.pack(anchor="w")
+
+    return entry
 
 
 def _create_directory_entry(
@@ -383,35 +574,56 @@ def _create_directory_entry(
     item: "ConfigItem",
     malcolm_config: "MalcolmConfig"
 ):
-    """Create directory entry widget with browse button and two-way binding."""
+    """Create directory entry widget with browse button and inline error display."""
     import os
     from tkinter import filedialog
 
-    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+    container = customtkinter.CTkFrame(parent, fg_color="transparent")
+    container.grid_columnconfigure(0, weight=1)
 
-    def on_focus_out(_event=None):
-        from scripts.installer.utils.logger_utils import InstallerLogger
-        import traceback
-        new_value = var.get()
-        try:
-            malcolm_config.set_value(key, new_value)
-        except (ValueError, TypeError) as e:
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, str(e))
-        except Exception as e:
-            InstallerLogger.error(f"Unexpected error setting {key} to {new_value}: {e}")
-            InstallerLogger.error(traceback.format_exc())
-            var.set(str(item.get_value() or ""))
-            _show_error_dialog(parent, f"Error: {e}")
+    var = customtkinter.StringVar(value=str(item.get_value() or ""))
+    _updating = [False]  # Guard flag to prevent observer loops
+
+    # Entry and browse button row
+    input_frame = customtkinter.CTkFrame(container, fg_color="transparent")
+    input_frame.grid(row=0, column=0, sticky="ew")
+    input_frame.grid_columnconfigure(0, weight=1)
 
     entry = customtkinter.CTkEntry(
-        parent,
+        input_frame,
         textvariable=var,
         width=300
     )
-    entry.pack(side="left", fill="x", expand=True)
-    entry.bind("<FocusOut>", on_focus_out)
-    entry.bind("<Return>", on_focus_out)
+    entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+    browse_button = customtkinter.CTkButton(
+        input_frame,
+        text="Browse",
+        width=80
+    )
+    browse_button.grid(row=0, column=1, sticky="e")
+
+    # Error label below entry
+    error_label = customtkinter.CTkLabel(
+        container,
+        text="",
+        font=("", 10),
+        anchor="w"
+    )
+    error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
+    error_label.grid_remove()  # Hidden by default
+
+    def on_change(*args):
+        if _updating[0]:
+            return
+        _handle_set_value(entry, error_label, key, var.get(), malcolm_config)
+
+    # Validate on every keystroke
+    var.trace_add("write", on_change)
+
+    # Also validate on focus out and return
+    entry.bind("<FocusOut>", lambda e: on_change())
+    entry.bind("<Return>", lambda e: on_change())
 
     def browse_for_directory():
         initial_dir = var.get().strip()
@@ -420,43 +632,21 @@ def _create_directory_entry(
         selected = filedialog.askdirectory(initialdir=initial_dir)
         if selected:
             var.set(selected)
-            on_focus_out()
+            on_change()
 
-    browse_button = customtkinter.CTkButton(
-        parent,
-        text="Browse",
-        command=browse_for_directory,
-        width=80
-    )
-    browse_button.pack(side="left", padx=(10, 0))
+    browse_button.configure(command=browse_for_directory)
 
     if hasattr(malcolm_config, 'observe'):
         def update_from_model(value):
+            _updating[0] = True
             var.set(str(malcolm_config.get_value(key) or ""))
+            _updating[0] = False
 
         malcolm_config.observe(key, update_from_model)
 
+    # Set up visibility observer with tooltips for disabled state
+    _setup_visibility_observer(entry, key, malcolm_config)
 
-def _show_error_dialog(parent, message: str):
-    """Show error dialog to user."""
-    dialog = customtkinter.CTkToplevel(parent)
-    dialog.title("Validation Error")
-    dialog.geometry("400x150")
-    dialog.transient(parent.winfo_toplevel())
-    dialog.grab_set()
+    container.pack(fill="x", expand=True)
 
-    label = customtkinter.CTkLabel(
-        dialog,
-        text=message,
-        wraplength=350
-    )
-    label.pack(pady=20, padx=20)
-
-    button = customtkinter.CTkButton(
-        dialog,
-        text="OK",
-        command=dialog.destroy
-    )
-    button.pack(pady=10)
-
-    dialog.wait_window()
+    return entry

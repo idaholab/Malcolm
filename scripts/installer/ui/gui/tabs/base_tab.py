@@ -31,8 +31,14 @@ class BaseTab:
         self.widget_map: Dict[str, customtkinter.CTkBaseClass] = {}
         self.panel_map: Dict[str, customtkinter.CTkFrame] = {}
         self.depth_map: Dict[str, int] = {}
+        self.rendered_items: set = set()  # Track which config keys are rendered in this tab
 
         self._build_ui()
+
+    @property
+    def widgets(self) -> Dict[str, customtkinter.CTkBaseClass]:
+        """Alias for widget_map for consistency with validation code."""
+        return self.widget_map
 
     def _build_ui(self):
         """Build the tab UI with all items in priority order, using indentation for hierarchy.
@@ -100,6 +106,7 @@ class BaseTab:
             if widget_container:
                 self.widget_map[key] = widget_container
                 self.depth_map[key] = depth
+                self.rendered_items.add(key)  # Track that this key is rendered in this tab
 
                 # Set initial enabled/disabled state based on visibility
                 is_visible = self.malcolm_config.is_item_visible(key)
