@@ -3,7 +3,12 @@
 
 # Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
 
-"""Final configuration summary dialog for GUI installer."""
+"""Final configuration summary dialog for GUI installer.
+
+This dialog displays a read-only summary of the user's configuration choices.
+It is shown after validation passes in main_window.py, so no validation logic
+is needed here - the configuration is already validated before this dialog opens.
+"""
 
 from typing import TYPE_CHECKING
 import customtkinter
@@ -223,9 +228,10 @@ class SummaryDialog:
         button_frame.pack(fill="x", pady=(10, 0))
 
         def on_proceed():
-            """Handle Proceed button click."""
-            # TODO: Add validation logic here if needed
-            # For now, just proceed
+            """Handle Proceed button click.
+
+            Note: Validation is already done in main_window.py before this dialog is shown.
+            """
             self.result = True
             self.dialog.destroy()
 
