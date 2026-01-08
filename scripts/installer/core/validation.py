@@ -28,6 +28,7 @@ from scripts.installer.configs.constants.constants import (
 )
 from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_ARKIME_WISE_URL,
+    KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
     KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
     KEY_CONFIG_ITEM_CLEAN_UP_OLD_INDICES,
     KEY_CONFIG_ITEM_DASHBOARDS_URL,
@@ -79,6 +80,7 @@ def _validate_local_vs_remote_urls(malcolm_config, add_issue) -> None:
         osurl = malcolm_config.get_value(KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_URL)
         dashurl = malcolm_config.get_value(KEY_CONFIG_ITEM_DASHBOARDS_URL)
         wiseurl = malcolm_config.get_value(KEY_CONFIG_ITEM_ARKIME_WISE_URL)
+        expose_wise = malcolm_config.get_value(KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE)
 
         def _validate_conn_for_profile(
             conn_value: str,
@@ -144,15 +146,16 @@ def _validate_local_vs_remote_urls(malcolm_config, add_issue) -> None:
             "host:port",
         )
 
-        _validate_conn_for_profile(
-            wiseurl,
-            LOCAL_ARKIME_WISE_URL,
-            KEY_CONFIG_ITEM_ARKIME_WISE_URL,
-            "Arkime WISE",
-            profile if (not arkime_live) else PROFILE_HEDGEHOG,
-            arkime_live or (profile == PROFILE_HEDGEHOG),
-            "https://host/wise/",
-        )
+        if expose_wise:
+            _validate_conn_for_profile(
+                wiseurl,
+                LOCAL_ARKIME_WISE_URL,
+                KEY_CONFIG_ITEM_ARKIME_WISE_URL,
+                "Arkime WISE",
+                profile if (not arkime_live) else PROFILE_HEDGEHOG,
+                arkime_live or (profile == PROFILE_HEDGEHOG),
+                "https://host/wise/",
+            )
 
         _validate_url_for_mode(
             osurl,
