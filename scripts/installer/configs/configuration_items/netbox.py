@@ -75,7 +75,7 @@ CONFIG_ITEM_NETBOX_AUTO_POPULATE_SUBNET_FILTER = ConfigItem(
     label="NetBox IP Autopopulation Filter",
     default_value="",
     validator=lambda x: isinstance(x, str) and ValidNetBoxSubnetFilter(x),
-    question='Comma-separated list of private CIDR subnets to control NetBox IP autopopulation',
+    question='CIDR subnets for NetBox IP autopopulation (e.g., 192.168.0.0/16,10.0.0.0/8 or site:192.168.0.0/16)',
     widget_type=WidgetType.TEXT,
 )
 

@@ -136,7 +136,7 @@ CONFIG_ITEM_ARKIME_WISE_URL = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="Specify the URL for Arkime's WISE plugin",
-    widget_type=WidgetType.CHECKBOX,
+    widget_type=WidgetType.TEXT,
 )
 
 CONFIG_ITEM_PCAP_NETSNIFF = ConfigItem(
@@ -159,19 +159,19 @@ CONFIG_ITEM_PCAP_TCPDUMP = ConfigItem(
 
 CONFIG_ITEM_LIVE_ZEEK = ConfigItem(
     key=KEY_CONFIG_ITEM_LIVE_ZEEK,
-    label="Analyze Live Traffic with Zeek",
+    label="Capture Live Traffic with Zeek",
     default_value=False,
     validator=lambda x: isinstance(x, bool),
-    question="Analyze live network traffic with Zeek?",
+    question="Capture live network traffic with Zeek?",
     widget_type=WidgetType.CHECKBOX,
 )
 
 CONFIG_ITEM_LIVE_SURICATA = ConfigItem(
     key=KEY_CONFIG_ITEM_LIVE_SURICATA,
-    label="Analyze Live Traffic with Suricata",
+    label="Capture Live Traffic with Suricata",
     default_value=False,
     validator=lambda x: isinstance(x, bool),
-    question="Analyze live network traffic with Suricata?",
+    question="Capture live network traffic with Suricata?",
     widget_type=WidgetType.CHECKBOX,
 )
 

@@ -237,6 +237,7 @@ CONFIG_ITEM_PRUNE_PCAP = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Prune oldest PCAP from filesystem based on available storage?",
     widget_type=WidgetType.CHECKBOX,
+    metadata={"iso_only": True},
 )
 
 CONFIG_ITEM_PRUNE_LOGS = ConfigItem(
@@ -246,6 +247,7 @@ CONFIG_ITEM_PRUNE_LOGS = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Prune oldest logs from filesystem based on available storage?",
     widget_type=WidgetType.CHECKBOX,
+    metadata={"iso_only": True},
 )
 
 
