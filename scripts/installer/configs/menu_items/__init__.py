@@ -33,13 +33,13 @@ from scripts.installer.configs.constants.menu_item_keys import (
 # Menu item definitions
 MENU_ITEM_NETWORK = MenuItem(
     key=KEY_MENU_ITEM_NETWORK,
-    label="Network Settings",
+    label="Network",
     sort_priority=10,
 )
 
 MENU_ITEM_ANALYSIS = MenuItem(
     key=KEY_MENU_ITEM_ANALYSIS,
-    label="Analysis Settings",
+    label="Analysis",
     sort_priority=20,
 )
 
@@ -59,13 +59,13 @@ MENU_ITEM_ANALYSIS_HISTORICAL = MenuItem(
 
 MENU_ITEM_STORAGE = MenuItem(
     key=KEY_MENU_ITEM_STORAGE,
-    label="Storage Settings",
+    label="Storage",
     sort_priority=30,
 )
 
 MENU_ITEM_ENRICHMENT = MenuItem(
     key=KEY_MENU_ITEM_ENRICHMENT,
-    label="Enrichment Settings",
+    label="Enrichment",
     sort_priority=40,
 )
 
@@ -78,7 +78,7 @@ MENU_ITEM_ENRICHMENT_NETBOX = MenuItem(
 
 MENU_ITEM_RUNTIME_SETTINGS = MenuItem(
     key=KEY_MENU_ITEM_RUNTIME_SETTINGS,
-    label="Runtime Settings",
+    label="Runtime",
     sort_priority=50,
 )
 
