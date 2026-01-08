@@ -31,6 +31,8 @@ class BaseTab:
         self.widget_map: Dict[str, customtkinter.CTkBaseClass] = {}
         self.panel_map: Dict[str, customtkinter.CTkFrame] = {}
         self.depth_map: Dict[str, int] = {}
+        self.pack_targets: Dict[str, customtkinter.CTkBaseClass] = {}
+        self.pack_options: Dict[str, dict] = {}
         self.rendered_items: set = set()  # Track which config keys are rendered in this tab
 
         self._build_ui()
@@ -67,9 +69,11 @@ class BaseTab:
 
             if depth == 0:
                 section_index += 1
+                section_bg = self._section_bg_color(section_index)
                 section_frame = customtkinter.CTkFrame(
                     scrollable_frame,
-                    fg_color=self._section_bg_color(section_index),
+                    fg_color=section_bg,
+                    bg_color=section_bg,
                     corner_radius=8,
                     border_width=1,
                     border_color=self._section_border_color(section_index),
@@ -82,14 +86,18 @@ class BaseTab:
 
             # Children render inside a panel with a distinct background
             if depth > 0:
+                panel_bg = self._panel_bg_color(depth, enabled=True)
                 panel = customtkinter.CTkFrame(
                     parent_frame,
-                    fg_color=self._panel_bg_color(depth, enabled=True),
+                    fg_color=panel_bg,
+                    bg_color=panel_bg,
                     corner_radius=6,
                     border_width=1,
                     border_color=self._panel_border_color(depth, enabled=True),
                 )
                 panel.pack(fill="x", padx=(left_padding, 10), pady=5)
+                self.pack_targets[key] = panel
+                self.pack_options[key] = panel.pack_info()
                 widget_container = self._create_config_widget(panel, key, item)
                 if not widget_container:
                     panel.destroy()
@@ -100,6 +108,8 @@ class BaseTab:
                 widget_container = self._create_config_widget(parent_frame, key, item)
                 if widget_container:
                     widget_container.pack(fill="x", padx=(left_padding, 10), pady=5)
+                    self.pack_targets[key] = widget_container
+                    self.pack_options[key] = widget_container.pack_info()
                 else:
                     continue
 
@@ -171,14 +181,19 @@ class BaseTab:
 
             # Only add ConfigItems to result (MenuItems are just for organization)
             from scripts.installer.core.menu_item import MenuItem
-            if not isinstance(item, MenuItem):
+            is_menu_item = isinstance(item, MenuItem)
+
+            if not is_menu_item:
                 result.append((key, item, depth))
 
             # Recursively walk children in priority order
+            # MenuItems don't contribute to depth since they're not rendered
+            child_depth = depth if is_menu_item else depth + 1
+
             child_keys = children.get(key, [])
             sorted_children = _sorted_keys(child_keys)
             for child_key in sorted_children:
-                walk(child_key, depth + 1)
+                walk(child_key, child_depth)
 
         # Start from this tab's root
         # If tab key is a ConfigItem, start with it at depth 0
@@ -237,6 +252,16 @@ class BaseTab:
             # Disable all child widgets recursively (grey them out)
             self._set_widget_state_recursive(container, "disabled")
         self._update_panel_style(key, is_visible)
+
+        hide_when_invisible = bool(item.metadata.get("iso_only"))
+        target = self.pack_targets.get(key)
+        if hide_when_invisible and target:
+            if is_visible:
+                if not target.winfo_ismapped():
+                    target.pack(**self.pack_options.get(key, {}))
+            else:
+                if target.winfo_ismapped():
+                    target.pack_forget()
 
     def _set_widget_state_recursive(self, widget, state: str):
         """Recursively set state for all child widgets that support it.
@@ -321,5 +346,6 @@ class BaseTab:
         depth = self.depth_map.get(key, 1)
         panel.configure(
             fg_color=self._panel_bg_color(depth, enabled=is_visible),
+            bg_color=self._panel_bg_color(depth, enabled=is_visible),
             border_color=self._panel_border_color(depth, enabled=is_visible),
         )
