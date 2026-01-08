@@ -105,6 +105,7 @@ def create_config_item_widget(
     item: "ConfigItem",
     malcolm_config: "MalcolmConfig",
     label_override: Optional[str] = None,
+    accent_colors: Optional[dict] = None,
 ) -> Optional[customtkinter.CTkFrame]:
     """Factory function to create appropriate widget for a ConfigItem.
 
@@ -117,6 +118,7 @@ def create_config_item_widget(
         item: ConfigItem instance
         malcolm_config: MalcolmConfig instance (or InstallContext for installation items)
         label_override: Optional label to use instead of item.label
+        accent_colors: Optional dict with 'primary', 'hover', 'text' color keys
 
     Returns:
         Container frame with label and widget, or None if widget type unsupported
@@ -163,19 +165,19 @@ def create_config_item_widget(
     # Create widget and get reference to the actual input element
     input_widget = None
     if item.widget_type == WidgetType.CHECKBOX:
-        input_widget = _create_checkbox(widget_frame, key, item, malcolm_config)
+        input_widget = _create_checkbox(widget_frame, key, item, malcolm_config, accent_colors)
     elif item.widget_type == WidgetType.TEXT:
         input_widget = _create_entry(widget_frame, key, item, malcolm_config, is_password=False)
     elif item.widget_type == WidgetType.PASSWORD:
         input_widget = _create_entry(widget_frame, key, item, malcolm_config, is_password=True)
     elif item.widget_type == WidgetType.SELECT:
-        input_widget = _create_dropdown(widget_frame, key, item, malcolm_config)
+        input_widget = _create_dropdown(widget_frame, key, item, malcolm_config, accent_colors)
     elif item.widget_type == WidgetType.RADIO:
-        input_widget = _create_radio_group(widget_frame, key, item, malcolm_config)
+        input_widget = _create_radio_group(widget_frame, key, item, malcolm_config, accent_colors)
     elif item.widget_type == WidgetType.NUMBER:
         input_widget = _create_number_entry(widget_frame, key, item, malcolm_config)
     elif item.widget_type == WidgetType.DIRECTORY:
-        input_widget = _create_directory_entry(widget_frame, key, item, malcolm_config)
+        input_widget = _create_directory_entry(widget_frame, key, item, malcolm_config, accent_colors)
     else:
         return None
 
@@ -190,7 +192,8 @@ def _create_checkbox(
     parent: customtkinter.CTkFrame,
     key: str,
     item: "ConfigItem",
-    malcolm_config: "MalcolmConfig"
+    malcolm_config: "MalcolmConfig",
+    accent_colors: Optional[dict] = None,
 ):
     """Create checkbox widget with two-way binding and inline error display."""
     container = customtkinter.CTkFrame(parent, fg_color="transparent")
@@ -198,11 +201,14 @@ def _create_checkbox(
     var = customtkinter.BooleanVar(value=bool(item.get_value()))
     _updating = [False]  # Guard flag to prevent observer loops
 
-    checkbox = customtkinter.CTkCheckBox(
-        container,
-        text="",
-        variable=var,
-    )
+    # Apply accent colors if provided
+    checkbox_kwargs = {"text": "", "variable": var}
+    if accent_colors:
+        checkbox_kwargs["fg_color"] = accent_colors.get("primary")
+        checkbox_kwargs["hover_color"] = accent_colors.get("hover")
+        checkbox_kwargs["checkmark_color"] = accent_colors.get("text")
+
+    checkbox = customtkinter.CTkCheckBox(container, **checkbox_kwargs)
     checkbox.grid(row=0, column=0, sticky="w")
 
     # Error label below checkbox
@@ -335,7 +341,8 @@ def _create_dropdown(
     parent: customtkinter.CTkFrame,
     key: str,
     item: "ConfigItem",
-    malcolm_config: "MalcolmConfig"
+    malcolm_config: "MalcolmConfig",
+    accent_colors: Optional[dict] = None,
 ):
     """Create dropdown widget with two-way binding and inline error display."""
     if not item.choices:
@@ -370,12 +377,18 @@ def _create_dropdown(
     var = customtkinter.StringVar(value=initial_display)
     _updating = [False]  # Guard flag to prevent observer loops
 
-    dropdown = customtkinter.CTkOptionMenu(
-        container,
-        values=values,
-        variable=var,
-        width=300
-    )
+    # Apply accent colors if provided
+    dropdown_kwargs = {"values": values, "variable": var, "width": 300}
+    if accent_colors:
+        dropdown_kwargs["fg_color"] = accent_colors.get("primary")
+        dropdown_kwargs["button_color"] = accent_colors.get("primary")
+        dropdown_kwargs["button_hover_color"] = accent_colors.get("hover")
+        dropdown_kwargs["text_color"] = accent_colors.get("text")
+        dropdown_kwargs["dropdown_fg_color"] = accent_colors.get("primary")
+        dropdown_kwargs["dropdown_hover_color"] = accent_colors.get("hover")
+        dropdown_kwargs["dropdown_text_color"] = accent_colors.get("text")
+
+    dropdown = customtkinter.CTkOptionMenu(container, **dropdown_kwargs)
     dropdown.grid(row=0, column=0, sticky="ew")
     container.grid_columnconfigure(0, weight=1)
 
@@ -423,7 +436,8 @@ def _create_radio_group(
     parent: customtkinter.CTkFrame,
     key: str,
     item: "ConfigItem",
-    malcolm_config: "MalcolmConfig"
+    malcolm_config: "MalcolmConfig",
+    accent_colors: Optional[dict] = None,
 ):
     """Create radio button group with two-way binding and inline error display."""
     choices = item.choices
@@ -459,13 +473,19 @@ def _create_radio_group(
         else:
             raw_value, label = choice, str(choice)
         value_map[str(raw_value)] = raw_value
-        radio = customtkinter.CTkRadioButton(
-            radio_container,
-            text=str(label),
-            variable=var,
-            value=str(raw_value),
-            command=on_change,
-        )
+
+        # Apply accent colors if provided
+        radio_kwargs = {
+            "text": str(label),
+            "variable": var,
+            "value": str(raw_value),
+            "command": on_change,
+        }
+        if accent_colors:
+            radio_kwargs["fg_color"] = accent_colors.get("primary")
+            radio_kwargs["hover_color"] = accent_colors.get("hover")
+
+        radio = customtkinter.CTkRadioButton(radio_container, **radio_kwargs)
         radio.pack(side="left", padx=(0, 12))
         radio_buttons.append(radio)
 
@@ -607,7 +627,8 @@ def _create_directory_entry(
     parent: customtkinter.CTkFrame,
     key: str,
     item: "ConfigItem",
-    malcolm_config: "MalcolmConfig"
+    malcolm_config: "MalcolmConfig",
+    accent_colors: Optional[dict] = None,
 ):
     """Create directory entry widget with browse button and inline error display."""
     import os
@@ -631,11 +652,14 @@ def _create_directory_entry(
     )
     entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
 
-    browse_button = customtkinter.CTkButton(
-        input_frame,
-        text="Browse",
-        width=80
-    )
+    # Apply accent colors to browse button if provided
+    button_kwargs = {"text": "Browse", "width": 80}
+    if accent_colors:
+        button_kwargs["fg_color"] = accent_colors.get("primary")
+        button_kwargs["hover_color"] = accent_colors.get("hover")
+        button_kwargs["text_color"] = accent_colors.get("text")
+
+    browse_button = customtkinter.CTkButton(input_frame, **button_kwargs)
     browse_button.grid(row=0, column=1, sticky="e")
 
     # Error label below entry

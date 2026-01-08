@@ -24,10 +24,12 @@ class BaseTab:
         parent_frame: customtkinter.CTkFrame,
         malcolm_config: "MalcolmConfig",
         menu_item_key: str,
+        accent_colors: Optional[Dict[str, str]] = None,
     ):
         self.parent_frame = parent_frame
         self.malcolm_config = malcolm_config
         self.menu_item_key = menu_item_key
+        self.accent_colors = accent_colors
         self.widget_map: Dict[str, customtkinter.CTkBaseClass] = {}
         self.panel_map: Dict[str, customtkinter.CTkFrame] = {}
         self.depth_map: Dict[str, int] = {}
@@ -48,9 +50,11 @@ class BaseTab:
         Uses tree-walking logic from store_view_model.py to ensure items appear in the
         correct priority-based order with proper visual hierarchy through indentation.
         """
+        self._tab_bg = self._tab_bg_color()
         scrollable_frame = customtkinter.CTkScrollableFrame(
             self.parent_frame,
-            fg_color="transparent"
+            fg_color=self._tab_bg,
+            bg_color=self._tab_bg,
         )
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
         self._bind_mousewheel(scrollable_frame)
@@ -73,7 +77,7 @@ class BaseTab:
                 section_frame = customtkinter.CTkFrame(
                     scrollable_frame,
                     fg_color=section_bg,
-                    bg_color=section_bg,
+                    bg_color=self._tab_bg,
                     corner_radius=8,
                     border_width=1,
                     border_color=self._section_border_color(section_index),
@@ -90,7 +94,7 @@ class BaseTab:
                 panel = customtkinter.CTkFrame(
                     parent_frame,
                     fg_color=panel_bg,
-                    bg_color=panel_bg,
+                    bg_color=self._tab_bg,
                     corner_radius=6,
                     border_width=1,
                     border_color=self._panel_border_color(depth, enabled=True),
@@ -220,7 +224,9 @@ class BaseTab:
         item: object
     ) -> Optional[customtkinter.CTkFrame]:
         """Create widget for a ConfigItem using the factory."""
-        return create_config_item_widget(parent, key, item, self.malcolm_config)
+        return create_config_item_widget(
+            parent, key, item, self.malcolm_config, accent_colors=self.accent_colors
+        )
 
     def _update_widget_visibility(self, key: str):
         """Update widget enabled/disabled state based on MalcolmConfig visibility.
@@ -309,6 +315,32 @@ class BaseTab:
         """Get alternating section border color."""
         return ("gray85", "gray28") if index % 2 == 0 else ("gray83", "gray30")
 
+    def _tab_bg_color(self) -> tuple:
+        """Resolve the tab background color for blending rounded corners."""
+        parent_color = None
+        try:
+            parent_color = self.parent_frame.cget("fg_color")
+        except Exception:
+            parent_color = None
+
+        if isinstance(parent_color, (list, tuple)):
+            return tuple(parent_color)
+
+        if parent_color and parent_color != "transparent":
+            stored_color = getattr(self.parent_frame, "_fg_color", None)
+            if isinstance(stored_color, (list, tuple)):
+                return tuple(stored_color)
+
+        try:
+            theme_color = customtkinter.ThemeManager.theme["CTkFrame"]["fg_color"]
+        except Exception:
+            theme_color = ("gray95", "gray12")
+
+        if isinstance(theme_color, list):
+            theme_color = tuple(theme_color)
+
+        return theme_color
+
     def _bind_mousewheel(self, scrollable_frame: customtkinter.CTkScrollableFrame) -> None:
         """Bind mouse wheel to the scrollable frame for cross-platform scrolling."""
         canvas = getattr(scrollable_frame, "_parent_canvas", None)
@@ -346,6 +378,6 @@ class BaseTab:
         depth = self.depth_map.get(key, 1)
         panel.configure(
             fg_color=self._panel_bg_color(depth, enabled=is_visible),
-            bg_color=self._panel_bg_color(depth, enabled=is_visible),
+            bg_color=self._tab_bg,
             border_color=self._panel_border_color(depth, enabled=is_visible),
         )

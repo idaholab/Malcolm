@@ -1641,7 +1641,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=None,
             condition=False,
-            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
+            # No ui_parent - system architecture is auto-detected, not user-configurable
         )
     ),
     # Malcolm Profile (top-level, no menu parent - appears before menu groups)

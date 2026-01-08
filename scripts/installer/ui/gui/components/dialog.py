@@ -72,6 +72,7 @@ def show_confirmation_dialog(
     height=200,
     ok_text="OK",
     cancel_text="Cancel",
+    accent_colors=None,
 ):
     """
     Display a modal confirmation dialog with OK and Cancel buttons.
@@ -84,6 +85,7 @@ def show_confirmation_dialog(
         height (int): Dialog height in pixels (default: 200)
         ok_text (str): Text for the OK button (default: "OK")
         cancel_text (str): Text for the Cancel button (default: "Cancel")
+        accent_colors (dict): Optional dict with 'primary', 'hover', 'text' color keys
 
     Returns:
         bool: True if OK was pressed, False if Cancel was pressed
@@ -119,12 +121,25 @@ def show_confirmation_dialog(
         result[0] = True
         dialog.destroy()
 
+    # Button styling with accent colors
+    button_kwargs = {}
+    if accent_colors:
+        button_kwargs = {
+            "fg_color": accent_colors.get("primary"),
+            "hover_color": accent_colors.get("hover"),
+            "text_color": accent_colors.get("text"),
+        }
+
     # OK button
-    ok_button = customtkinter.CTkButton(button_frame, text=ok_text, command=on_ok, width=100)
+    ok_button = customtkinter.CTkButton(
+        button_frame, text=ok_text, command=on_ok, width=100, **button_kwargs
+    )
     ok_button.pack(side="left", padx=(0, 10))
 
     # Cancel button
-    cancel_button = customtkinter.CTkButton(button_frame, text=cancel_text, command=dialog.destroy, width=100)
+    cancel_button = customtkinter.CTkButton(
+        button_frame, text=cancel_text, command=dialog.destroy, width=100, **button_kwargs
+    )
     cancel_button.pack(side="right")
 
     # Wait for the dialog to be closed

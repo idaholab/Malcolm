@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from scripts.installer.core.malcolm_config import MalcolmConfig
     from scripts.installer.platforms.base import BaseInstaller
     from scripts.installer.core.install_context import InstallContext
+    from scripts.installer.ui.gui.main_window import MainWindow
 
 
 class GUIInstallerUI(InstallerUI):
@@ -201,6 +202,9 @@ class GUIInstallerUI(InstallerUI):
     ) -> bool:
         """Run the GUI configuration menu with tabs.
 
+        Shows animated splash screen for profile selection, then displays
+        the configuration tabs filtered by the selected profile.
+
         Args:
             malcolm_config: MalcolmConfig instance containing all configuration
             install_context: InstallContext instance for installation decisions
@@ -210,15 +214,100 @@ class GUIInstallerUI(InstallerUI):
         Returns:
             True if user selected to save and continue, False if user cancelled
         """
-        # TODO: Implement MainWindow in Phase 3
         from scripts.installer.ui.gui.main_window import MainWindow
+        from scripts.installer.ui.gui.splash.splash_screen import SplashScreen
 
         self._ensure_root()
         self._root.deiconify()
-        main_window = MainWindow(malcolm_config, install_context, main_menu_keys, debug_mode, root=self._root)
-        result = main_window.run()
+        self._root.geometry("900x700")
+
+        # State to track splash completion and pre-built main window
+        splash_result = {"profile": None, "header_image": None, "complete": False}
+        main_window_holder = {"window": None}
+
+        def on_loading_start(profile: str):
+            """Called when loading phase starts - build MainWindow in background."""
+            main_window_holder["window"] = MainWindow(
+                malcolm_config,
+                install_context,
+                main_menu_keys,
+                debug_mode,
+                root=self._root,
+                selected_profile=profile,
+                header_image=None,  # Set later when animation completes
+                build_only=True,  # Don't display yet
+            )
+
+        def on_splash_complete(profile: str, header_image):
+            """Called when splash screen animation completes."""
+            splash_result["profile"] = profile
+            splash_result["header_image"] = header_image
+            splash_result["complete"] = True
+
+        # Show splash screen for profile selection
+        splash = SplashScreen(
+            self._root,
+            malcolm_config,
+            on_splash_complete,
+            on_loading_start=on_loading_start,
+        )
+        splash.show()
+
+        # Wait for splash to complete using polling
+        def check_splash_complete():
+            if splash_result["complete"]:
+                # Splash complete - transition to main window
+                splash.destroy()
+                self._show_main_window(
+                    main_window_holder["window"],
+                    splash_result["header_image"],
+                )
+            else:
+                # Still waiting, check again
+                self._root.after(50, check_splash_complete)
+
+        check_splash_complete()
+
+        # Run the event loop
+        self._root.mainloop()
+
+        # Return the result (set by main window)
+        result = getattr(self, "_config_result", False)
         self._root = None
         return result
+
+    def _show_main_window(
+        self,
+        main_window: "MainWindow",
+        header_image,
+    ) -> None:
+        """Display the pre-built main configuration window.
+
+        Args:
+            main_window: Pre-built MainWindow instance (created during loading phase)
+            header_image: CTkImage for header display
+        """
+        self._main_window = main_window
+
+        # Set the header image (wasn't available during background build)
+        if header_image:
+            self._main_window.set_header_image(header_image)
+
+        # Display the pre-built window
+        self._main_window.display()
+
+        # Ensure window close matches Exit button behavior
+        self._root.protocol("WM_DELETE_WINDOW", self._main_window._on_exit)
+
+        # The main window will call root.destroy() when done
+        # We need to intercept that to get the result
+        original_destroy = self._root.destroy
+
+        def wrapped_destroy():
+            self._config_result = self._main_window.result
+            original_destroy()
+
+        self._root.destroy = wrapped_destroy
 
     def gather_install_options(
         self,

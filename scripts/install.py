@@ -465,6 +465,18 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
     #             pass  # GUI not available
     #     return
 
+    def check_for_gui_environment() -> bool:
+        if sys.platform.startswith("linux"):
+            return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+        return True
+
+    def check_for_gui_library():
+        if not check_for_gui_environment():
+            return None
+        if not DoDynamicImport("customtkinter", "customtkinter"):
+            return None
+        return PresentationMode.MODE_GUI
+
     def check_for_python_dialog():
         if not DoDynamicImport("dialog", "pythondialog"):
             return None
@@ -485,15 +497,22 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
         return PresentationMode.MODE_SILENT
     if parsed_args.tui:
         return PresentationMode.MODE_TUI
+    gui_mode = check_for_gui_library()
     dui_mode = check_for_python_dialog()
     if parsed_args.dui:
         if dui_mode:
             return dui_mode
         raise RuntimeError("DUI mode was requested but python-dialog is not available")
     if parsed_args.gui:
-        return PresentationMode.MODE_GUI
+        if gui_mode:
+            return gui_mode
+        if dui_mode:
+            return dui_mode
+        return PresentationMode.MODE_TUI
 
-    # if nothing was explicitly requested attempt python dialogs else default to TUI
+    # if nothing was explicitly requested attempt GUI, then DUI, else default to TUI
+    if gui_mode:
+        return gui_mode
     if dui_mode:
         return dui_mode
 

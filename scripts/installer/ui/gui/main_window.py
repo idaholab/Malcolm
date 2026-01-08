@@ -8,13 +8,29 @@
 from typing import TYPE_CHECKING, Optional
 import customtkinter
 
+from scripts.malcolm_constants import PROFILE_MALCOLM, PROFILE_HEDGEHOG
 from scripts.installer.utils.logger_utils import InstallerLogger
 from scripts.installer.ui.gui.tabs.base_tab import BaseTab
-from scripts.installer.ui.gui.tabs.welcome_tab import WelcomeTab
+from scripts.installer.configs.constants.configuration_item_keys import KEY_CONFIG_ITEM_MALCOLM_PROFILE
 
 if TYPE_CHECKING:
     from scripts.installer.core.malcolm_config import MalcolmConfig
     from scripts.installer.core.install_context import InstallContext
+
+
+# Profile-specific accent colors
+ACCENT_COLORS = {
+    PROFILE_MALCOLM: {
+        "primary": "#EEDD77",      # Gold
+        "hover": "#D4C45A",        # Darker gold for hover
+        "text": "#1a1a1a",         # Dark text for contrast
+    },
+    PROFILE_HEDGEHOG: {
+        "primary": "#C6B9DB",      # Light purple
+        "hover": "#A99BC4",        # Darker purple for hover
+        "text": "#1a1a1a",         # Dark text for contrast
+    },
+}
 
 
 class MainWindow:
@@ -27,6 +43,9 @@ class MainWindow:
         main_menu_keys: list[str],
         debug_mode: bool = False,
         root: Optional[customtkinter.CTk] = None,
+        selected_profile: Optional[str] = None,
+        header_image: Optional[customtkinter.CTkImage] = None,
+        build_only: bool = False,
     ):
         """Initialize the main window with tabs.
 
@@ -35,6 +54,11 @@ class MainWindow:
             install_context: InstallContext instance for installation decisions
             main_menu_keys: List of main menu configuration keys to display as tabs
             debug_mode: Whether to enable debug menu options
+            root: Optional existing CTk root window
+            selected_profile: Profile selected in splash screen (malcolm or hedgehog)
+            header_image: CTkImage for header display from splash screen
+            build_only: If True, build UI widgets but don't display them yet.
+                        Call display() later to make them visible.
         """
         self.malcolm_config = malcolm_config
         self.install_context = install_context
@@ -45,31 +69,159 @@ class MainWindow:
         self.tab_labels = {}  # menu_key -> tab_label (for switching tabs)
         self.key_to_tab = {}  # config_key -> menu_key (for finding which tab has a field)
 
+        self.selected_profile = selected_profile or PROFILE_MALCOLM
+        self.header_image = header_image
+        self._build_only = build_only
+        self._main_frame: Optional[customtkinter.CTkFrame] = None
+        self._logo_label: Optional[customtkinter.CTkLabel] = None
+
         self.root = root or customtkinter.CTk()
-        self.root.title("Malcolm Installer Configuration")
+        profile_display = "Malcolm" if self.selected_profile == PROFILE_MALCOLM else "Hedgehog"
+        self.root.title(f"{profile_display} Installer Configuration")
         self.root.geometry("900x700")
 
         self._build_ui()
 
     def _build_ui(self):
-        """Build the main UI with tabs and button bar."""
-        main_frame = customtkinter.CTkFrame(self.root)
-        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Build the main UI with header, tabs, and button bar."""
+        self._main_frame = customtkinter.CTkFrame(self.root)
+        if not self._build_only:
+            self._main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.tab_view = customtkinter.CTkTabview(main_frame)
+        # Header bar with profile image and info
+        self._create_header(self._main_frame)
+
+        # Get accent colors for selected profile
+        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+
+        self.tab_view = customtkinter.CTkTabview(
+            self._main_frame,
+            segmented_button_selected_color=colors["primary"],
+            segmented_button_selected_hover_color=colors["hover"],
+            text_color=colors["text"],
+        )
         self.tab_view.pack(fill="both", expand=True, padx=10, pady=10)
 
         self._create_tabs()
-        self._create_button_bar(main_frame)
+        self._create_button_bar(self._main_frame)
+
+    def display(self) -> None:
+        """Make the pre-built window visible.
+
+        Call this after building with build_only=True to show the UI.
+        """
+        if self._build_only and self._main_frame:
+            self._main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+            self._build_only = False
+
+    def set_header_image(self, header_image: customtkinter.CTkImage) -> None:
+        """Set or update the header image after construction.
+
+        Args:
+            header_image: CTkImage to display in the header
+        """
+        self.header_image = header_image
+        if self._logo_label:
+            self._logo_label.configure(image=header_image)
+
+    def _create_header(self, parent):
+        """Create header bar with profile image and appearance toggle.
+
+        Args:
+            parent: The parent frame to attach the header to
+        """
+        header_frame = customtkinter.CTkFrame(parent, height=80, fg_color="transparent")
+        header_frame.pack(fill="x", padx=10, pady=(5, 0))
+        header_frame.pack_propagate(False)
+
+        # Profile image on left (always pack to reserve position, even if no image yet)
+        self._logo_label = customtkinter.CTkLabel(
+            header_frame,
+            image=self.header_image if self.header_image else None,
+            text="",
+        )
+        self._logo_label.pack(side="left", padx=(10, 15))
+
+        # Profile name and subtitle
+        text_frame = customtkinter.CTkFrame(header_frame, fg_color="transparent")
+        text_frame.pack(side="left", fill="y", padx=5)
+
+        profile_display = "Malcolm" if self.selected_profile == PROFILE_MALCOLM else "Hedgehog"
+        title_label = customtkinter.CTkLabel(
+            text_frame,
+            text=f"{profile_display} Configuration",
+            font=("Helvetica", 18, "bold"),
+            anchor="w",
+        )
+        title_label.pack(anchor="w", pady=(15, 0))
+
+        subtitle_label = customtkinter.CTkLabel(
+            text_frame,
+            text="Network Traffic Analysis Tool Suite",
+            font=("Helvetica", 12),
+            text_color="gray",
+            anchor="w",
+        )
+        subtitle_label.pack(anchor="w")
+
+        # Appearance toggle on right
+        appearance_frame = customtkinter.CTkFrame(header_frame, fg_color="transparent")
+        appearance_frame.pack(side="right", padx=10)
+
+        appearance_label = customtkinter.CTkLabel(
+            appearance_frame,
+            text="Appearance",
+            font=("Helvetica", 12),
+            text_color="gray",
+        )
+        appearance_label.pack(side="left", padx=(0, 10))
+
+        # Get accent colors for selected profile
+        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+
+        appearance_switch = customtkinter.CTkSwitch(
+            appearance_frame,
+            text="Light/Dark",
+            command=self._toggle_appearance_mode,
+            fg_color=colors["primary"],
+            progress_color=colors["hover"],
+            button_hover_color=colors["hover"],
+        )
+        appearance_switch.pack(side="left")
+        appearance_switch.select() if self._is_dark_mode() else appearance_switch.deselect()
+
+    def _is_dark_mode(self) -> bool:
+        """Return True if the current appearance mode is dark."""
+        try:
+            mode = customtkinter.get_appearance_mode()
+            return mode.lower() == "dark" if mode else False
+        except AttributeError:
+            return False
+        except Exception as e:
+            InstallerLogger.debug(f"Could not determine appearance mode: {e}")
+            return False
+
+    def _toggle_appearance_mode(self):
+        """Toggle between light and dark appearance modes."""
+        target = "light" if self._is_dark_mode() else "dark"
+        customtkinter.set_appearance_mode(target)
 
     def _create_tabs(self):
-        """Create tabs for all MenuItems in main_menu_keys."""
-        # Add Welcome tab as the first tab
-        welcome_frame = self.tab_view.add("Welcome")
-        WelcomeTab(welcome_frame)
+        """Create tabs for all MenuItems in main_menu_keys.
 
-        # Add configuration tabs
+        Skips the profile selection tab (profile already chosen in splash screen)
+        and skips tabs that are not visible for the selected profile.
+        """
+        # Add configuration tabs (no Welcome tab - replaced by header)
         for menu_key in self.main_menu_keys:
+            # Skip the profile selection tab - profile was already selected in splash
+            if menu_key == KEY_CONFIG_ITEM_MALCOLM_PROFILE:
+                continue
+
+            # Skip menu items that are not visible for this profile
+            if not self.malcolm_config.is_menu_item_visible(menu_key):
+                continue
+
             menu_item = self.malcolm_config.get_menu_item(menu_key)
             config_item = self.malcolm_config.get_item(menu_key)
 
@@ -83,7 +235,9 @@ class MainWindow:
 
             tab_frame = self.tab_view.add(tab_label)
 
-            base_tab = BaseTab(tab_frame, self.malcolm_config, menu_key)
+            # Get accent colors for selected profile
+            colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+            base_tab = BaseTab(tab_frame, self.malcolm_config, menu_key, accent_colors=colors)
             self.tabs[menu_key] = base_tab
             self.tab_labels[menu_key] = tab_label
 
@@ -97,6 +251,9 @@ class MainWindow:
         Args:
             parent: The parent frame to attach the button bar to
         """
+        # Get accent colors for selected profile
+        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+
         button_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
         button_frame.pack(fill="x", padx=10, pady=10)
 
@@ -105,6 +262,9 @@ class MainWindow:
             text="Save & Continue",
             command=self._on_save,
             width=150,
+            fg_color=colors["primary"],
+            hover_color=colors["hover"],
+            text_color=colors["text"],
         )
         save_button.pack(side="left", padx=5)
 
@@ -113,6 +273,9 @@ class MainWindow:
             text="Search",
             command=self._on_search,
             width=100,
+            fg_color=colors["primary"],
+            hover_color=colors["hover"],
+            text_color=colors["text"],
         )
         search_button.pack(side="left", padx=5)
 
@@ -121,6 +284,9 @@ class MainWindow:
             text="Exit",
             command=self._on_exit,
             width=100,
+            fg_color=colors["primary"],
+            hover_color=colors["hover"],
+            text_color=colors["text"],
         )
         exit_button.pack(side="right", padx=5)
 
@@ -157,6 +323,9 @@ class MainWindow:
         Args:
             issues: List of ValidationIssue objects
         """
+        # Get accent colors for selected profile
+        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+
         dialog = customtkinter.CTkToplevel(self.root)
         dialog.title("Configuration Issues")
         dialog.geometry("650x450")
@@ -222,6 +391,9 @@ class MainWindow:
                 command=make_jump_callback(issue.key),
                 width=100,
                 height=28,
+                fg_color=colors["primary"],
+                hover_color=colors["hover"],
+                text_color=colors["text"],
             )
             go_button.pack(side="right", padx=10, pady=8)
 
@@ -231,6 +403,9 @@ class MainWindow:
             text="Close",
             command=dialog.destroy,
             width=120,
+            fg_color=colors["primary"],
+            hover_color=colors["hover"],
+            text_color=colors["text"],
         )
         close_button.pack(pady=15)
 
@@ -399,12 +574,16 @@ class MainWindow:
         """Handle Exit button click."""
         from scripts.installer.ui.gui.components.dialog import show_confirmation_dialog
 
+        # Get accent colors for selected profile
+        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+
         if show_confirmation_dialog(
             self.root,
             "Are you sure you want to exit? Any unsaved changes will be lost.",
             title="Confirm Exit",
             ok_text="Yes",
             cancel_text="No",
+            accent_colors=colors,
         ):
             self.result = False
             self.root.destroy()
