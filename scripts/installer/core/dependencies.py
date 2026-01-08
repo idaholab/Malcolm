@@ -565,7 +565,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 SearchEngineMode.OPENSEARCH_REMOTE.value,
                 SearchEngineMode.ELASTICSEARCH_REMOTE.value,
             ],
-            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
         )
     ),
     KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_SSL_VERIFY: DependencySpec(
@@ -576,7 +576,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 SearchEngineMode.OPENSEARCH_REMOTE.value,
                 SearchEngineMode.ELASTICSEARCH_REMOTE.value,
             ],
-            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE,
         )
     ),
     KEY_CONFIG_ITEM_OS_MEMORY: DependencySpec(
@@ -744,14 +744,14 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         )
     ),
     KEY_CONFIG_ITEM_PCAP_NETSNIFF: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=[
@@ -779,7 +779,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=[
@@ -812,7 +812,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 bool(live_traffic)
                 and ((profile == PROFILE_HEDGEHOG) or (mode != SearchEngineMode.OPENSEARCH_LOCAL.value))
             ),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=[
@@ -837,7 +837,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
@@ -850,7 +850,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
@@ -863,14 +863,14 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         )
     ),
     KEY_CONFIG_ITEM_TWEAK_IFACE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
@@ -883,7 +883,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
@@ -896,14 +896,14 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_LIVE_ARKIME,
             condition=lambda live_arkime: bool(live_arkime),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_LIVE_ARKIME,
         )
     ),
     KEY_CONFIG_ITEM_LIVE_ARKIME_COMP_TYPE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_LIVE_ARKIME,
             condition=lambda live_arkime: bool(live_arkime),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_LIVE_ARKIME,
         )
     ),
     KEY_CONFIG_ITEM_LIVE_ARKIME_COMP_LEVEL: DependencySpec(
@@ -912,7 +912,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda live_arkime, comp_type: (
                 bool(live_arkime) and (comp_type != ArkimePCAPCompression.NONE.value)
             ),
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_LIVE_ARKIME_COMP_TYPE,
         )
     ),
     KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE: DependencySpec(
@@ -930,9 +930,15 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     ),
     KEY_CONFIG_ITEM_ARKIME_ALLOW_WISE_CONFIG: DependencySpec(
         visibility=VisibilityRule(
-            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_AUTO_ARKIME],
-            condition=lambda profile, auto_arkime: (profile == PROFILE_MALCOLM) and bool(auto_arkime),
-            ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
+            depends_on=[
+                KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+                KEY_CONFIG_ITEM_AUTO_ARKIME,
+                KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
+            ],
+            condition=lambda profile, auto_arkime, expose_wise: (
+                (profile == PROFILE_MALCOLM) and bool(auto_arkime) and bool(expose_wise)
+            ),
+            ui_parent=KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
@@ -946,9 +952,12 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             depends_on=[
                 KEY_CONFIG_ITEM_MALCOLM_PROFILE,
                 KEY_CONFIG_ITEM_AUTO_ARKIME,
+                KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
             ],
-            condition=lambda profile, auto_arkime: (profile == PROFILE_MALCOLM) and bool(auto_arkime),
-            ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
+            condition=lambda profile, auto_arkime, expose_wise: (
+                (profile == PROFILE_MALCOLM) and bool(auto_arkime) and bool(expose_wise)
+            ),
+            ui_parent=KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
         ),
         value=ValueRule(
             depends_on=[
@@ -972,35 +981,35 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
             condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode == NetboxMode.REMOTE.value)),
-            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+            ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
     KEY_CONFIG_ITEM_NETBOX_LOGSTASH_ENRICH: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
             condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode != NetboxMode.DISABLED.value)),
-            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+            ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
     KEY_CONFIG_ITEM_NETBOX_AUTO_POPULATE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
             condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode != NetboxMode.DISABLED.value)),
-            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+            ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
     KEY_CONFIG_ITEM_NETBOX_LOGSTASH_AUTO_CREATE_PREFIX: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
             condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode != NetboxMode.DISABLED.value)),
-            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+            ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
     KEY_CONFIG_ITEM_NETBOX_AUTO_POPULATE_SUBNET_FILTER: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
             condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode != NetboxMode.DISABLED.value)),
-            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+            ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
     KEY_CONFIG_ITEM_NETBOX_SITE_NAME: DependencySpec(
@@ -1009,7 +1018,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, mode: (
                 (profile == PROFILE_HEDGEHOG) or ((profile == PROFILE_MALCOLM) and (mode != NetboxMode.DISABLED.value))
             ),
-            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+            ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
     # -------------------------------------------------------------------------
@@ -1333,7 +1342,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP, KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS],
             condition=lambda exposed, defaults: bool(exposed) and not bool(defaults),
-            ui_parent=KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP,
+            ui_parent=KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS,
         )
     ),
     KEY_CONFIG_ITEM_FILEBEAT_TCP_PARSE_SOURCE_FIELD: DependencySpec(
@@ -1376,7 +1385,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP, KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS],
             condition=lambda exposed, defaults: bool(exposed) and not bool(defaults),
-            ui_parent=KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP,
+            ui_parent=KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS,
         )
     ),
     # -------------------------------------------------------------------------
@@ -1442,14 +1451,14 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
             condition=lambda cleanup: SYSTEM_INFO["malcolm_iso_install"] and bool(cleanup),
-            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
+            ui_parent=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
         ),
     ),
     KEY_CONFIG_ITEM_PRUNE_LOGS: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
             condition=lambda cleanup: SYSTEM_INFO["malcolm_iso_install"] and bool(cleanup),
-            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
+            ui_parent=KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS,
         ),
     ),
     # -------------------------------------------------------------------------
@@ -1648,7 +1657,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         )
     ),
 }
