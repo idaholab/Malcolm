@@ -103,7 +103,7 @@ LOGSTASH_WORKERS_KUBERNETES = 6
 OPENSEARCH_MEMORY_KUBERNETES = "31g"
 LOGSTASH_MEMORY_KUBERNETES = "4g"
 
-# Main menu item keys for UI grouping (replaces MAIN_MENU_KEYS)
+# Main menu item keys for UI grouping
 from scripts.installer.configs.constants.menu_item_keys import (
     KEY_MENU_ITEM_NETWORK,
     KEY_MENU_ITEM_ANALYSIS,
