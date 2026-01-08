@@ -29,7 +29,7 @@ class GUIInstallerUI(InstallerUI):
             ui_mode: The user interface mode (InteractionGUI for GUI)
         """
         super().__init__(ui_mode)
-        customtkinter.set_appearance_mode("dark")
+        customtkinter.set_appearance_mode("system")
         customtkinter.set_default_color_theme("blue")
         self._root = None
 

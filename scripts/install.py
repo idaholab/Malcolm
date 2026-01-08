@@ -514,6 +514,8 @@ def main():
         parsed_args = parser.parse_args()
         if os.path.islink(os.path.join(SCRIPT_PATH, SCRIPT_NAME)) and SCRIPT_NAME.startswith('configure'):
             parsed_args.configOnly = True
+        if getattr(parsed_args, "gui", False):
+            parsed_args.skipSplash = True
     except Exception as e:
         InstallerLogger.error(f"Failed to parse arguments: {e}")
         sys.exit(1)
@@ -785,17 +787,38 @@ def main():
 
     # Handle config directory setup based on presentation mode
     if presentation_mode == PresentationMode.MODE_GUI:
-        # GUI mode: config directory handling will be done during GUI flow
-        try:
-            success, input_dir, output_dir = handle_config_directories_gui_mode(malcolm_config)
-            if not success:
-                InstallerLogger.error("Config directory setup cancelled by user.")
+        # GUI mode: optionally skip the ingest dialog when CLI flags are explicit
+        skip_config_ingest = (
+            parsed_args.use_defaults
+            or (parsed_args.loadExistingEnv is not None)
+            or (parsed_args.importMalcolmConfigFile is not None)
+        )
+        if skip_config_ingest:
+            if not handle_config_directories_tui_mode(
+                malcolm_config,
+                ui_impl,
+                parsed_args.non_interactive,
+                parsed_args.use_defaults,
+                parsed_args.loadExistingEnv,
+                parsed_args.malcolmOrchestrationFile,
+                parsed_args.importMalcolmConfigFile is not None,
+                dirs,
+                no_write=control_flow.is_dry_run(),
+            ):
+                InstallerLogger.error("Failed to setup configuration directories.")
                 sys.exit(1)
-            dirs.input_dir = input_dir
-            dirs.output_dir = output_dir
-        except NotImplementedError:
-            InstallerLogger.error("GUI mode is not yet implemented.")
-            sys.exit(1)
+        else:
+            # GUI mode: config directory handling will be done during GUI flow
+            try:
+                success, input_dir, output_dir = handle_config_directories_gui_mode(malcolm_config)
+                if not success:
+                    InstallerLogger.error("Config directory setup cancelled by user.")
+                    sys.exit(1)
+                dirs.input_dir = input_dir
+                dirs.output_dir = output_dir
+            except NotImplementedError:
+                InstallerLogger.error("GUI mode is not yet implemented.")
+                sys.exit(1)
     else:
         # TUI/DUI/Silent modes: use traditional flow
         if not handle_config_directories_tui_mode(
