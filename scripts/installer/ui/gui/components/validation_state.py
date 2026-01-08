@@ -5,7 +5,41 @@
 
 """Visual validation state management for GUI widgets."""
 
+import tkinter as tk
 import customtkinter
+
+from scripts.installer.utils.logger_utils import InstallerLogger
+
+
+def _configure_supported(widget, **kwargs):
+    """Configure widget with supported kwargs only, ignore unsupported.
+
+    This is a best-effort function for setting visual properties on widgets
+    that may or may not support all configuration options.
+    """
+    try:
+        widget.configure(**kwargs)
+        return
+    except tk.TclError:
+        # Expected: widget doesn't support some options, fall through to filter
+        pass
+    except Exception as e:
+        InstallerLogger.debug(f"Unexpected error configuring widget: {e}")
+        return
+
+    try:
+        supported = set(widget.configure().keys())
+    except Exception as e:
+        InstallerLogger.debug(f"Could not get widget config keys: {e}")
+        return
+
+    filtered = {key: value for key, value in kwargs.items() if key in supported}
+    if not filtered:
+        return
+    try:
+        widget.configure(**filtered)
+    except Exception as e:
+        InstallerLogger.debug(f"Failed to configure filtered widget options: {e}")
 
 
 def show_validation_error(widget, error_label, message: str):
@@ -17,7 +51,7 @@ def show_validation_error(widget, error_label, message: str):
         message: The error message to display
     """
     # Set red border on input widget
-    widget.configure(border_color="red", border_width=2)
+    _configure_supported(widget, border_color="red", border_width=2)
 
     # Show error message
     error_label.configure(text=f"⚠ {message}", text_color="red")
@@ -32,7 +66,7 @@ def clear_validation_error(widget, error_label):
         error_label: The label widget to hide
     """
     # Reset border to normal
-    widget.configure(border_color=("gray60", "gray40"), border_width=1)
+    _configure_supported(widget, border_color=("gray60", "gray40"), border_width=1)
 
     # Hide error message
     error_label.configure(text="")

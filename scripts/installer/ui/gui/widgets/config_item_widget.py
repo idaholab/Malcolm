@@ -4,9 +4,11 @@
 # Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
 
 from typing import TYPE_CHECKING, Optional
+import tkinter as tk
 import customtkinter
 
 from scripts.malcolm_constants import WidgetType
+from scripts.installer.utils.logger_utils import InstallerLogger
 from scripts.installer.ui.gui.components.validation_state import (
     show_validation_error,
     clear_validation_error,
@@ -31,7 +33,6 @@ def _handle_set_value(widget, error_label, key, value, malcolm_config):
     Returns:
         True if value was set successfully, False otherwise
     """
-    from scripts.installer.utils.logger_utils import InstallerLogger
     import traceback
 
     try:
@@ -250,6 +251,7 @@ def _create_entry(
 
     var = customtkinter.StringVar(value=str(item.get_value() or ""))
     _updating = [False]  # Guard flag to prevent observer loops
+    _debounce_id = [None]  # Track pending debounce timer
 
     entry = customtkinter.CTkEntry(
         container,
@@ -270,17 +272,47 @@ def _create_entry(
     error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
     error_label.grid_remove()  # Hidden by default
 
-    def on_change(*args):
+    def do_validation():
+        """Actually perform the validation."""
+        _debounce_id[0] = None
         if _updating[0]:
             return
         _handle_set_value(entry, error_label, key, var.get(), malcolm_config)
 
-    # Validate on every keystroke
-    var.trace_add("write", on_change)
+    def on_change_debounced(*args):
+        """Debounced change handler - waits for typing to pause before validating."""
+        if _updating[0]:
+            return
+        # Cancel any pending validation
+        if _debounce_id[0]:
+            try:
+                entry.after_cancel(_debounce_id[0])
+            except tk.TclError:
+                pass  # Timer already fired or widget destroyed
+            except Exception as e:
+                InstallerLogger.debug(f"Could not cancel debounce timer for {key}: {e}")
+        # Schedule new validation after delay (800ms)
+        _debounce_id[0] = entry.after(800, do_validation)
 
-    # Also validate on focus out and return
-    entry.bind("<FocusOut>", lambda e: on_change())
-    entry.bind("<Return>", lambda e: on_change())
+    def on_change_immediate(*args):
+        """Immediate change handler for focus out and return."""
+        # Cancel any pending debounced validation
+        if _debounce_id[0]:
+            try:
+                entry.after_cancel(_debounce_id[0])
+            except tk.TclError:
+                pass  # Timer already fired or widget destroyed
+            except Exception as e:
+                InstallerLogger.debug(f"Could not cancel debounce timer for {key}: {e}")
+            _debounce_id[0] = None
+        do_validation()
+
+    # Debounce validation on keystroke (wait for typing to pause)
+    var.trace_add("write", on_change_debounced)
+
+    # Validate immediately on focus out and return
+    entry.bind("<FocusOut>", lambda e: on_change_immediate())
+    entry.bind("<Return>", lambda e: on_change_immediate())
 
     # Only register observer if config object supports it
     if hasattr(malcolm_config, 'observe'):
@@ -532,7 +564,10 @@ def _create_number_entry(
         new_value_str = var.get()
 
         if not new_value_str.strip():
-            _handle_set_value(entry, error_label, key, None, malcolm_config)
+            if getattr(item, "accept_blank", False):
+                _handle_set_value(entry, error_label, key, None, malcolm_config)
+            else:
+                _handle_set_value(entry, error_label, key, item.default_value, malcolm_config)
             return
 
         try:
