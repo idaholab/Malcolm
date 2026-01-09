@@ -1041,6 +1041,21 @@ class MalcolmConfig(ObservableStoreMixin):
 
         return chain
 
+    def get_children(self, key: str) -> List[str]:
+        """Get list of config item keys that have this key as ui_parent.
+
+        Args:
+            key: Configuration item or menu item key
+
+        Returns:
+            List of config item keys that are direct children of this key
+        """
+        children = []
+        for item_key, item in self._items.items():
+            if item.ui_parent == key:
+                children.append(item_key)
+        return children
+
     def to_dict_values_only(self) -> Dict[str, Any]:
         """Convert configuration to a nested dictionary of keys and their current values."""
         output: Dict[str, Any] = {}

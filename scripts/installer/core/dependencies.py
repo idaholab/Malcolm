@@ -471,21 +471,21 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
             condition=lambda labels: bool(labels),
-            ui_parent=KEY_MENU_ITEM_NETWORK,
+            ui_parent=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
         )
     ),
     KEY_CONFIG_ITEM_TRAEFIK_ENTRYPOINT: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
             condition=lambda labels: bool(labels),
-            ui_parent=KEY_MENU_ITEM_NETWORK,
+            ui_parent=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
         )
     ),
     KEY_CONFIG_ITEM_TRAEFIK_RESOLVER: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
             condition=lambda labels: bool(labels),
-            ui_parent=KEY_MENU_ITEM_NETWORK,
+            ui_parent=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
         )
     ),
     # Traefik OpenSearch host: only relevant when labels are enabled and primary store is local OpenSearch
@@ -496,7 +496,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
             ],
             condition=lambda labels, mode: bool(labels) and (mode == SearchEngineMode.OPENSEARCH_LOCAL.value),
-            ui_parent=KEY_MENU_ITEM_NETWORK,
+            ui_parent=KEY_CONFIG_ITEM_TRAEFIK_LABELS,
         )
     ),
     # Malcolm profile children
@@ -522,13 +522,6 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 else SearchEngineMode.OPENSEARCH_REMOTE.value
             ),
         ),
-    ),
-    KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE: DependencySpec(
-        visibility=VisibilityRule(
-            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-            condition=lambda profile: profile == PROFILE_MALCOLM,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-        )
     ),
     KEY_CONFIG_ITEM_LS_MEMORY: DependencySpec(
         visibility=VisibilityRule(
@@ -576,7 +569,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 SearchEngineMode.OPENSEARCH_REMOTE.value,
                 SearchEngineMode.ELASTICSEARCH_REMOTE.value,
             ],
-            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE,
+            ui_parent=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
         )
     ),
     KEY_CONFIG_ITEM_OS_MEMORY: DependencySpec(
@@ -599,7 +592,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, mode: (
                 (profile == PROFILE_HEDGEHOG) or (mode != SearchEngineMode.OPENSEARCH_LOCAL.value)
             ),
-            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
         ),
         value=ValueRule(
             depends_on=[
@@ -628,7 +621,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 SearchEngineMode.OPENSEARCH_REMOTE.value,
                 SearchEngineMode.ELASTICSEARCH_REMOTE.value,
             ],
-            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
         )
     ),
     KEY_CONFIG_ITEM_DASHBOARDS_URL: DependencySpec(
@@ -657,13 +650,14 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, mode: (
                 profile == PROFILE_MALCOLM and mode != SearchEngineMode.ELASTICSEARCH_REMOTE.value
             ),
+            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
         )
     ),
     KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
             condition=lambda enabled: bool(enabled),
-            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
         )
     ),
     KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE: DependencySpec(
