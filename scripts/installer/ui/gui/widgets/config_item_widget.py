@@ -9,6 +9,7 @@ import customtkinter
 
 from scripts.malcolm_constants import WidgetType
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.components.styles import TEXT_COLOR_MUTED
 from scripts.installer.ui.gui.components.validation_state import (
     show_validation_error,
     clear_validation_error,
@@ -149,7 +150,7 @@ def create_config_item_widget(
                 container,
                 text=helper_text,
                 anchor="w",
-                text_color=("gray50", "gray70"),
+                text_color=TEXT_COLOR_MUTED,
                 wraplength=620,
                 justify="left",
             )

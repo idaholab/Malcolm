@@ -12,6 +12,12 @@ import customtkinter
 from PIL import Image
 
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.components.styles import (
+    DIALOG_BORDER_COLOR,
+    DIALOG_BORDER_WIDTH,
+    DIALOG_CORNER_RADIUS,
+    TEXT_COLOR_MUTED,
+)
 
 
 def show_welcome_dialog(parent: Optional[customtkinter.CTk] = None) -> None:
@@ -61,9 +67,9 @@ class WelcomeDialog:
         # Main content frame
         content_frame = customtkinter.CTkFrame(
             dialog,
-            corner_radius=10,
-            border_width=2,
-            border_color=("gray70", "gray30")
+            corner_radius=DIALOG_CORNER_RADIUS,
+            border_width=DIALOG_BORDER_WIDTH,
+            border_color=DIALOG_BORDER_COLOR,
         )
         content_frame.pack(fill="both", expand=True, padx=0, pady=0)
 
@@ -115,7 +121,7 @@ class WelcomeDialog:
             content_frame,
             text="Network Traffic Analysis Tool Suite",
             font=("Helvetica", 14),
-            text_color="gray",
+            text_color=TEXT_COLOR_MUTED,
         )
         subtitle_label.pack(pady=(10, 20))
 

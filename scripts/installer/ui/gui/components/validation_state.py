@@ -9,6 +9,13 @@ import tkinter as tk
 import customtkinter
 
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.components.styles import (
+    COLOR_ERROR,
+    DEFAULT_BORDER_COLOR,
+    DEFAULT_BORDER_WIDTH,
+    ERROR_BORDER_COLOR,
+    ERROR_BORDER_WIDTH,
+)
 
 
 def _configure_supported(widget, **kwargs):
@@ -51,10 +58,10 @@ def show_validation_error(widget, error_label, message: str):
         message: The error message to display
     """
     # Set red border on input widget
-    _configure_supported(widget, border_color="red", border_width=2)
+    _configure_supported(widget, border_color=ERROR_BORDER_COLOR, border_width=ERROR_BORDER_WIDTH)
 
     # Show error message
-    error_label.configure(text=f"⚠ {message}", text_color="red")
+    error_label.configure(text=f"⚠ {message}", text_color=COLOR_ERROR)
     error_label.grid()
 
 
@@ -66,7 +73,7 @@ def clear_validation_error(widget, error_label):
         error_label: The label widget to hide
     """
     # Reset border to normal
-    _configure_supported(widget, border_color=("gray60", "gray40"), border_width=1)
+    _configure_supported(widget, border_color=DEFAULT_BORDER_COLOR, border_width=DEFAULT_BORDER_WIDTH)
 
     # Hide error message
     error_label.configure(text="")

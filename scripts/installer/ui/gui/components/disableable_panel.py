@@ -16,6 +16,15 @@ class DisableablePanel:
     """A panel that is enabled or disabled based on a condition."""
 
     @staticmethod
+    def _panel_colors(is_nested: bool, enabled: bool, strong_disabled: bool = False):
+        level = "nested" if is_nested else "flat"
+        if enabled:
+            return PANEL_COLORS[level]["enabled"]
+        if strong_disabled:
+            return PANEL_DISABLED_COLORS[level]
+        return PANEL_COLORS[level]["disabled"]
+
+    @staticmethod
     def create_checkbox_panel(
         parent,
         checkbox_text,
@@ -97,15 +106,16 @@ class DisableablePanel:
             is_nested = nesting_level > 0
 
             # Adjust panel appearance based on nesting level
-            bg_color = ("gray92", "gray17") if is_nested else ("gray95", "gray15")
-            border_color = ("gray80", "gray30") if is_nested else ("gray85", "gray25")
+            panel_colors = DisableablePanel._panel_colors(is_nested, enabled=True)
+            bg_color = panel_colors["bg"]
+            border_color = panel_colors["border"]
 
             panel = customtkinter.CTkFrame(
                 parent,
                 fg_color=bg_color,  # Subtle background color
                 bg_color=bg_color,  # Match background to avoid corner bleed
-                corner_radius=6,  # Rounded corners
-                border_width=1,  # Light border
+                corner_radius=PANEL_CORNER_RADIUS,  # Rounded corners
+                border_width=PANEL_BORDER_WIDTH,  # Light border
                 border_color=border_color,  # Border color
             )
 
@@ -195,15 +205,16 @@ class DisableablePanel:
         is_nested = nesting_level > 0
 
         # Adjust panel appearance based on nesting level
-        bg_color = ("gray92", "gray17") if is_nested else ("gray95", "gray15")
-        border_color = ("gray80", "gray30") if is_nested else ("gray85", "gray25")
+        panel_colors = DisableablePanel._panel_colors(is_nested, enabled=True)
+        bg_color = panel_colors["bg"]
+        border_color = panel_colors["border"]
 
         panel = customtkinter.CTkFrame(
             parent,
             fg_color=bg_color,
             bg_color=bg_color,
-            corner_radius=6,
-            border_width=1,
+            corner_radius=PANEL_CORNER_RADIUS,
+            border_width=PANEL_BORDER_WIDTH,
             border_color=border_color,
         )
 
@@ -278,15 +289,16 @@ class DisableablePanel:
         is_nested = nesting_level > 0
 
         # Adjust panel appearance based on nesting level
-        bg_color = ("gray92", "gray17") if is_nested else ("gray95", "gray15")
-        border_color = ("gray80", "gray30") if is_nested else ("gray85", "gray25")
+        panel_colors = DisableablePanel._panel_colors(is_nested, enabled=True)
+        bg_color = panel_colors["bg"]
+        border_color = panel_colors["border"]
 
         panel = customtkinter.CTkFrame(
             parent,
             fg_color=bg_color,
             bg_color=bg_color,
-            corner_radius=6,
-            border_width=1,
+            corner_radius=PANEL_CORNER_RADIUS,
+            border_width=PANEL_BORDER_WIDTH,
             border_color=border_color,
         )
 
@@ -374,10 +386,10 @@ class DisableablePanel:
                     elif isinstance(widget, customtkinter.CTkLabel):
                         if enabled:
                             # Reset to default color
-                            widget.configure(text_color=("gray10", "gray90"))
+                            widget.configure(text_color=TEXT_COLOR_NORMAL)
                         else:
                             # Grayed out color
-                            widget.configure(text_color=("gray50", "gray70"))
+                            widget.configure(text_color=TEXT_COLOR_DISABLED)
                 except ValueError:
                     # Skip if the widget doesn't support the configuration
                     pass
@@ -387,8 +399,9 @@ class DisableablePanel:
 
         if enabled:
             # Normal appearance - slightly different colors for nested panels
-            bg_color = ("gray92", "gray17") if is_nested else ("gray95", "gray15")
-            border_color = ("gray80", "gray30") if is_nested else ("gray85", "gray25")
+            panel_colors = DisableablePanel._panel_colors(is_nested, enabled=True)
+            bg_color = panel_colors["bg"]
+            border_color = panel_colors["border"]
 
             panel.configure(fg_color=bg_color, bg_color=bg_color, border_width=1, border_color=border_color)
 
@@ -398,15 +411,16 @@ class DisableablePanel:
                 delattr(panel, "_dp_disabled_indicator")
         else:
             # Disabled appearance - more distinct colors
-            bg_color = ("gray70", "gray35") if is_nested else ("gray75", "gray30")
-            border_color = ("gray60", "gray50") if is_nested else ("gray65", "gray45")
+            panel_colors = DisableablePanel._panel_colors(is_nested, enabled=False, strong_disabled=True)
+            bg_color = panel_colors["bg"]
+            border_color = panel_colors["border"]
 
             panel.configure(fg_color=bg_color, bg_color=bg_color, border_width=2, border_color=border_color)
 
             # Add lock icon visual indicator
             if not hasattr(panel, "_dp_disabled_indicator"):
                 panel._dp_disabled_indicator = customtkinter.CTkLabel(
-                    panel, text="🔒", font=("", 14), text_color=("gray50", "gray60")
+                    panel, text="🔒", font=("", 14), text_color=LOCK_ICON_COLOR
                 )
                 panel._dp_disabled_indicator.grid(row=0, column=0, sticky="ne", padx=5, pady=5)
 

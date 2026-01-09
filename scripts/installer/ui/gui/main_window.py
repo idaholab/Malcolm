@@ -10,6 +10,15 @@ import customtkinter
 
 from scripts.malcolm_constants import PROFILE_MALCOLM, PROFILE_HEDGEHOG
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.components.styles import (
+    DEFAULT_BORDER_COLOR,
+    DEFAULT_BORDER_WIDTH,
+    ERROR_BORDER_COLOR,
+    ERROR_BORDER_WIDTH,
+    ERROR_TEXT_COLOR,
+    INFO_PANEL_BG,
+    PANEL_CORNER_RADIUS,
+)
 from scripts.installer.ui.gui.tabs.base_tab import BaseTab
 from scripts.installer.configs.constants.configuration_item_keys import KEY_CONFIG_ITEM_MALCOLM_PROFILE
 
@@ -354,8 +363,8 @@ class MainWindow:
             # Each issue is a row with details and "Go to field" button
             row = customtkinter.CTkFrame(
                 scroll_frame,
-                fg_color=("gray90", "gray20"),
-                corner_radius=6,
+                fg_color=INFO_PANEL_BG,
+                corner_radius=PANEL_CORNER_RADIUS,
             )
             row.pack(fill="x", pady=4, padx=5)
 
@@ -376,7 +385,7 @@ class MainWindow:
             message = customtkinter.CTkLabel(
                 details_frame,
                 text=issue.message,
-                text_color=("red", "#ff6b6b"),
+                text_color=ERROR_TEXT_COLOR,
                 anchor="w",
             )
             message.pack(anchor="w", padx=(15, 0))
@@ -526,7 +535,7 @@ class MainWindow:
         """
         # Try to apply red border to this widget
         try:
-            widget.configure(border_color="red", border_width=2)
+            widget.configure(border_color=ERROR_BORDER_COLOR, border_width=ERROR_BORDER_WIDTH)
         except (AttributeError, ValueError):
             pass  # Widget doesn't support border configuration
 
@@ -554,7 +563,7 @@ class MainWindow:
         """
         # Try to reset border to default
         try:
-            widget.configure(border_color=("gray60", "gray40"), border_width=1)
+            widget.configure(border_color=DEFAULT_BORDER_COLOR, border_width=DEFAULT_BORDER_WIDTH)
         except (AttributeError, ValueError):
             pass  # Widget doesn't support border configuration
 

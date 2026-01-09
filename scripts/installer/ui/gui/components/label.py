@@ -107,7 +107,7 @@ class Label:
             parent,
             text=text,
             font=FontManager.normal_font(),
-            text_color=("red", "red"),
+            text_color=ERROR_TEXT_COLOR,
             justify="left",
         )
 
@@ -140,7 +140,7 @@ class Label:
             parent,
             text=text,
             font=FontManager.normal_font(),
-            text_color=("green", "green"),
+            text_color=COLOR_SUCCESS,
             justify="left",
         )
 

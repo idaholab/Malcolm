@@ -9,6 +9,7 @@ import tkinter as tk
 import customtkinter
 
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.components.styles import TOOLTIP_BG_COLOR, TOOLTIP_CORNER_RADIUS
 
 
 def add_tooltip(widget, text: str, delay: float = 0.5):
@@ -53,8 +54,8 @@ def add_tooltip(widget, text: str, delay: float = 0.5):
                 label = customtkinter.CTkLabel(
                     widget._tooltip_window,
                     text=text,
-                    fg_color=("gray95", "gray20"),
-                    corner_radius=4,
+                    fg_color=TOOLTIP_BG_COLOR,
+                    corner_radius=TOOLTIP_CORNER_RADIUS,
                     padx=8,
                     pady=4,
                 )

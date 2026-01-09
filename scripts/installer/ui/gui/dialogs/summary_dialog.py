@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import customtkinter
 
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.ui.gui.components.styles import CONTAINER_CORNER_RADIUS, INFO_PANEL_BG
 from scripts.installer.utils.summary_utils import build_configuration_summary_items
 from scripts.installer.ui.shared.menu_builder import ValueFormatter
 from scripts.installer.ui.gui.components.scrollable_frame import ScrollableFrame
@@ -206,7 +207,11 @@ class SummaryDialog:
             options_text.append("ℹ Dry Run Mode: No changes will be made to the system")
 
         if show_section:
-            options_frame = customtkinter.CTkFrame(parent, corner_radius=8, fg_color=("gray90", "gray20"))
+            options_frame = customtkinter.CTkFrame(
+                parent,
+                corner_radius=CONTAINER_CORNER_RADIUS,
+                fg_color=INFO_PANEL_BG,
+            )
             options_frame.pack(fill="x", pady=(0, 10))
 
             for option_text in options_text:
