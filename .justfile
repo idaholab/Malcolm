@@ -51,26 +51,23 @@ _base_config +CAPTURE_FLAG:
 
   ( [[ "${MALCOLM_CONTAINER_RUNTIME:-docker}" == "docker" ]] || [[ "${MALCOLM_CONTAINER_RUNTIME}" == "podman" ]] ) && ORCH_MODE=DOCKER_COMPOSE || ORCH_MODE=KUBERNETES
   ( [[ "${ZEEK_INTEL_ON_STARTUP:-false}" == "true" ]] || [[ -n "${ZEEK_INTEL_CRON_EXPRESSION}" ]] ) && ZEEK_INTEL=true || ZEEK_INTEL=false
-  ( [[ -z "${OPENSEARCH_PATH}" ]] || [[ -z "${OPENSEARCH_SNAPSHOT_PATH}" ]] || [[ -z "${PCAP_PATH}" ]] || [[ -z "${SURICATA_PATH}" ]] || [[ -z "${ZEEK_PATH}" ]] ) && \
+  ( [[ -z "${OPENSEARCH_PATH}" ]] || [[ -z "${OPENSEARCH_SNAPSHOT_PATH}" ]] || [[ -z "${FILESCAN_PATH}" ]] || [[ -z "${PCAP_PATH}" ]] || [[ -z "${SURICATA_PATH}" ]] || [[ -z "${ZEEK_PATH}" ]] ) && \
     DEFAULT_PATHS=true || DEFAULT_PATHS=false
 
   tee "${JQ_FILE}" >/dev/null <<EOF
     .configuration.runtimeBin = "${MALCOLM_CONTAINER_RUNTIME:-docker}"
-    | .configuration.processUserId = ${PUID:-$(id -u)}
-    | .configuration.processGroupId = ${PGID:-$(id -g)}
+    | .configuration.arkimeAllowWiseConfig = ${ARKIME_ALLOW_WISE_GUI_CONFIG:-false}
+    | .configuration.arkimeExposeWise = ${ARKIME_EXPOSE_WISE_GUI:-false}
     | .configuration.arkimeFreeSpaceG = "${DELETE_PCAP_THRESHOLD:-1%}"
     | .configuration.arkimeManagePCAP = ${DELETE_OLD_PCAP:-false}
-    | .configuration.arkimeExposeWise = ${ARKIME_EXPOSE_WISE_GUI:-false}
-    | .configuration.arkimeAllowWiseConfig = ${ARKIME_ALLOW_WISE_GUI_CONFIG:-false}
     | .configuration.arkimeWiseUrl = "${ARKIME_WISE_SERVICE_URL:-http://arkime:8081}"
     | .configuration.autoArkime = ${AUTO_ARKIME:-true}
     | .configuration.autoFreq = ${AUTO_FREQ:-true}
     | .configuration.autoOui = ${AUTO_OUI:-true}
     | .configuration.autoSuricata = ${AUTO_SURICATA:-true}
     | .configuration.autoZeek = ${AUTO_ZEEK:-true}
-    | .configuration.capaScan = ${EXTRACTED_FILE_CAPA:-true}
     | .configuration.captureLiveNetworkTraffic = ${CAPTURE_LIVE}
-    | .configuration.clamAvScan = ${EXTRACTED_FILE_CLAMAV:-true}
+    | .configuration.captureStats = ${CAPTURE_STATS}
     | .configuration.containerNetworkName = "${NETWORK_NAME}"
     | .configuration.dashboardsDarkMode = ${DARK_MODE:-true}
     | .configuration.dashboardsUrl = "${DASHBOARDS_URL:-http://dashboards:5601/dashboards}"
@@ -79,16 +76,16 @@ _base_config +CAPTURE_FLAG:
     | .configuration.exposeLogstash = ${LOGSTASH_EXPOSE:-false}
     | .configuration.exposeOpenSearch = ${OPENSEARCH_EXPOSE:-false}
     | .configuration.exposeSFTP = ${SFTP_EXPOSE:-false}
-    | .configuration.extraTags = "${EXTRA_TAGS:-}"
     | .configuration.extractedFileMaxPercentThreshold = ${EXTRACTED_FILE_TOTAL_DISK_USAGE_PERCENT_THRESHOLD:-100}
     | .configuration.extractedFileMaxSizeThreshold = "${EXTRACTED_FILE_MAX_SIZE_THRESHOLD:-1T}"
+    | .configuration.extraTags = "${EXTRA_TAGS:-}"
     | .configuration.filebeatTcpDefaults = ${FILEBEAT_TCP_EXPOSE:-false}
-    | .configuration.fileCarveEnabled = true
     | .configuration.fileCarveHttpServeEncryptKey = "${EXTRACTED_FILE_SERVER_PASSWORD:-infected}"
     | .configuration.fileCarveHttpServer = ${EXTRACTED_FILE_SERVER:-true}
     | .configuration.fileCarveHttpServerZip = ${EXTRACTED_FILE_SERVER_ZIP:-true}
     | .configuration.fileCarveMode = "${FILE_EXTRACTION:-interesting}"
     | .configuration.filePreserveMode = "${FILE_PRESERVATION:-quarantined}"
+    | .configuration.filescanLogDir = "${FILESCAN_PATH}"
     | .configuration.fileScanRuleUpdate = ${FILE_SCAN_RULE_UPDATE:-false}
     | .configuration.indexDir = "${OPENSEARCH_PATH}"
     | .configuration.indexManagementHistoryInWeeks = ${INDEX_MANAGEMENT_WEEKS_OF_HISTORY:-13}
@@ -100,6 +97,12 @@ _base_config +CAPTURE_FLAG:
     | .configuration.indexManagementSpiDataRetention = "${INDEX_MANAGEMENT_SPI_DATA_RETENTION}"
     | .configuration.indexPruneThreshold = "${DELETE_INDEX_THRESHOLD:-10T}"
     | .configuration.indexSnapshotDir = "${OPENSEARCH_SNAPSHOT_PATH}"
+    | .configuration.liveArkime = ${CAPTURE_ARKIME}
+    | .configuration.liveArkimeCompressionLevel = ${LIVE_CAPTURE_ARKIME_COMPRESSION_LEVEL:-0}
+    | .configuration.liveArkimeCompressionType = "${LIVE_CAPTURE_ARKIME_COMPRESSION:-none}"
+    | .configuration.liveArkimeNodeHost = "${CAPTURE_ARKIME_NODE_HOST}"
+    | .configuration.liveSuricata = ${CAPTURE_SURICATA}
+    | .configuration.liveZeek = ${CAPTURE_ZEEK}
     | .configuration.logstashHost = "${LOGSTASH_HOST:-logstash:5044}"
     | .configuration.lsMemory = "${LOGSTASH_MEMORY}"
     | .configuration.lsWorkers = ${LOGSTASH_WORKERS}
@@ -107,8 +110,8 @@ _base_config +CAPTURE_FLAG:
     | .configuration.malcolmProfile = "${MALCOLM_PROFILE:-malcolm}"
     | .configuration.malcolmRestartPolicy = "${RESTART_MALCOLM:-no}"
     | .configuration.netboxAutoPopulate = ${NETBOX_AUTOPOPULATE:-false}
-    | .configuration.netboxLogstashAutoCreatePrefix = ${NETBOX_AUTO_PREFIXES:-false}
     | .configuration.netboxAutoPopulateSubnetFilter = "${NETBOX_AUTO_POPULATE_SUBNETS}"
+    | .configuration.netboxLogstashAutoCreatePrefix = ${NETBOX_AUTO_PREFIXES:-false}
     | .configuration.netboxLogstashEnrich = ${NETBOX_ENRICH:-true}
     | .configuration.netboxMode = "${NETBOX:-local}"
     | .configuration.netboxSiteName = "${NETBOX_SITE_NAME:-Malcolm}"
@@ -124,7 +127,15 @@ _base_config +CAPTURE_FLAG:
     | .configuration.opensearchSecondaryUrl = "${OPENSEARCH_SECONDARY_URL}"
     | .configuration.osMemory = "${OPENSEARCH_MEMORY}"
     | .configuration.pcapDir = "${PCAP_PATH}"
+    | .configuration.pcapFilter = "${CAPTURE_FILTER}"
+    | .configuration.pcapIface = "${CAPTURE_IFACE}"
+    | .configuration.pcapNetSniff = ${CAPTURE_NETSNIFF}
     | .configuration.pcapNodeName = "${NODE_NAME:-$(hostname -s)}"
+    | .configuration.pcapTcpDump = ${CAPTURE_TCPDUMP}
+    | .configuration.pipelineEnabled = ${PIPELINE_ENABLED:-true}
+    | .configuration.pipelineWorkers = ${PIPELINE_WORKERS:-1}
+    | .configuration.processGroupId = ${PGID:-$(id -g)}
+    | .configuration.processUserId = ${PUID:-$(id -u)}
     | .configuration.reverseDns = ${REVERSE_DNS:-false}
     | .configuration.suricataLogDir = "${SURICATA_PATH}"
     | .configuration.suricataRuleUpdate = ${SURICATA_RULE_UPDATE:-false}
@@ -135,28 +146,17 @@ _base_config +CAPTURE_FLAG:
     | .configuration.traefikLabels = ${REVERSE_PROXIED:-false}
     | .configuration.traefikOpenSearchHost = "${TRAEFIK_HOST_OPENSEARCH}"
     | .configuration.traefikResolver = "${TRAEFIK_RESOLVER}"
+    | .configuration.tweakIface = ${CAPTURE_IFACE_TWEAK}
     | .configuration.useDefaultStorageLocations = ${DEFAULT_PATHS}
-    | .configuration.vtotApiKey = "${VIRUSTOTAL_API_KEY}"
-    | .configuration.yaraScan = ${EXTRACTED_FILE_YARA:-true}
     | .configuration.zeekICSBestGuess = ${ZEEK_ICS_BEST_GUESS:-true}
     | .configuration.zeekIntelCronExpression = "${ZEEK_INTEL_CRON_EXPRESSION}"
     | .configuration.zeekIntelFeedSince = "${ZEEK_INTEL_FEED_SINCE:-24 hours ago}"
     | .configuration.zeekIntelItemExpiration = "${ZEEK_INTEL_ITEM_EXPIRATION:-1min}"
     | .configuration.zeekIntelOnStartup = ${ZEEK_INTEL_ON_STARTUP}
-    | .configuration.zeekPullIntelligenceFeeds = ${ZEEK_INTEL}
     | .configuration.zeekLogDir = "${ZEEK_PATH}"
-    | .configuration.pcapIface = "${CAPTURE_IFACE}"
-    | .configuration.pcapFilter = "${CAPTURE_FILTER}"
-    | .configuration.tweakIface = ${CAPTURE_IFACE_TWEAK}
-    | .configuration.captureStats = ${CAPTURE_STATS}
-    | .configuration.pcapNetSniff = ${CAPTURE_NETSNIFF}
-    | .configuration.pcapTcpDump = ${CAPTURE_TCPDUMP}
-    | .configuration.liveArkime = ${CAPTURE_ARKIME}
-    | .configuration.liveArkimeCompressionType = "${LIVE_CAPTURE_ARKIME_COMPRESSION:-none}"
-    | .configuration.liveArkimeCompressionLevel = ${LIVE_CAPTURE_ARKIME_COMPRESSION_LEVEL:-0}
-    | .configuration.liveArkimeNodeHost = "${CAPTURE_ARKIME_NODE_HOST}"
-    | .configuration.liveZeek = ${CAPTURE_ZEEK}
-    | .configuration.liveSuricata = ${CAPTURE_SURICATA}
+    | .configuration.zeekPullIntelligenceFeeds = ${ZEEK_INTEL}
+    | .configuration.zeekIntelLive = ${ZEEK_INTEL_LIVE}
+    | .configuration.zeekIntelOffline = ${ZEEK_INTEL_OFFLINE}
   EOF
 
   jq -f "${JQ_FILE}" "${SETTINGS_FILE}" | sponge "${SETTINGS_FILE}"
@@ -181,16 +181,13 @@ _base_config +CAPTURE_FLAG:
           "opensearch.env:MALCOLM_NETWORK_INDEX_SUFFIX=${MALCOLM_NETWORK_INDEX_SUFFIX:-'%{%y%m%d}'}" \
           "opensearch.env:MALCOLM_OTHER_INDEX_ALIAS=${MALCOLM_OTHER_INDEX_ALIAS:-malcolm_other}" \
           "opensearch.env:MALCOLM_OTHER_INDEX_SUFFIX=${MALCOLM_OTHER_INDEX_SUFFIX:-'%{%y%m%d}'}" \
+          "suricata.env:SURICATA_DISABLE_SIDS=${SURICATA_DISABLE_SIDS:-}" \
           "suricata-offline.env:SURICATA_AUTO_ANALYZE_PCAP_PROCESSES=${SURICATA_AUTO_ANALYZE_PCAP_PROCESSES:-2}" \
           "suricata-offline.env:SURICATA_AUTO_ANALYZE_PCAP_THREADS=${SURICATA_AUTO_ANALYZE_PCAP_THREADS:-0}" \
           "upload-common.env:MALCOLM_API_DEBUG=${MALCOLM_API_DEBUG:-false}" \
           "upload-common.env:PCAP_PIPELINE_IGNORE_PREEXISTING=${PCAP_PIPELINE_IGNORE_PREEXISTING:-false}" \
           "zeek-offline.env:ZEEK_AUTO_ANALYZE_PCAP_THREADS=${ZEEK_AUTO_ANALYZE_PCAP_THREADS:-2}" \
-          "zeek.env:CAPA_MAX_REQUESTS=${CAPA_MAX_REQUESTS:-2}" \
-          "zeek.env:CLAMD_MAX_REQUESTS=${CLAMD_MAX_REQUESTS:-4}" \
-          "zeek.env:EXTRACTED_FILE_HTTP_SERVER_MAGIC=${EXTRACTED_FILE_HTTP_SERVER_MAGIC:-true}" \
-          "zeek.env:EXTRACTED_FILE_IGNORE_EXISTING=${EXTRACTED_FILE_IGNORE_EXISTING:-false}" \
-          "zeek.env:YARA_MAX_REQUESTS=${YARA_MAX_REQUESTS:-4}" \
+          "zeek.env:FILESCAN_HTTP_SERVER_MAGIC=${FILESCAN_HTTP_SERVER_MAGIC:-true}" \
           "zeek.env:ZEEK_DISABLE_ICS_GE_SRTP=${ZEEK_DISABLE_ICS_GE_SRTP:-false}" \
           "zeek.env:ZEEK_DISABLE_ICS_GENISYS=${ZEEK_DISABLE_ICS_GENISYS:-true}" \
           "zeek.env:ZEEK_SYNCHROPHASOR_DETAILED=${ZEEK_SYNCHROPHASOR_DETAILED:-false}"
@@ -292,11 +289,13 @@ start:
     --runtime "${MALCOLM_CONTAINER_RUNTIME:-docker}" \
     --namespace "${MALCOLM_K8S_NAMESPACE:-malcolm}" \
     --profile "${MALCOLM_PROFILE:-malcolm}" \
-    --image-source "${MALCOLM_K8S_IMAGE_SOURCE:-ghcr.io/mmguero-dev/Malcolm}" \
+    --image-source "${MALCOLM_K8S_IMAGE_SOURCE:-ghcr.io/idaholab/Malcolm}" \
     --image-tag "${MALCOLM_K8S_IMAGE_TAG:-main}" \
     --inject-resources "${MALCOLM_K8S_INJECT_RESOURCES:-false}" \
     --no-capabilities "${MALCOLM_K8S_NO_CAPABILITIES:-false}" \
     --no-capture-pods "${MALCOLM_K8S_NO_CAPTURE_PODS:-true}" \
+    --dry-run "${MALCOLM_K8S_DRY_RUN:-false}" \
+    --separate-heavy-workloads "${MALCOLM_K8S_SEPARATE_HEAVY_WORKLOADS:-false}" \
     --skip-persistent-volume-checks "${MALCOLM_K8S_SKIP_PERSISTENT_VOLUME_CHECKS:-false}"
 
 restart *SERVICES:
@@ -309,7 +308,7 @@ restart *SERVICES:
     --runtime "${MALCOLM_CONTAINER_RUNTIME:-docker}" \
     --namespace "${MALCOLM_K8S_NAMESPACE:-malcolm}" \
     --profile "${MALCOLM_PROFILE:-malcolm}" \
-    --image-source "${MALCOLM_K8S_IMAGE_SOURCE:-ghcr.io/mmguero-dev/Malcolm}" \
+    --image-source "${MALCOLM_K8S_IMAGE_SOURCE:-ghcr.io/idaholab/Malcolm}" \
     --image-tag "${MALCOLM_K8S_IMAGE_TAG:-main}" \
     --inject-resources "${MALCOLM_K8S_INJECT_RESOURCES:-false}" \
     --no-capabilities "${MALCOLM_K8S_NO_CAPABILITIES:-false}" \

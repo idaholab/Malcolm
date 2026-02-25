@@ -5,11 +5,11 @@
 # configuration of fluent-bit (https://packages.fluentbit.io) for forwarding logs to
 # an instance of Malcolm (https://github.com/idaholab/malcolm).
 #
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 ###############################################################################
 
 $fluent_bit_version = '4.2'
-$fluent_bit_full_version = '4.2.0'
+$fluent_bit_full_version = '4.2.3'
 
 ###############################################################################
 # select an item from a menu provided in an array

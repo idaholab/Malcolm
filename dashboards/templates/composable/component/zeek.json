@@ -2,7 +2,7 @@
   "template": {
     "settings": {
       "index": {
-        "mapping.total_fields.limit": "6000",
+        "mapping.total_fields.limit": "7500",
         "mapping.nested_fields.limit": "250",
         "max_docvalue_fields_search": "200"
       }
@@ -154,6 +154,9 @@
                 "host_name": {
                   "type": "keyword"
                 },
+                "ja4d": {
+                  "type": "keyword"
+                },
                 "lease_time": {
                   "type": "float"
                 },
@@ -174,6 +177,9 @@
                 },
                 "trans_id": {
                   "type": "keyword"
+                },
+                "vendor_class_id": {
+                  "type": "keyword"
                 }
               }
             },
@@ -183,6 +189,18 @@
                   "type": "keyword"
                 },
                 "answers": {
+                  "type": "keyword",
+                  "ignore_above": 1024,
+                  "fields": {
+                    "text": {
+                      "type": "text"
+                    }
+                  }
+                },
+                "opcode": {
+                  "type": "short"
+                },
+                "opcode_name": {
                   "type": "keyword"
                 },
                 "qclass": {
@@ -237,9 +255,6 @@
                 "analyzers": {
                   "type": "keyword"
                 },
-                "conn_uids": {
-                  "type": "keyword"
-                },
                 "depth": {
                   "type": "integer"
                 },
@@ -288,9 +303,6 @@
                 "parent_fuid": {
                   "type": "keyword"
                 },
-                "rx_hosts": {
-                  "type": "ip"
-                },
                 "seen_bytes": {
                   "type": "long"
                 },
@@ -300,14 +312,17 @@
                 "sha256": {
                   "type": "keyword"
                 },
+                "ssdeep": {
+                  "type": "keyword"
+                },
                 "timedout": {
+                  "type": "keyword"
+                },
+                "tlsh": {
                   "type": "keyword"
                 },
                 "total_bytes": {
                   "type": "long"
-                },
-                "tx_hosts": {
-                  "type": "ip"
                 }
               }
             },
@@ -677,6 +692,12 @@
                   "type": "keyword"
                 },
                 "client_cert_subject": {
+                  "type": "keyword"
+                },
+                "auth_ticket_sha256": {
+                  "type": "keyword"
+                },
+                "new_ticket_sha256": {
                   "type": "keyword"
                 },
                 "cname": {
@@ -1474,20 +1495,6 @@
             },
             "signatures": {
               "properties": {
-                "hits": {
-                  "type": "nested",
-                  "properties": {
-                    "Capa": {
-                      "type": "keyword"
-                    },
-                    "ClamAV": {
-                      "type": "keyword"
-                    },
-                    "Yara": {
-                      "type": "keyword"
-                    }
-                  }
-                },
                 "host_count": {
                   "type": "integer"
                 },
@@ -1971,6 +1978,9 @@
                   "type": "keyword"
                 },
                 "host_key": {
+                  "type": "keyword"
+                },
+                "host_key_fingerprint": {
                   "type": "keyword"
                 },
                 "host_key_alg": {

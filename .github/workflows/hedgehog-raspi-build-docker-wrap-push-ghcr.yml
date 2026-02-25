@@ -5,12 +5,10 @@ on:
     branches:
       - main
       - staging
-      - pipeline-merge
     paths:
       - 'malcolm-iso/**'
       - 'hedgehog-raspi/**'
       - 'shared/bin/*'
-      - '!shared/bin/pcap_processor.py'
       - '.trigger_iso_workflow_build'
       - '.github/workflows/hedgehog-raspi-build-docker-wrap-push-ghcr.yml'
   workflow_dispatch:
@@ -37,7 +35,7 @@ jobs:
     steps:
       -
         name: Cancel previous run in progress
-        uses: styfle/cancel-workflow-action@0.12.1
+        uses: styfle/cancel-workflow-action@0.13.0
         with:
           ignore_sha: true
           all_but_latest: true
@@ -119,7 +117,6 @@ jobs:
           echo "${{ steps.extract_malcolm_version.outputs.mversion }}" > ./shared/version.txt
           echo "${{ secrets.MAXMIND_GEOIP_DB_LICENSE_KEY }}" > ./shared/maxmind_license.txt
           echo "${{ secrets.MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL }}" > ./shared/maxmind_url.txt
-          echo "${{ secrets.ZEEK_DEB_ALTERNATE_DOWNLOAD_URL }}" > ./shared/zeek_url.txt
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" > ./shared/environment.chroot
           echo "VCS_REVSION=${{ steps.extract_commit_sha.outputs.sha }}" > ./shared/environment.chroot
           echo "BUILD_JOBS=2" > ./shared/environment.chroot

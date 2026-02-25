@@ -567,6 +567,12 @@
                   "type": "keyword"
                 },
                 "Data": {
+                  "fields": {
+                    "text": {
+                      "type": "text"
+                    }
+                  },
+                  "ignore_above": 1024,
                   "type": "keyword"
                 },
                 "DatabaseID": {
@@ -1053,6 +1059,9 @@
                   "type": "keyword"
                 },
                 "HexInt3": {
+                  "type": "keyword"
+                },
+                "HighLatencyArray": {
                   "type": "keyword"
                 },
                 "HighLatencyStr": {
@@ -2238,6 +2247,9 @@
                   "type": "keyword"
                 },
                 "SessionID": {
+                  "type": "keyword"
+                },
+                "SessionId": {
                   "type": "keyword"
                 },
                 "SessionName": {

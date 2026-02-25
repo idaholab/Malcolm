@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 import enum
 from collections import defaultdict
@@ -56,7 +56,7 @@ class PresentationMode(Enum):
 ###################################################################################################
 # Constants for Malcolm image prefix and dotfile secret key
 MALCOLM_IMAGE_PREFIX = "ghcr.io/idaholab/malcolm/"
-MALCOLM_VERSION = "25.12.0"
+MALCOLM_VERSION = "26.02.0"
 
 ###################################################################################################
 # Constants for Malcolm configmap directory replacer
@@ -98,9 +98,10 @@ COMPOSE_MALCOLM_EXTENSION_PRUNE_LOGS = "logs"
 # Directory path constants for volume mapping
 
 # Container paths (inside containers) used for volume mappings
-FILE_MONITOR_ZEEK_LOGS_CONTAINER_PATH = "/zeek/logs"
 FILEBEAT_SURICATA_LOG_CONTAINER_PATH = "/suricata"
 FILEBEAT_ZEEK_LOG_CONTAINER_PATH = "/zeek"
+FILEBEAT_FILESCAN_LOG_PATH = "/filescan"
+FILESCAN_LOG_CONTAINER_PATH = "/filescan/data/logs"
 OPENSEARCH_BACKUP_CONTAINER_PATH = "/opt/opensearch/backup"
 OPENSEARCH_DATA_CONTAINER_PATH = "/usr/share/opensearch/data"
 PCAP_CAPTURE_CONTAINER_PATH = "/pcap"
@@ -112,11 +113,12 @@ ZEEK_LIVE_LOG_CONTAINER_PATH = "/zeek/live"
 ZEEK_LOG_UPLOAD_CONTAINER_PATH = "/zeek/upload"
 
 # Default host directories when config values are not set
-DEFAULT_PCAP_DIR = "./pcap"
-DEFAULT_ZEEK_LOG_DIR = "./zeek-logs"
-DEFAULT_SURICATA_LOG_DIR = "./suricata-logs"
+DEFAULT_FILESCAN_LOG_DIR = "./filescan-logs"
 DEFAULT_INDEX_DIR = "./opensearch"
 DEFAULT_INDEX_SNAPSHOT_DIR = "./opensearch-backup"
+DEFAULT_PCAP_DIR = "./pcap"
+DEFAULT_SURICATA_LOG_DIR = "./suricata-logs"
+DEFAULT_ZEEK_LOG_DIR = "./zeek-logs"
 
 
 ###################################################################################################

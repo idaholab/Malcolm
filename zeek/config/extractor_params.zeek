@@ -1,6 +1,6 @@
 #!/usr/bin/env zeek
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 export {
   const extractor_extract_none       = "none" &redef;
@@ -14,11 +14,19 @@ export {
   const extractor_max_size_default = 134217728 &redef;
 
   const plain_text_mimes : set[string] = {
+    "application/html",
     "application/json",
+    "application/ocsp-response",
     "application/soap+xml",
+    "application/x-pem-file",
     "application/x-x509-ca-cert",
     "application/x-x509-user-cert",
+    "application/xhtml+xml",
     "application/xml",
+    "application/xml-sitemap",
+    "text/css",
+    "text/html",
+    "text/ini",
     "text/json",
     "text/plain",
     "text/x-file",
@@ -857,6 +865,7 @@ export {
     ["text/javascript"] = "js",
     ["text/jscript"] = "jsx",
     ["text/n3"] = "n3",
+    ["text/php"] = "php",
     ["text/plain"] = "txt",
     ["text/prs.lines.tag"] = "dsc",
     ["text/richtext"] = "rtx",

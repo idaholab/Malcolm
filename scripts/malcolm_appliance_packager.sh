@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 if [ -z "$BASH_VERSION" ]; then
   echo "Wrong interpreter, please run \"$0\" with bash"
@@ -69,16 +69,15 @@ if mkdir "$DESTDIR"; then
   mkdir $VERBOSE -p "$DESTDIR/arkime/etc/"
   mkdir $VERBOSE -p "$DESTDIR/arkime/lua/"
   mkdir $VERBOSE -p "$DESTDIR/arkime/rules/"
+  mkdir $VERBOSE -p "$DESTDIR/config/"
   mkdir $VERBOSE -p "$DESTDIR/filebeat/certs/"
-  mkdir $VERBOSE -p "$DESTDIR/logstash/certs/"
+  mkdir $VERBOSE -p "$DESTDIR/filescan-logs"
   mkdir $VERBOSE -p "$DESTDIR/htadmin/"
   mkdir $VERBOSE -p "$DESTDIR/kubernetes/"
   mkdir $VERBOSE -p "$DESTDIR/logstash/certs/"
   mkdir $VERBOSE -p "$DESTDIR/logstash/maps/"
   mkdir $VERBOSE -p "$DESTDIR/netbox/custom-plugins/requirements/"
   mkdir $VERBOSE -p "$DESTDIR/netbox/media/"
-  mkdir $VERBOSE -p "$DESTDIR/postgres/"
-  mkdir $VERBOSE -p "$DESTDIR/redis/"
   mkdir $VERBOSE -p "$DESTDIR/netbox/preload/"
   mkdir $VERBOSE -p "$DESTDIR/nginx/ca-trust/"
   mkdir $VERBOSE -p "$DESTDIR/nginx/certs/"
@@ -88,15 +87,16 @@ if mkdir "$DESTDIR"; then
   mkdir $VERBOSE -p "$DESTDIR/pcap/processed/"
   mkdir $VERBOSE -p "$DESTDIR/pcap/upload/tmp/spool"
   mkdir $VERBOSE -p "$DESTDIR/pcap/upload/variants/"
-  mkdir $VERBOSE -p "$DESTDIR/config/"
+  mkdir $VERBOSE -p "$DESTDIR/postgres/"
+  mkdir $VERBOSE -p "$DESTDIR/redis/"
   mkdir $VERBOSE -p "$DESTDIR/scripts/"
+  mkdir $VERBOSE -p "$DESTDIR/strelka/"
   mkdir $VERBOSE -p "$DESTDIR/suricata-logs/live/"
-  mkdir $VERBOSE -p "$DESTDIR/suricata/rules/"
   mkdir $VERBOSE -p "$DESTDIR/suricata/include-configs/"
+  mkdir $VERBOSE -p "$DESTDIR/suricata/rules/"
   mkdir $VERBOSE -p "$DESTDIR/yara/rules/"
   mkdir $VERBOSE -p "$DESTDIR/zeek-logs/current/"
-  mkdir $VERBOSE -p "$DESTDIR/zeek-logs/extract_files/preserved/"
-  mkdir $VERBOSE -p "$DESTDIR/zeek-logs/extract_files/quarantine/"
+  mkdir $VERBOSE -p "$DESTDIR/zeek-logs/extract_files/filescan/"
   mkdir $VERBOSE -p "$DESTDIR/zeek-logs/live/"
   mkdir $VERBOSE -p "$DESTDIR/zeek-logs/processed/"
   mkdir $VERBOSE -p "$DESTDIR/zeek-logs/upload/"
@@ -118,7 +118,8 @@ if mkdir "$DESTDIR"; then
   cp $VERBOSE ./logstash/maps/malcolm_severity.yaml "$DESTDIR/logstash/maps/"
   git ls-files ./netbox/config | /usr/bin/rsync -R --files-from=- ./ "$DESTDIR/"
   git ls-files -z ./netbox/preload/*.yml | xargs -0 -I{} cp $VERBOSE "{}" "$DESTDIR/netbox/preload/"
-  cp $VERBOSE ./shared/bin/tx-rx-secure.sh "$DESTDIR/scripts/"
+  git ls-files ./strelka/config | /usr/bin/rsync -R --files-from=- ./ "$DESTDIR/"
+  cp $VERBOSE ./scripts/tx-rx-secure.sh "$DESTDIR/scripts/"
   cp $VERBOSE ./scripts/control.py "$DESTDIR/scripts/"
 
   # these scripts go in both the tarball and the run path
@@ -138,6 +139,7 @@ if mkdir "$DESTDIR"; then
   cp $VERBOSE ./scripts/malcolm_kubernetes.py "$RUN_PATH/"
   cp $VERBOSE ./scripts/malcolm_utils.py "$DESTDIR/scripts/"
   cp $VERBOSE ./scripts/malcolm_utils.py "$RUN_PATH/"
+  cp $VERBOSE ./scripts/package_zeek_logs.sh "$DESTDIR/scripts/"
 
 
   pushd "$DESTDIR" >/dev/null 2>&1

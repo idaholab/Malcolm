@@ -21,6 +21,7 @@ In contrast to using the ISO installer, Malcolm can also be installed on any x86
     - [Setting up Authentication](#MalcolmAuthSetup)
 * [Hedgehog Linux Installation and Configuration](#HedgehogInstallAndConfig)
     - [Configuring Communication Between Hedgehog and Malcolm](#HedgehogCommConfig)
+    - [TCP Ports Required for Malcolm ↔ Hedgehog Communication](#HedgehogMalcolmPorts)
 * [Verifying Traffic Capture and Forwarding](#Verify)
 * [Tuning Live Analysis](live-analysis.md#LiveAnalysisTuning)
 
@@ -230,69 +231,70 @@ Select an item number to configure, or an action:
 │   ├── 19. Forward Thermal Readings (current: No)
 │   ├── 20. Logstash Memory (current: 3g)
 │   ├── 21. Logstash Workers (current: 3)
-│   ├── 22. OpenSearch Memory (current: 24g)
+│   ├── 22. OpenSearch Memory (current: 31g)
 │   └── 23. Primary Document Store (current: opensearch-local)
-├── 24. Require HTTPS Connections (current: No)
+├── 24. Require HTTPS Connections (current: Yes)
 ├── 25. IPv4 for nginx Resolver Directive (current: Yes)
 ├── 26. IPv6 for nginx Resolver Directive (current: No)
 ├── 27. Traefik Labels (current: No)
 ├── 28. Use Default Storage Location (current: Yes)
 ├── 29. Clean Up Artifacts (current: Yes)
-│   ├── 30. Delete Old Indices (current: Yes)
-│   │   ├── 31. Index Prune Threshold (current: 1T)
-│   │   └── 32. Prune Indices by Name (current: No)
-│   └── 33. Delete Old PCAP (current: Yes)
-│       └── 34. Delete PCAP Threshold (current: 5%)
-├── 35. Enable Arkime Index Management (current: No)
-├── 36. Enable Arkime Analysis (current: Yes)
-│   ├── 37. Allow Arkime WISE Configuration (current: No)
-│   └── 38. Enable Arkime WISE (current: Yes)
-├── 39. Enable Suricata Analysis (current: Yes)
-│   └── 40. Enable Suricata Rule Updates (current: Yes)
-├── 41. Enable Zeek Analysis (current: Yes)
-│   ├── 42. Enable Zeek File Extraction (current: Yes)
-│   │   └── 43. File Extraction Mode (current: interesting)
-│   │       ├── 44. Extracted File Percent Threshold (current: 0)
-│   │       ├── 45. Extracted File Size Threshold (current: 100G)
-│   │       ├── 46. File Preservation (current: quarantined)
-│   │       ├── 47. Preserved Files HTTP Server (current: Yes)
-│   │       │   ├── 48. Downloaded Preserved File Password (current: ********)
-│   │       │   └── 49. Zip Downloads (current: Yes)
-│   │       ├── 50. Scan with capa (current: Yes)
-│   │       ├── 51. Scan with ClamAV (current: Yes)
-│   │       ├── 52. Scan with YARA (current: Yes)
-│   │       ├── 53. Update Scan Rules (current: Yes)
-│   │       └── 54. VirusTotal API Key (current: empty)
-│   ├── 55. Enable Zeek ICS/OT Analyzers (current: Yes)
-│   │   └── 56. Enable Zeek ICS "Best Guess" (current: Yes)
-│   └── 57. Use Threat Feeds for Zeek Intelligence (current: Yes)
-│       ├── 58. Cron Expression for Threat Feed Updates (current: 0 0 * * *)
-│       ├── 59. Intel::item_expiration Timeout (current: -1min)
-│       ├── 60. Pull Threat Intelligence Feeds on Startup (current: Yes)
-│       └── 61. Threat Indicator "Since" Period (current: 7 days ago)
-├── 62. Enrich with Reverse DNS Lookups (current: Yes)
-├── 63. Enrich with Manufacturer (OUI) Lookups (current: Yes)
-├── 64. Enrich with Frequency Scoring (current: Yes)
-├── 65. NetBox Mode (current: Local)
-│   ├── 66. Auto-Create Subnet Prefixes (current: Yes)
-│   ├── 67. Auto-Populate NetBox Inventory (current: Yes)
-│   ├── 68. NetBox Enrichment (current: Yes)
-│   ├── 69. NetBox IP Autopopulation Filter (current: empty)
-│   └── 70. NetBox Site Name (current: Malcolm)
-├── 71. Expose Malcolm Service Ports (current: Yes)
-├── 72. Network Traffic Node Name (current: host)
-└── 73. Capture Live Network Traffic (current: Yes)
-    ├── 74. Analyze Live Traffic with Suricata (current: Yes)
-    ├── 75. Analyze Live Traffic with Zeek (current: Yes)
-    ├── 76. Capture Filter (current: empty)
-    ├── 77. Capture Interface(s) (current: eth0)
-    ├── 78. Capture Live Traffic with netsniff-ng (current: Yes)
-    ├── 79. Capture Live Traffic with tcpdump (current: No)
-    ├── 80. Gather Traffic Capture Statistics (current: Yes)
-    └── 81. Optimize Interface Settings for Capture (current: Yes)
+│   ├── 30. Arkime PCAP Management (current: Yes)
+│   │   └── 31. Delete PCAP Threshold (current: 5%)
+│   ├── 32. Delete Old Indices (current: Yes)
+│   │   ├── 33. Index Prune Threshold (current: 1T)
+│   │   └── 34. Prune Indices by Name (current: No)
+│   ├── 35. Prune Oldest Logs (current: No)
+│   └── 36. Prune Oldest PCAP (current: No)
+├── 37. Enable Arkime Index Management (current: No)
+├── 38. Enable Arkime Analysis (current: Yes)
+│   ├── 39. Allow Arkime WISE Configuration (current: No)
+│   └── 40. Enable Arkime WISE (current: Yes)
+├── 41. Enable Suricata Analysis (current: Yes)
+│   └── 42. Enable Suricata Rule Updates (current: Yes)
+├── 43. Enable Zeek Analysis (current: Yes)
+│   ├── 44. Enable Zeek ICS/OT Analyzers (current: Yes)
+│   │   └── 45. Enable Zeek ICS "Best Guess" (current: Yes)
+│   ├── 46. File Extraction Mode (current: interesting)
+│   │   ├── 47. Extracted File Percent Threshold (current: 0)
+│   │   ├── 48. Extracted File Size Threshold (current: 100G)
+│   │   ├── 49. File Preservation (current: quarantined)
+│   │   ├── 50. File scanning workers (current: 1)
+│   │   ├── 51. Preserved Files HTTP Server (current: Yes)
+│   │   │   ├── 52. Downloaded Preserved File Password (current: ********)
+│   │   │   └── 53. Zip Downloads (current: Yes)
+│   │   ├── 54. Scan with Strelka (current: Yes)
+│   │   └── 55. Update Scan Rules (current: Yes)
+│   └── 56. Use Threat Feeds for Zeek Intelligence (current: Yes)
+│       ├── 57. Cron Expression for Threat Feed Updates (current: 0 0 * * *)
+│       ├── 58. Intel::item_expiration Timeout (current: -1min)
+│       ├── 59. Pull Threat Intelligence Feeds on Startup (current: Yes)
+│       └── 60. Threat Indicator "Since" Period (current: 24 hours ago)
+│       ├── 61. Use Intel on Live Traffic (current: Yes)
+│       └── 62. Use Intel on Uploaded PCAP (current: Yes)
+├── 63. Enrich with Reverse DNS Lookups (current: Yes)
+├── 64. Enrich with Manufacturer (OUI) Lookups (current: Yes)
+├── 65. Enrich with Frequency Scoring (current: Yes)
+├── 66. NetBox Mode (current: Local)
+│   ├── 67. Auto-Create Subnet Prefixes (current: Yes)
+│   ├── 68. Auto-Populate NetBox Inventory (current: Yes)
+│   ├── 69. NetBox Enrichment (current: Yes)
+│   ├── 70. NetBox IP Autopopulation Filter (current: empty)
+│   └── 71. NetBox Site Name (current: Malcolm)
+├── 72. Expose Malcolm Service Ports (current: No)
+├── 73. Network Traffic Node Name (current: host)
+└── 74. Capture Live Network Traffic (current: Yes)
+    ├── 75. Analyze Live Traffic with Suricata (current: Yes)
+    ├── 76. Analyze Live Traffic with Zeek (current: Yes)
+    ├── 77. Capture Filter (current: empty)
+    ├── 78. Capture Interface(s) (current: eth0)
+    ├── 79. Capture Live Traffic with netsniff-ng (current: Yes)
+    ├── 80. Capture Live Traffic with tcpdump (current: No)
+    ├── 81. Gather Traffic Capture Statistics (current: Yes)
+    └── 82. Optimize Interface Settings for Capture (current: Yes)
 
 --- Actions ---
-  s. Save and Continue Installation
+  s. Save and Continue
   w. Where Is...? (search for settings)
   x. Exit Installer
 ---------------------------------
@@ -302,45 +304,44 @@ Enter item number or action:
 
 For some settings, additional sub-items will become available when that setting is enabled. For example, enabling **Zeek File Extraction** exposes the settings related to that feature:
 ```
+├── 43. Enable Zeek Analysis (current: Yes)
+│   ├── 44. Enable Zeek ICS/OT Analyzers (current: No)
+│   ├── 45. File Extraction Mode (current: none)
+│   └── 46. Use Threat Feeds for Zeek Intelligence (current: Yes)
 …
-├── 23. Enable Zeek Analysis (current: Yes)
-│   ├── 24. Enable Zeek File Extraction (current: No)
-│   ├── 25. Enable Zeek ICS/OT Analyzers (current: No)
-…
-Enter item number or action: 24
-
-Enable Zeek File Extraction (current: No)
-Enable file extraction with Zeek? (y / N): Y
-```
-
-```
-…
-├── 23. Enable Zeek Analysis (current: Yes)
-│   ├── 24. Enable Zeek File Extraction (current: Yes)
-│   │   └── 25. File Extraction Mode (current: interesting)
-│   │       ├── 26. Extracted File Percent Threshold (current: 0)
-│   │       ├── 27. Extracted File Size Threshold (current: empty)
-│   │       ├── 28. File Preservation (current: quarantined)
-│   │       ├── 29. Preserved Files HTTP Server (current: Yes)
-│   │       │   ├── 30. Downloaded Preserved File Password (current: empty)
-│   │       │   └── 31. Zip Downloads (current: No)
-│   │       ├── 32. Scan with capa (current: Yes)
-│   │       ├── 33. Scan with ClamAV (current: Yes)
-│   │       ├── 34. Scan with YARA (current: Yes)
-│   │       ├── 35. Update Scan Rules (current: Yes)
-│   │       └── 36. VirusTotal API Key (current: empty)
-│   ├── 37. Enable Zeek ICS/OT Analyzers (current: No)
-…
-Enter item number or action: 25
-File Extraction Mode (current: interesting)
+nter item number or action: 45
+File Extraction Mode (current: none)
 1: none
 2: known
 3: mapped
 4: all
 5: interesting
 6: notcommtxt
-Enter choice number (interesting): 4
+Enter choice number (none): 5
+```
+
+```
 …
+├── 43. Enable Zeek Analysis (current: Yes)
+│   ├── 44. Enable Zeek ICS/OT Analyzers (current: No)
+│   ├── 45. File Extraction Mode (current: interesting)
+│   │   ├── 46. Extracted File Percent Threshold (current: 0)
+│   │   ├── 47. Extracted File Size Threshold (current: 100G)
+│   │   ├── 48. File Preservation (current: quarantined)
+│   │   ├── 49. File scanning workers (current: 1)
+│   │   ├── 50. Preserved Files HTTP Server (current: Yes)
+│   │   │   ├── 51. Downloaded Preserved File Password (current: ********)
+│   │   │   └── 52. Zip Downloads (current: Yes)
+│   │   ├── 53. Scan with Strelka (current: Yes)
+│   │   └── 54. Update Scan Rules (current: Yes)
+│   └── 55. Use Threat Feeds for Zeek Intelligence (current: Yes)
+…
+Enter item number or action: 48
+File Preservation (current: quarantined)
+1: quarantined
+2: all
+3: none
+Enter choice number (quarantined): 1
 ```
 
 Once the desired Malcolm configuration options have been selected, select **s** to save the settings and proceed to the final configuration summary for confirmation. Then, select **y** to write the changed configuration to the corresponding [environment variable](malcolm-config.md#MalcolmConfigEnvVars) files.
@@ -406,7 +407,7 @@ Proceed with Malcolm installation using the above configuration? (y / N): y
     - **OpenSearch Memory** and **Logstash Memory**
         + Two of Malcolm's main components, OpenSearch and Logstash, require a substantial amount of memory. The configuration script will suggest defaults for these values based on the amount of physical memory the system has. The minimum recommended amount of system memory for Malcolm is 24 GB. Users should not use a value under 10 GB for OpenSearch and 2500 MB for Logstash.
     - **Logstash Workers**
-        + This setting is used to tune the performance and resource utilization of the the `logstash` container. The default is calculated based on the number of logical CPUs the system has. See [Tuning and Profiling Logstash Performance](https://www.elastic.co/guide/en/logstash/current/tuning-logstash.html), [`logstash.yml`](https://www.elastic.co/guide/en/logstash/current/logstash-settings-file.html) and [Multiple Pipelines](https://www.elastic.co/guide/en/logstash/current/multiple-pipelines.html).
+        + This setting is used to tune the performance and resource utilization of the the `logstash` container: it represents the number of worker threads for each parsing/enrichment pipeline used by Logstash for log processing. The default is calculated based on the number of logical CPUs the system has. See [Tuning and Profiling Logstash Performance](https://www.elastic.co/guide/en/logstash/current/tuning-logstash.html), [`logstash.yml`](https://www.elastic.co/guide/en/logstash/current/logstash-settings-file.html) and [Multiple Pipelines](https://www.elastic.co/guide/en/logstash/current/multiple-pipelines.html).
 * **Require HTTPS Connections**
     - Malcolm uses [TLS](authsetup.md#TLSCerts) encryption for its web browser-accessible user interfaces. Setting **Y** for this option is almost always preferred. The only situation where **N** would be appropriate would be when running Malcolm behind a third-party reverse proxy (e.g., [Traefik](https://doc.traefik.io/traefik/) or [Caddy](https://caddyserver.com/docs/quick-starts/reverse-proxy)) to handle the issuance of the certificates automatically and to broker the connections between clients and Malcolm. Reverse proxies such as these often implement the [ACME](https://datatracker.ietf.org/doc/html/rfc8555) protocol for domain name authentication and can be used to request certificates from certificate authorities such as [Let's Encrypt](https://letsencrypt.org/how-it-works/). In this configuration, the reverse proxy will be encrypting the connections instead of Malcolm. Users should ensure they understand these implications and ensure that external connections cannot reach ports over which Malcolm will be communicating without encryption, including verifying the local firewall configuration, when setting this to **N**.
 * **IPv4 for nginx Resolver Directive** and **IPv6 for nginx Resolver Directive**
@@ -445,9 +446,8 @@ Proceed with Malcolm installation using the above configuration? (y / N): y
         + If the Malcolm instance has Internet connectivity, select **Y** to [enable automatic updates](https://suricata-update.readthedocs.io/en/latest/) of the Suricata rules used by Malcolm. This setting also applies to the rules used for live analysis when **Analyze Live Traffic with Suricata** is enabled.
 * **Enable Zeek Analysis**
     - This option is used to enable [Zeek](https://www.zeek.org/index.html) (a network analysis framework and IDS) to analyze PCAP files uploaded to Malcolm via its upload web interface.
-    - **Enable Zeek File Extraction**
-        + Select **Y** to indicate that Zeek should [extract files](file-scanning.md#ZeekFileExtraction) transfered in observed network traffic.
-        + **File Extraction Mode**
+    - These options are used to configure [**automatic file extraction and scanning**](file-scanning.md#ZeekFileExtraction):
+        - **File Extraction Mode**
             * This determines which files Zeek should extract for scanning:
                 - `none`: no file extraction
                 - `interesting`: extraction of files with mime types of common attack vectors
@@ -455,12 +455,16 @@ Proceed with Malcolm installation using the above configuration? (y / N): y
                 - `known`: extraction of files for which any mime type can be determined
                 - `all`: extract all files
                 - `notcommtxt`: extract all files except common plain text files
+        + **Scan with Strelka**
+            * Choosing **Y** enables scanning of Zeek-extracted files with [Strelka](https://target.github.io/strelka/#/).
+        + **File scanning workers**
+            * This specifies the number of [Strelka](https://target.github.io/strelka/#/) backend instances performing file scanning concurrently.
         + **Extracted File Percent Threshold** and **Extracted File Size Threshold**
-            * Files [extracted by Zeek](file-scanning.md#ZeekFileExtraction) can be periodically pruned to ensure the disk storage they consume does not exceed a user-specified threshold. See the documentation on [managing Malcolm's disk usage](malcolm-config.md#DiskUsage) for more information.
+            * Files extracted by Zeek can be periodically pruned to ensure the disk storage they consume does not exceed a user-specified threshold. See the documentation on [managing Malcolm's disk usage](malcolm-config.md#DiskUsage) for more information.
         + **File Preservation**
             * This determines the behavior for preservation of Zeek-extracted files:
-                -  `quarantined`: preserve only flagged files in `./zeek-logs/extract_files/quarantine`
-                - `all`: preserve flagged files in `./zeek-logs/extract_files/quarantine` and all other extracted files in `./zeek-logs/extract_files/preserved`
+                -  `quarantined`: preserve only flagged files in `./zeek-logs/extract_files`
+                - `all`: preserve all extracted files `./zeek-logs/extract_files`
                 - `none`: preserve no extracted files
         + **Preserved Files HTTP Server**
             * Choosing **Y** enables access to the Zeek-extracted files path through the means of a simple HTTPS directory server at **https://﹤Malcolm host or IP address﹥/extracted-files/**. Beware that Zeek-extracted files may contain malware.
@@ -468,16 +472,8 @@ Proceed with Malcolm installation using the above configuration? (y / N): y
             * A non-blank value will be used as either the ZIP archive file password (if **Zip Downloads** is enabled) or as the encryption key for the file to be AES-256-CBC-encrypted in an `openssl enc`-compatible format (e.g., `openssl enc -aes-256-cbc -d -in example.exe.encrypted -out example.exe`).
         + **Zip Downloads**
             * Selecting **Y** will cause that Zeek-extracted file downloads will be archived using the ZIP file format.
-        + **Scan with capa**
-            * Select **Y** to scan extracted executable files with [Capa](https://github.com/fireeye/capa), a tool for detecting capabilities in executable files.
-        + **Scan with ClamAV**
-            * Select **Y** to scan extracted files with [ClamAV](https://www.clamav.net/), an antivirus engine.
-        + **Scan with YARA**
-            * Select **Y** to scan extracted files with [Yara](https://github.com/VirusTotal/yara), a tool used to identify and classify malware samples.
         + **Update Scan Rules**
             * If the Malcolm instance has Internet connectivity, choose **Y** to enable periodic downloads of signatures used by ClamAV and YARA.
-        + **VirusTotal API Key**
-            * Specifying the [**VirusTotal**](https://www.virustotal.com/en/#search) [API key](https://support.virustotal.com/hc/en-us/articles/115002100149-API) to be used for submitting the hashes of extracted files to VirusTotal. Only specify this option if the Malcolm instance has Internet connectivity.
     - **Enable Zeek ICS/OT Analyzers**
         + If using Malcolm in a control systems (OT/ICS) network, select **Y** to enable Malcolm's ICS protocol analyzers for Zeek.
         + **Enable Zeek ICS "Best Guess"**
@@ -492,6 +488,10 @@ Proceed with Malcolm installation using the above configuration? (y / N): y
             + Select **Y** for Malcolm to pull from threat intelligence feeds when the `zeek-offline` container starts up.
         + **Threat Indicator "Since" Period**
             + When querying a [TAXII](zeek-intel.md#ZeekIntelSTIX), [MISP](zeek-intel.md#ZeekIntelMISP), [Google](zeek-intel.md#ZeekIntelGoogle), or [Mandiant](zeek-intel.md#ZeekIntelMandiant) threat intelligence feed, only process threat indicators created or modified since the time represented by this value; it may be either a fixed date/time (`01/01/2025`) or relative interval (`24 hours ago`). Note that this value can be overridden per-feed by adding a `since:` value to each feed's respective configuration YAML file.
+        * **Use Intel on Live Traffic**
+            + Select **Y** for Zeek (in the `zeek-live` container) to use threat intel data when analyzing live traffic.
+        * **Use Intel on Uploaded PCAP**
+            + Select **Y** for Zeek (in the `zeek` container) to use threat intel data when analyzing historical traffic (i.e., uploaded PCAP).
 * **Enrich with Reverse DNS Lookups**
     - If enabled, this option will perform reverse [DNS lookups](https://www.elastic.co/guide/en/logstash/current/plugins-filters-dns.html) on IP addresses found in traffic and use the results to enrich network logs. Select **Y** if the Malcolm instance has access to a DNS server to perform these lookups.
 * **Enrich with Manufacturer (OUI) Lookups**
@@ -606,7 +606,7 @@ Users will be prompted to do the following:
 
 As of Malcolm v25.12.0, the same base operating system is used for both Malcolm and Hedgehog Linux. All of the sections above under [Malcolm Installation and Configuration](#MalcolmInstallAndConfig) also apply to Hedgehog Linux.
 
-The following section outlines the Hedgehog-specific steps needed to establish communication between the Hedgehog Linux sensor and the Malcolm aggregator.
+The following section outlines the Hedgehog-specific steps needed to establish communication between the Hedgehog Linux sensor and the Malcolm aggregator. See [**Configuring Hedgehog for Standalone Use**](hedgehog-standalone.md) for how to use Hedgehog Linux without a Malcolm aggregator.
 
 ### <a name="HedgehogCommConfig"></a> Configuring Communication Between Hedgehog and Malcolm
 
@@ -637,7 +637,7 @@ The sections above for [**Configuring Malcolm**](#MalcolmConfig) and the [**Malc
 --- Malcolm Configuration Menu ---
 …
 │   ├── 18. Logstash Host (current: malcolm.home.arpa:5044)
-│   ├── 19. Malcolm Reachback ACL (current: ['192.168.122.1', '192.168.122.5', '10.9.0.215'])
+│   ├── 19. Malcolm Reachback ACL (current: ['192.168.122.1', '192.168.122.5', '10.0.0.130'])
 │   └── 20. Primary Document Store (current: opensearch-remote)
 │       ├── 21. Primary OpenSearch/Elasticsearch URL (current: https://malcolm.home.arpa:9200)
 …
@@ -691,6 +691,24 @@ After a few seconds a progress bar will update and show the files have been 100%
 ![SSL Certificate Transfer, Hedgehog Side - 03](./images/screenshots/ssl-cert-transfer-07.png)
 
 Once the has been completed, users can click the "play" icon (▷) in the panel at the top of the [desktop](#MalcolmDesktop) to start Malcolm under the [Hedgehog run profile](live-analysis.md#Profiles).
+
+### <a name="HedgehogMalcolmPorts"></a> TCP Ports Required for Malcolm ↔ Hedgehog Communication
+
+The following TCP ports on the Malcolm instance must be reachable for the sensor to forward data to Malcolm:
+
+| Port | Data | Purpose |
+|-|-|-|
+| 443/tcp | Enrichment lookups for Arkime sessions | Hedgehog's Arkime `capture` contacts Malcolm's Arkime [WISE](https://arkime.com/wise) at `https://﹤Malcolm host or IP address﹥/wise`, if enabled. |
+| 9200/tcp | Arkime sessions | Hedgehog's Arkime `capture` sends session data to Malcolm's OpenSearch instance at `https://﹤Malcolm host or IP address﹥:9200`. Alternatively, 443/tcp may be used at `https://﹤Malcolm host or IP address﹥/mapi/opensearch/`. |
+| 5044/tcp | Zeek logs, Suricata alerts, and file-scanning results | Hedgehog's Filebeat sends data to Malcolm's Logstash. |
+| 5045/tcp | Auxiliary data (resources, temperature, system logs, etc.) | Hedgehog's Fluent Bit sends data to Malcolm's JSON-over-TCP listener. |
+
+The following TCP ports on the Hedgehog sensor must be reachable for Malcolm to retrieve artifacts:
+
+| Port | Data | Purpose |
+|-|-|-|
+| 8005/tcp | PCAP payload requests | Malcolm's Arkime viewer contacts Hedgehog's Arkime viewer when a user views an Arkime [session](arkime.md#ArkimeSessions), [exports a PCAP](arkime.md#ArkimePCAPExport), or runs a [Hunt](arkime.md#ArkimeHunt) job |
+| 8006/tcp | Extracted file requests | Malcolm proxies requests to download [extracted files](file-scanning.md#ZeekFileExtractionUI) stored on the Hedgehog sensor. |
 
 ## <a name="Verify"></a>Verifying Traffic Capture and Forwarding
 

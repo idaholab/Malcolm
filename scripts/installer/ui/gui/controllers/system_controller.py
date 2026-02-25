@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 """
 System Controller for Malcolm GUI Installer
@@ -458,7 +458,7 @@ class SystemController(BaseController):
 
     def set_logstash_workers(self, workers: int) -> Tuple[bool, str]:
         """
-        Set the number of Logstash workers
+        Set the number of Logstash workers (per pipeline)
 
         Args:
             workers: Number of worker threads

@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
       - name: redis-container
-        image: ghcr.io/idaholab/malcolm/redis:25.12.0
+        image: ghcr.io/idaholab/malcolm/redis:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -47,7 +47,7 @@ spec:
                "redis",
                "sh",
                "-c",
-               "redis-server --dir /data --appendonly yes --requirepass $(REDIS_PASSWORD)"]
+               "redis-server --dir /data --appendonly yes --appendfsync everysec --no-appendfsync-on-rewrite yes --auto-aof-rewrite-percentage 100 --auto-aof-rewrite-min-size $(REDIS_AUTO_AOF_REWRITE_MIN_SIZE) --save '' --maxmemory $(REDIS_MAXMEMORY) --maxmemory-policy $(REDIS_MAXMEMORY_POLICY) --requirepass $(REDIS_PASSWORD)]
         ports:
           - name: redis
             protocol: TCP
@@ -76,7 +76,7 @@ spec:
             subPath: redis
       initContainers:
       - name: redis-dirinit-container
-        image: ghcr.io/idaholab/malcolm/dirinit:25.12.0
+        image: ghcr.io/idaholab/malcolm/dirinit:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true

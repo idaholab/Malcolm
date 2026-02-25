@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 import re
 from typing import Any, Optional
@@ -99,41 +99,12 @@ def custom_reverse_transform_suricata_rotated_pcap(value: str):
     return ("", live_suricata)
 
 
-def custom_transform_zeek_file_enable_vtot(vtotApiKey: str) -> str:
-    return true_or_false_no_quotes(len(vtotApiKey) > 1)
+def custom_transform_pipeline_enabled(value: bool) -> str:
+    return true_or_false_no_quotes(not value)
 
 
-def custom_reverse_transform_zeek_file_enable_vtot(value: str):
-    """When importing EXTRACTED_FILE_ENABLE_VTOT we cannot reconstruct the actual API key.
-
-    To avoid failing validation on the `vtotApiKey` (expects string), return an
-    empty string regardless of the boolean flag. The flag merely indicates
-    whether a non-empty key exists.
-    """
-    return ""  # leave the API key unset; user can supply later
-
-
-def custom_reverse_transform_zeek_vtot_api2_key(value: str) -> str:
-    """Reverse transform for VTOT_API2_KEY (VirusTotal API key).
-
-    The .env files use '0' as a sentinel default. Treat '0' or empty as unset,
-    otherwise return the raw string. Do not coerce numeric-looking strings to int.
-    """
-    if value is None:
-        return ""
-    v = str(value).strip()
-    return "" if v in ("", "0") else v
-
-
-def custom_transform_zeek_vtot_api2_key(value: str) -> str:
-    """Forward transform for VTOT_API2_KEY.
-
-    Write '0' when unset/empty to match image defaults and examples. Otherwise
-    pass through the provided string.
-    """
-    if value is None or str(value).strip() == "":
-        return "0"
-    return str(value)
+def custom_reverse_transform_pipeline_enabled(value: str) -> bool:
+    return not _env_str_to_bool(value)
 
 
 def custom_transform_filebeat_syslog_tcp_listen(tcp_port: int) -> str:
@@ -170,16 +141,6 @@ def custom_reverse_transform_zeek_rotated_pcap(value: str):
     rotated = _env_str_to_bool(value)
     live_zeek = not rotated
     return ("", live_zeek)
-
-
-def custom_transform_zeek_file_watcher_polling(orch_mode) -> str:
-    """Return 'true' when running under Kubernetes orchestration."""
-    return true_or_false_no_quotes(_orch_is_k8s(orch_mode))
-
-
-def custom_reverse_transform_zeek_file_watcher_polling(value: str):
-    """Return the appropriate OrchestrationFramework value based on the polling flag."""
-    return _orch_from_bool_str(value)
 
 
 def custom_transform_pcap_pipeline_polling(orch_mode) -> str:
@@ -331,6 +292,24 @@ def custom_transform_zeek_disable_ics_all(malcolmIcs: bool) -> str:
 
 def custom_reverse_transform_zeek_disable_ics_all(value: str) -> bool:
     # Empty string means the disable flag is not set, so ICS analysis remains enabled (True)
+    return True if value == "" else not (value.lower() == "true")
+
+
+def custom_transform_zeek_disable_intel_live(zeekIntelLive: bool) -> str:
+    return "" if zeekIntelLive else true_or_false_no_quotes(not zeekIntelLive)
+
+
+def custom_reverse_transform_zeek_disable_intel_live(value: str) -> bool:
+    # Empty string means the disable flag is not set, so zeek live intel remains enabled (True)
+    return True if value == "" else not (value.lower() == "true")
+
+
+def custom_transform_zeek_disable_intel_offline(zeekIntelOffline: bool) -> str:
+    return "" if zeekIntelOffline else true_or_false_no_quotes(not zeekIntelOffline)
+
+
+def custom_reverse_transform_zeek_disable_intel_offline(value: str) -> bool:
+    # Empty string means the disable flag is not set, so zeek offline intel remains enabled (True)
     return True if value == "" else not (value.lower() == "true")
 
 

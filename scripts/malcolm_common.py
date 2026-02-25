@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 import getpass
 import importlib
@@ -48,14 +48,16 @@ from typing import Tuple, List, Optional
 from pathlib import Path
 
 from scripts.malcolm_constants import (
+    DEFAULT_FILESCAN_LOG_DIR,
     DEFAULT_INDEX_DIR,
     DEFAULT_INDEX_SNAPSHOT_DIR,
     DEFAULT_PCAP_DIR,
     DEFAULT_SURICATA_LOG_DIR,
     DEFAULT_ZEEK_LOG_DIR,
-    FILE_MONITOR_ZEEK_LOGS_CONTAINER_PATH,
     FILEBEAT_SURICATA_LOG_CONTAINER_PATH,
     FILEBEAT_ZEEK_LOG_CONTAINER_PATH,
+    FILEBEAT_FILESCAN_LOG_PATH,
+    FILESCAN_LOG_CONTAINER_PATH,
     ImageArchitecture,
     MALCOLM_VERSION,
     OPENSEARCH_BACKUP_CONTAINER_PATH,
@@ -316,6 +318,7 @@ def BuildBoundPathReplacers(
     pcap_dir=DEFAULT_PCAP_DIR,
     suricata_log_dir=DEFAULT_SURICATA_LOG_DIR,
     zeek_log_dir=DEFAULT_ZEEK_LOG_DIR,
+    filescan_log_dir=DEFAULT_FILESCAN_LOG_DIR,
     index_dir=DEFAULT_INDEX_DIR,
     index_snapshot_dir=DEFAULT_INDEX_SNAPSHOT_DIR,
 ):
@@ -324,24 +327,23 @@ def BuildBoundPathReplacers(
         BoundPathReplacer("arkime-live", PCAP_DATA_CONTAINER_PATH, pcap_dir),
         BoundPathReplacer("filebeat", FILEBEAT_SURICATA_LOG_CONTAINER_PATH, suricata_log_dir),
         BoundPathReplacer("filebeat", FILEBEAT_ZEEK_LOG_CONTAINER_PATH, zeek_log_dir),
-        BoundPathReplacer(
-            "file-monitor", ZEEK_EXTRACT_FILES_CONTAINER_PATH, os.path.join(zeek_log_dir, 'extract_files')
-        ),
-        BoundPathReplacer("file-monitor", FILE_MONITOR_ZEEK_LOGS_CONTAINER_PATH, os.path.join(zeek_log_dir, 'current')),
-        BoundPathReplacer("opensearch", OPENSEARCH_DATA_CONTAINER_PATH, index_dir),
+        BoundPathReplacer("filebeat", FILEBEAT_FILESCAN_LOG_PATH, filescan_log_dir),
+        BoundPathReplacer("filescan", FILESCAN_LOG_CONTAINER_PATH, filescan_log_dir),
+        BoundPathReplacer("filescan", ZEEK_EXTRACT_FILES_CONTAINER_PATH, os.path.join(zeek_log_dir, 'extract_files')),
         BoundPathReplacer("opensearch", OPENSEARCH_BACKUP_CONTAINER_PATH, index_snapshot_dir),
+        BoundPathReplacer("opensearch", OPENSEARCH_DATA_CONTAINER_PATH, index_dir),
         BoundPathReplacer("pcap-capture", PCAP_CAPTURE_CONTAINER_PATH, os.path.join(pcap_dir, 'upload')),
-        BoundPathReplacer("pcap-monitor", PCAP_CAPTURE_CONTAINER_PATH, pcap_dir),
         BoundPathReplacer("pcap-monitor", FILEBEAT_ZEEK_LOG_CONTAINER_PATH, zeek_log_dir),
+        BoundPathReplacer("pcap-monitor", PCAP_CAPTURE_CONTAINER_PATH, pcap_dir),
         BoundPathReplacer("suricata", PCAP_DATA_CONTAINER_PATH, pcap_dir),
         BoundPathReplacer("suricata", SURICATA_LOG_CONTAINER_PATH, suricata_log_dir),
         BoundPathReplacer("suricata-live", SURICATA_LOG_CONTAINER_PATH, suricata_log_dir),
         BoundPathReplacer("upload", UPLOAD_ARTIFACT_CONTAINER_PATH, os.path.join(pcap_dir, 'upload')),
         BoundPathReplacer("zeek", PCAP_CAPTURE_CONTAINER_PATH, pcap_dir),
-        BoundPathReplacer("zeek", ZEEK_LOG_UPLOAD_CONTAINER_PATH, os.path.join(zeek_log_dir, 'upload')),
         BoundPathReplacer("zeek", ZEEK_EXTRACT_FILES_CONTAINER_PATH, os.path.join(zeek_log_dir, 'extract_files')),
-        BoundPathReplacer("zeek-live", ZEEK_LIVE_LOG_CONTAINER_PATH, os.path.join(zeek_log_dir, 'live')),
+        BoundPathReplacer("zeek", ZEEK_LOG_UPLOAD_CONTAINER_PATH, os.path.join(zeek_log_dir, 'upload')),
         BoundPathReplacer("zeek-live", ZEEK_EXTRACT_FILES_CONTAINER_PATH, os.path.join(zeek_log_dir, 'extract_files')),
+        BoundPathReplacer("zeek-live", ZEEK_LIVE_LOG_CONTAINER_PATH, os.path.join(zeek_log_dir, 'live')),
     )
 
 
@@ -1461,7 +1463,7 @@ def AuthFileCheck(fileName, allowEmpty=False):
         return False
 
 
-def MalcolmAuthFilesExist(configDir=None, run_profile=PROFILE_MALCOLM):
+def MalcolmAuthFilesExist(configDir=None, run_profile=PROFILE_MALCOLM, auth_method=None):
     configDirToCheck = (
         configDir if configDir is not None and os.path.isdir(configDir) else os.path.join(MalcolmPath, 'config')
     )
@@ -1469,8 +1471,14 @@ def MalcolmAuthFilesExist(configDir=None, run_profile=PROFILE_MALCOLM):
         (
             (run_profile == PROFILE_HEDGEHOG)
             or (
-                AuthFileCheck(os.path.join(MalcolmPath, os.path.join('nginx', 'htpasswd')))
-                and AuthFileCheck(os.path.join(MalcolmPath, os.path.join('nginx', 'nginx_ldap.conf')), allowEmpty=True)
+                AuthFileCheck(
+                    os.path.join(MalcolmPath, os.path.join('nginx', 'htpasswd')),
+                    allowEmpty=(auth_method == 'no_authentication'),
+                )
+                and AuthFileCheck(
+                    os.path.join(MalcolmPath, os.path.join('nginx', 'nginx_ldap.conf')),
+                    allowEmpty=(auth_method != 'ldap'),
+                )
                 and AuthFileCheck(
                     os.path.join(MalcolmPath, os.path.join('nginx', os.path.join('certs', 'cert.pem'))), allowEmpty=True
                 )
@@ -1689,31 +1697,40 @@ LOG_IGNORE_REGEX = re.compile(
   | Could\s+not\s+assign\s+group.+to\s+remotely-authenticated\s+user.+Group\s+not\s+found
   | curl.+localhost.+GET\s+/api/status\s+200
   | DB\s+saved\s+on\s+disk
+  | \[DEBUG\]\s+PIL\.
   | DEPRECATION
   | descheduling\s+job\s*id
   | DON'T\s+DO\s+IT.*bad\s+idea
   | Error\s+during\s+file\s+comparison:.*no\s+such\s+file
+  | Error\s+while\s+removing\s+state\s+from\s+statestore:\s+resource\s+.*\s+not\s+found
   | eshealth
   | esindices/list
   | executing\s+attempt_(transition|set_replica_count)\s+for
   | failed\s+to\s+get\s+tcp6?\s+stats\s+from\s+/proc
   | Failure\s+no\s+such\s+index\s+\[\.opendistro_security\]
   | Falling\s+back\s+to\s+single\s+shard\s+assignment
+  | Filebeat\s+is\s+unable\s+to\s+load\s+the\s+ingest\s+pipelines\s+
+  | File\s+was\s+truncated\.\s+Reading\s+file\s+from\s+offset\s+0\.
+  | files?\s+(is|are)\s+too\s+small\s+to\s+be\s+ingested
   | Fork\s+CoW\s+for\s+RDB
   | GET\s+/(_cat/health|api/status|sessions2-|arkime_\w+).+HTTP/[\d\.].+\b200\b
   | GET\s+/\s+.+\b200\b.+ELB-HealthChecker
   | GET\s+/wise/+stats
+  | (group|user)mod:\s+no\s+changes
   | i:\s+pcap:\s+read\s+\d+\s+file
   | Info:\s+checksum:\s+No\s+packets\s+with\s+invalid\s+checksum,\s+assuming\s+checksum\s+offloading\s+is\s+NOT\s+used
   | Info:\s+logopenfile:\s+eve-log\s+output\s+device\s+\(regular\)\s+initialized:\s+eve\.json
   | Info:\s+pcap:\s+(Starting\s+file\s+run|pcap\s+file)
   | Info:\s+unix-socket:
+  | is\s+configured\s+with\s+.pipeline.ecs_compatibility:\s+disabled
   | kube-probe/
+  | (libpng|MuPDF)\s+(warning|error):
   | loaded\s+config\s+'/etc/netbox/config/
-  | LOG:\s+checkpoint\s+(complete|starting)\
+  | LOG:\s+checkpoint\s+(complete|starting)\b
   | No\s+active\s+configuration\s+revision\s+found\s+-\s+falling\s+back\s+to\s+most\s+recent
   | Notice:\s+pcap:\s+read\s+(\d+)\s+file
   | opensearch.*has\s+insecure\s+file\s+permissions
+  | points\s+to\s+an\s+already\s+known\s+ingest\s+target
   | (POST|PUT)\s+/(arkime_\w+)(/\w+)?/_(d?stat|doc|search).+HTTP/[\d\.].+\b20[01]\b
   | POST\s+/_bulk\s+HTTP/[\d\.].+\b20[01]\b
   | POST\s+/server/php/\s+HTTP/\d+\.\d+"\s+\d+\s+\d+.*:8443/
@@ -1721,15 +1738,19 @@ LOG_IGNORE_REGEX = re.compile(
   | POST\s+HTTP/[\d\.].+\b200\b
   | reaped\s+unknown\s+pid
   | redis.*(changes.+seconds.+Saving|Background\s+saving\s+(started|terminated)|DB\s+saved\s+on\s+disk|Fork\s+CoW)
+  | \[redis\.work\]:\s+task\s+completed:\s+task
   | remov(ed|ing)\s+(old\s+file|dead\s+symlink|empty\s+directory)
   | retry\.go.+(send\s+unwait|done$)
   | running\s+full\s+sweep
   | running\s+without\s+any\s+HTTP\s+authentication\s+checking
   | saved_objects
   | scheduling\s+job\s*id.+opendistro-ism
+  | Some\s+characters\s+could\s+not\s+be\s+decoded
   | SSL/TLS\s+verifications\s+disabled
   | Successfully\s+handled\s+GET\s+request\s+for\s+'/'
+  | Table\s+_SummaryInformation\s+not\s+found
   | Test\s+run\s+complete.*:failed=>0,\s*:errored=>0\b
+  | The\s+directory\s+structure\s+may
   | throttling\s+index
   | unix-socket:.*(pcap-file\.tenant-id\s+not\s+set|Marking\s+current\s+task\s+as\s+done|Resetting\s+engine\s+state)
   | update_mapping
@@ -1737,6 +1758,8 @@ LOG_IGNORE_REGEX = re.compile(
   | use_field_mapping
   | Using\s+geoip\s+database
   | Warning:\s+app-layer-
+  | Warning:\s+Directory\s+has\s+a\s+target
+  | WARNING:\s+This\s+is\s+a\s+development\s+server
   | you\s+may\s+need\s+to\s+run\s+securityadmin
 )
 """,
@@ -2096,20 +2119,31 @@ def suggest_os_memory(total_gb: Optional[int] = None) -> str:
 
 
 def suggest_ls_memory(total_gb: Optional[int] = None) -> str:
-    """Return Logstash heap suggestion (e.g., "3g")."""
+    """Return Logstash heap suggestion (e.g., "3000m"), computed in MB."""
     if total_gb is None:
         total_gb = total_memory_gb()
-    # Rough rule: 1/8th of RAM, capped at 8 GiB, min 1 GiB, rounded.
-    heap_gb = max(1, min(8, max(1, total_gb // 8)))
-    return f"{heap_gb}g"
+
+    total_mb = int(total_gb) * 1024
+
+    if total_gb <= 16:
+        heap_mb = total_mb // 8
+    elif total_gb <= 32:
+        heap_mb = total_mb // 6
+    else:
+        heap_mb = total_mb // 4
+
+    # Clamp to [2g, 3g] in MB
+    heap_mb = min(max(heap_mb, 2500), 3 * 1024)
+
+    return f"{heap_mb}m"
 
 
 def suggest_ls_workers(cores: Optional[int] = None) -> int:
-    """Return recommended Logstash worker count."""
+    """Return recommended Logstash per-pipeline worker count."""
     if cores is None:
         cores = cpu_cores()
-    # Legacy rule: half the logical cores, capped at 6, min 1
-    return max(1, min(6, cores // 2))
+    # half the logical cores, capped at 3, min 1
+    return max(1, min(3, cores // 2))
 
 
 # ------------------------------------------------------------------

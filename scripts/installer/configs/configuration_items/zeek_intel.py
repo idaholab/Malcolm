@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 """Threat intelligence configuration items for Malcolm installer.
 
@@ -18,6 +18,8 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_ZEEK_INTEL_ITEM_EXPIRATION,
     KEY_CONFIG_ITEM_ZEEK_INTEL_ON_STARTUP,
     KEY_CONFIG_ITEM_ZEEK_PULL_INTELLIGENCE_FEEDS,
+    KEY_CONFIG_ITEM_ZEEK_INTEL_LIVE,
+    KEY_CONFIG_ITEM_ZEEK_INTEL_OFFLINE,
 )
 
 CONFIG_ITEM_ZEEK_PULL_INTELLIGENCE_FEEDS = ConfigItem(
@@ -64,6 +66,24 @@ CONFIG_ITEM_ZEEK_INTEL_ITEM_EXPIRATION = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Enter the value for Zeek's Intel::item_expiration timeout (-1min to disable)",
     widget_type=WidgetType.TEXT,
+)
+
+CONFIG_ITEM_ZEEK_INTEL_LIVE = ConfigItem(
+    key=KEY_CONFIG_ITEM_ZEEK_INTEL_LIVE,
+    label="Use Intel on Live Traffic",
+    default_value=True,
+    validator=lambda x: isinstance(x, bool),
+    question="Should Zeek use intelligence data when examining live traffic?",
+    widget_type=WidgetType.CHECKBOX,
+)
+
+CONFIG_ITEM_ZEEK_INTEL_OFFLINE = ConfigItem(
+    key=KEY_CONFIG_ITEM_ZEEK_INTEL_OFFLINE,
+    label="Use Intel on Uploaded PCAP",
+    default_value=True,
+    validator=lambda x: isinstance(x, bool),
+    question="Should Zeek use intelligence data when examining uploaded PCAP?",
+    widget_type=WidgetType.CHECKBOX,
 )
 
 

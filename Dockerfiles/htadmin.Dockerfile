@@ -1,6 +1,6 @@
 FROM debian:11-slim
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -12,31 +12,30 @@ LABEL org.opencontainers.image.description='Malcolm container providing htadmin 
 
 ARG DEFAULT_UID=33
 ARG DEFAULT_GID=33
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "www-data"
-ENV PGROUP "www-data"
-ENV PUSER_CHOWN "/var/www"
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="www-data"
+ENV PGROUP="www-data"
+ENV PUSER_CHOWN="/var/www"
 # not dropping privileges globally so nginx can bind privileged ports internally.
 # nginx and php-fpm will drop privileges to "www-data" user for worker processes
-ENV PUSER_PRIV_DROP false
+ENV PUSER_PRIV_DROP=false
 USER root
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
 
 ARG PHP_VERSION=7.4
 ARG MCRYPT_VERSION=1.0.4
 ARG BOOTSTRAP_VERSION=3.3.6
 
-ENV PHP_VERSION $PHP_VERSION
-ENV MCRYPT_VERSION $MCRYPT_VERSION
-ENV BOOTSTRAP_VERSION $BOOTSTRAP_VERSION
+ENV PHP_VERSION=$PHP_VERSION
+ENV MCRYPT_VERSION=$MCRYPT_VERSION
+ENV BOOTSTRAP_VERSION=$BOOTSTRAP_VERSION
 
-ENV HTADMIN_URL "https://codeload.github.com/mmguero-dev/htadmin/tar.gz/master"
+ENV HTADMIN_URL="https://codeload.github.com/mmguero-dev/htadmin/tar.gz/master"
 
 RUN apt-get -q update && \
-    apt-get -y -q --no-install-recommends upgrade && \
     apt-get -y -q --allow-downgrades --allow-remove-essential --allow-change-held-packages --no-install-recommends install \
       ca-certificates \
       curl \
@@ -109,9 +108,9 @@ CMD ["/usr/bin/supervisord", "-c", "/supervisord.conf", "-u", "root", "-n"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

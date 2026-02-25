@@ -29,6 +29,7 @@
 config.*/
 /redis
 /postgres
+/filescan-logs
 malcolm-config_2*.json
 malcolm-config_2*.yaml
 

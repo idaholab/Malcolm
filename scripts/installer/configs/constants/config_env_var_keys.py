@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 """
 Environment variable keys
@@ -61,7 +61,7 @@ KEY_ENV_FILEBEAT_WATCHER_POLLING = "FILEBEAT_WATCHER_POLLING"  # Use polling for
 
 KEY_ENV_FREQ_LOOKUP = "FREQ_LOOKUP"  # freq.py string randomness calculations
 
-KEY_ENV_LOGSTASH_PIPELINE_WORKERS = "pipeline.workers"  # logstash pipeline workers
+KEY_ENV_LOGSTASH_PIPELINE_WORKERS = "pipeline.workers"  # logstash workers (per pipeline)
 KEY_ENV_LOGSTASH_HOST = "LOGSTASH_HOST"  # Logstash host and port
 KEY_ENV_LOGSTASH_REVERSE_DNS = "LOGSTASH_REVERSE_DNS"  # automatic local reverse dns lookup
 KEY_ENV_LOGSTASH_OUI_LOOKUP = "LOGSTASH_OUI_LOOKUP"  # automatic MAC OUI lookup
@@ -128,15 +128,16 @@ KEY_ENV_SURICATA_AUTO_ANALYZE_PCAP_FILES = (
     "SURICATA_AUTO_ANALYZE_PCAP_FILES"  # automatic uploaded pcap analysis with suricata
 )
 
-KEY_ENV_ZEEK_VTOT_API2_KEY = "VTOT_API2_KEY"  # virustotal API key
 KEY_ENV_ZEEK_EXTRACTOR_MODE = "ZEEK_EXTRACTOR_MODE"  # zeek file extraction mode
-KEY_ENV_ZEEK_FILE_PRESERVATION = "EXTRACTED_FILE_PRESERVATION"  # zeek file preservation mode
+KEY_ENV_ZEEK_FILE_PRESERVATION = "FILESCAN_PRESERVATION"  # zeek file preservation mode
 KEY_ENV_ZEEK_DISABLE_ICS_ALL = "ZEEK_DISABLE_ICS_ALL"  # disable/enable ICS analyzers
 KEY_ENV_ZEEK_DISABLE_BEST_GUESS_ICS = "ZEEK_DISABLE_BEST_GUESS_ICS"  # disable/enable ICS best guess
 KEY_ENV_ZEEK_LIVE_CAPTURE = "ZEEK_LIVE_CAPTURE"  # live traffic analysis with Zeek
 KEY_ENV_ZEEK_DISABLE_STATS = "ZEEK_DISABLE_STATS"  # live capture statistics for Zeek
 KEY_ENV_ZEEK_ROTATED_PCAP = "ZEEK_ROTATED_PCAP"  # rotated captured PCAP analysis with Zeek (not live capture)
 KEY_ENV_ZEEK_AUTO_ANALYZE_PCAP_FILES = "ZEEK_AUTO_ANALYZE_PCAP_FILES"  # automatic uploaded pcap analysis with Zeek
+KEY_ENV_ZEEK_DISABLE_INTEL_LIVE = "ZEEK_DISABLE_INTEL_LIVE"  # disable/enable Zeek intel for live capture
+KEY_ENV_ZEEK_DISABLE_INTEL_OFFLINE = "ZEEK_DISABLE_INTEL_OFFLINE"  # disable/enable Zeek intel for uploaded PCAP
 KEY_ENV_ZEEK_INTEL_REFRESH_ON_STARTUP = (
     "ZEEK_INTEL_REFRESH_ON_STARTUP"  # Pull from threat intelligence feeds on container startup
 )
@@ -147,21 +148,22 @@ KEY_ENV_ZEEK_INTEL_FEED_SINCE = "ZEEK_INTEL_FEED_SINCE"  # Threat indicator "sin
 KEY_ENV_ZEEK_INTEL_ITEM_EXPIRATION = (
     "ZEEK_INTEL_ITEM_EXPIRATION"  # Intel::item_expiration timeout for intelligence items
 )
-KEY_ENV_ZEEK_FILE_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT = "EXTRACTED_FILE_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT"  # total disk fill threshold for pruning zeek extracted files
+KEY_ENV_ZEEK_FILE_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT = (
+    "FILESCAN_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT"  # total disk fill threshold for pruning zeek extracted files
+)
 KEY_ENV_ZEEK_FILE_PRUNE_THRESHOLD_MAX_SIZE = (
-    "EXTRACTED_FILE_PRUNE_THRESHOLD_MAX_SIZE"  # zeek extracted files maximum consumption threshold
+    "FILESCAN_PRUNE_THRESHOLD_MAX_SIZE"  # zeek extracted files maximum consumption threshold
 )
-KEY_ENV_ZEEK_FILE_HTTP_SERVER_ENABLE = "EXTRACTED_FILE_HTTP_SERVER_ENABLE"  # HTTP server for extracted files
-KEY_ENV_ZEEK_FILE_HTTP_SERVER_ZIP = "EXTRACTED_FILE_HTTP_SERVER_ZIP"  # ZIP HTTP server for extracted files
+KEY_ENV_ZEEK_FILE_HTTP_SERVER_ENABLE = "FILESCAN_HTTP_SERVER_ENABLE"  # HTTP server for extracted files
+KEY_ENV_ZEEK_FILE_HTTP_SERVER_ZIP = "FILESCAN_HTTP_SERVER_ZIP"  # ZIP HTTP server for extracted files
 KEY_ENV_ZEEK_FILE_HTTP_SERVER_KEY = (
-    "EXTRACTED_FILE_HTTP_SERVER_KEY"  # key for encrypted HTTP-served extracted files (' -> '' for escaping in YAML)
+    "FILESCAN_HTTP_SERVER_KEY"  # key for encrypted HTTP-served extracted files (' -> '' for escaping in YAML)
 )
-KEY_ENV_ZEEK_FILE_ENABLE_YARA = "EXTRACTED_FILE_ENABLE_YARA"  # file scanning via yara
-KEY_ENV_ZEEK_FILE_ENABLE_CAPA = "EXTRACTED_FILE_ENABLE_CAPA"  # PE file scanning via capa
-KEY_ENV_ZEEK_FILE_ENABLE_CLAMAV = "EXTRACTED_FILE_ENABLE_CLAMAV"  # file scanning via clamav
-KEY_ENV_ZEEK_FILE_ENABLE_VTOT = "EXTRACTED_FILE_ENABLE_VTOT"  # file scanning via virustotal
-KEY_ENV_ZEEK_FILE_UPDATE_RULES = "EXTRACTED_FILE_UPDATE_RULES"  # rule updates (yara/capa via git, clamav via freshclam)
-KEY_ENV_ZEEK_FILE_WATCHER_POLLING = "EXTRACTED_FILE_WATCHER_POLLING"  # Use polling for file watching vs. native
+KEY_ENV_PIPELINE_RULES_UPDATE = "RULES_UPDATE_ENABLED"  # file scanning rule/signature updates
+KEY_ENV_PIPELINE_ENABLED = (
+    "PIPELINE_DISABLED"  # Pipeline DISABLED (note that this is boolean is reversed from the installer logic)
+)
+KEY_ENV_PIPELINE_WORKERS = "STRELKA_BACKEND_PROCS"
 
 
 def get_env_key_dict():

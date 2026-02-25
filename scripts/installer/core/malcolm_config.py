@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 """Configuration store for Malcolm installer settings."""
 
@@ -15,6 +15,7 @@ import shutil
 from collections import defaultdict
 from enum import Enum
 from typing import Dict, Any, Callable, List, Tuple, Optional
+from pathlib import Path
 
 from scripts.malcolm_constants import (
     COMPOSE_MALCOLM_EXTENSION,
@@ -36,13 +37,16 @@ from scripts.malcolm_constants import (
     COMPOSE_MALCOLM_EXTENSION_PRUNE_LOGS,
 )
 from scripts.malcolm_common import (
+    DEFAULT_FILESCAN_LOG_DIR,
     DEFAULT_INDEX_DIR,
     DEFAULT_INDEX_SNAPSHOT_DIR,
     DEFAULT_PCAP_DIR,
     DEFAULT_SURICATA_LOG_DIR,
     DEFAULT_ZEEK_LOG_DIR,
     DotEnvDynamic,
+    FILEBEAT_FILESCAN_LOG_PATH,
     FILEBEAT_ZEEK_LOG_CONTAINER_PATH,
+    FILESCAN_LOG_CONTAINER_PATH,
     get_default_config_dir,
     LocalPathForContainerBindMount,
     OPENSEARCH_BACKUP_CONTAINER_PATH,
@@ -819,6 +823,11 @@ class MalcolmConfig(ObservableStoreMixin):
                 "filebeat",
                 FILEBEAT_ZEEK_LOG_CONTAINER_PATH,
                 os.path.realpath(os.path.join(os.path.dirname(compose_file_name), DEFAULT_ZEEK_LOG_DIR)),
+            ),
+            KEY_CONFIG_ITEM_FILESCAN_LOG_DIR: (
+                "filescan",
+                FILESCAN_LOG_CONTAINER_PATH,
+                os.path.realpath(os.path.join(os.path.dirname(compose_file_name), DEFAULT_FILESCAN_LOG_DIR)),
             ),
             KEY_CONFIG_ITEM_SURICATA_LOG_DIR: (
                 "suricata",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 import argparse
 import json
@@ -27,9 +27,13 @@ from scripts.malcolm_constants import (
     DEFAULT_INDEX_SNAPSHOT_DIR,
     DEFAULT_SURICATA_LOG_DIR,
     DEFAULT_ZEEK_LOG_DIR,
+    DEFAULT_FILESCAN_LOG_DIR,
     MALCOLM_DB_DIR,
     MALCOLM_LOGS_DIR,
     MALCOLM_PCAP_DIR,
+    PROFILE_KEY,
+    PROFILE_MALCOLM,
+    PROFILE_HEDGEHOG,
     OrchestrationFramework,
     PresentationMode,
     SettingsFileFormat,
@@ -146,7 +150,6 @@ def handle_artifact_path_preseed_file(malcolm_config):
     )
     if malcolm_config and os.path.isfile(disk_format_info_file):
         try:
-            InstallerLogger.debug("here")
             with open(disk_format_info_file) as f:
                 disk_format_info = LoadFileIfJson(f)
 
@@ -154,7 +157,7 @@ def handle_artifact_path_preseed_file(malcolm_config):
 
                 dirs_to_create = {
                     MALCOLM_DB_DIR: [DEFAULT_INDEX_DIR, DEFAULT_INDEX_SNAPSHOT_DIR],
-                    MALCOLM_LOGS_DIR: [DEFAULT_ZEEK_LOG_DIR, DEFAULT_SURICATA_LOG_DIR],
+                    MALCOLM_LOGS_DIR: [DEFAULT_ZEEK_LOG_DIR, DEFAULT_SURICATA_LOG_DIR, DEFAULT_FILESCAN_LOG_DIR],
                 }
                 for base_key, subdirs in dirs_to_create.items():
                     if base_path := disk_format_info.get(base_key):
@@ -167,6 +170,7 @@ def handle_artifact_path_preseed_file(malcolm_config):
                     (MALCOLM_PCAP_DIR, None, KEY_CONFIG_ITEM_PCAP_DIR, False),
                     (MALCOLM_LOGS_DIR, DEFAULT_SURICATA_LOG_DIR, KEY_CONFIG_ITEM_SURICATA_LOG_DIR, True),
                     (MALCOLM_LOGS_DIR, DEFAULT_ZEEK_LOG_DIR, KEY_CONFIG_ITEM_ZEEK_LOG_DIR, True),
+                    (MALCOLM_LOGS_DIR, DEFAULT_FILESCAN_LOG_DIR, KEY_CONFIG_ITEM_FILESCAN_LOG_DIR, True),
                 ]
                 default_storage = True
                 for base_key, subdir, config_key, path_must_exist in paths_to_check:
@@ -498,7 +502,23 @@ def main():
             and sys.stdin.isatty()
             and sys.stdout.isatty()
         ):
-            splash_screen()
+            # just "peek" at PROFILE process.env in the default config directory
+            #   we haven't loaded the config yet, or even imported python-dotenv,
+            #   so we're doing this the caveman way
+            splash_profile = PROFILE_MALCOLM
+            process_env_file = os.path.join(get_default_config_dir(), "process.env")
+            if os.path.isfile(process_env_file):
+                with open(process_env_file) as f:
+                    for line in f:
+                        if line.startswith(f"{PROFILE_KEY}="):
+                            splash_profile_tmp = line.split("=", 1)[1].strip()
+                            splash_profile = (
+                                splash_profile_tmp
+                                if splash_profile_tmp in (PROFILE_MALCOLM, PROFILE_HEDGEHOG)
+                                else PROFILE_MALCOLM
+                            )
+                            break
+            splash_screen(profile=splash_profile)
     except Exception:
         # Splash is non-critical; ignore failures
         pass

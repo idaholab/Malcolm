@@ -15,9 +15,10 @@ Malcolm leverages the following excellent open source tools, among others:
 * [Zeek](https://www.zeek.org) - a network analysis framework and IDS
 * [Suricata](https://suricata.io/) - an IDS and threat detection engine
 * [netsniff-ng](http://netsniff-ng.org/) or [tcpdump](https://www.tcpdump.org/) - for simpler capture-only deployments where initial traffic parsing and metadata forwarding are not required
-* [Yara](https://github.com/VirusTotal/yara) - a tool used to identify and classify malware samples (used for scanning files [extracted by Zeek](file-scanning.md#ZeekFileExtraction))
-* [Capa](https://github.com/fireeye/capa) - a tool for detecting capabilities in executable files (used for scanning files [extracted by Zeek](file-scanning.md#ZeekFileExtraction))
-* [ClamAV](https://www.clamav.net/) - an antivirus engine (used for scanning files [extracted by Zeek](file-scanning.md#ZeekFileExtraction))
+* [Strelka](https://target.github.io/strelka/#/) - a real-time, container-based file scanning system used for threat hunting, threat detection, and incident response (used for scanning files [extracted by Zeek](file-scanning.md#ZeekFileExtraction))
+    - [Yara](https://github.com/VirusTotal/yara) - a tool used to identify and classify malware samples
+    - [Capa](https://github.com/fireeye/capa) - a tool for detecting capabilities in executable files
+    - [ClamAV](https://www.clamav.net/) - an antivirus engine
 * [Threat intelligence feeds](zeek-intel.md) - indicators of compromise can be pulled from [MISP](zeek-intel.md#ZeekIntelMISP), [TAXII](zeek-intel.md#ZeekIntelSTIX), [Google](zeek-intel.md#ZeekIntelGoogle), and [Mandiant](zeek-intel.md#ZeekIntelMandiant) for use with the [Zeek intelligence framework](zeek-intel.md#ZeekIntel)
 * [CyberChef](https://github.com/gchq/CyberChef) - a "Swiss Army Knife" data conversion tool
 * [evtx](https://github.com/omerbenamram/evtx) - a fast and safe parser for the Windows XML Event Log (EVTX) format
@@ -33,19 +34,25 @@ Malcolm leverages the following excellent open source tools, among others:
 * [Keycloak](https://www.keycloak.org/) - an identity and access management (IAM) tool
 * [OpenResty](https://openresty.org/) - a dynamic web platform based on [Nginx](https://nginx.org/) and [LuaJIT](http://luajit.org/) for HTTPS and reverse proxying Malcolm components
 * [nginx-auth-ldap](https://github.com/kvspb/nginx-auth-ldap) - an LDAP authentication module for Nginx
-* [Fluent Bit](https://fluentbit.io/) - for forwarding metrics to Malcolm from [network sensors](live-analysis.md#Hedgehog) (packet-capture appliances)
+* [Fluent Bit](https://fluentbit.io/) - for forwarding metrics to Malcolm from [network sensors](live-analysis.md#Hedgehog)
 * [Mark Baggett](https://github.com/MarkBaggett)'s [freq](https://github.com/MarkBaggett/freq) - a tool for calculating entropy of strings (e.g., domain names observed in DNS traffic)
-* [Florian Roth](https://github.com/Neo23x0)'s [Signature-Base](https://github.com/Neo23x0/signature-base) Yara ruleset
-* [Bart Blaze](https://github.com/bartblaze)'s [Yara ruleset](https://github.com/bartblaze/Yara-rules)
-* [ReversingLabs](https://github.com/reversinglabs)' [Yara ruleset](https://github.com/reversinglabs/reversinglabs-yara-rules)
-* These [Zeek packages]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/shared/bin/zeek_install_plugins.sh):
+* These YARA rulesets:
+    * [advanced-threat-research/Yara-Rules](https://github.com/advanced-threat-research/Yara-Rules)
+    * [bartblaze/Yara-rules](https://github.com/bartblaze/Yara-rules)
+    * [elastic/protections-artifacts](https://github.com/elastic/protections-artifacts)
+    * [eset/malware-ioc](https://github.com/eset/malware-ioc)
+    * [kevoreilly/CAPEv2](https://github.com/kevoreilly/CAPEv2)
+    * [Neo23x0/signature-base](https://github.com/Neo23x0/signature-base)
+    * [reversinglabs/reversinglabs-yara-rules](https://github.com/reversinglabs/reversinglabs-yara-rules)
+    * [SEKOIA-IO/Community](https://github.com/SEKOIA-IO/Community)
+    * [volexity/threat-intel](https://github.com/volexity/threat-intel)
+* These [Zeek packages]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/zeek/scripts/zeek_install_plugins.sh):
     * Amazon.com, Inc.'s [ICS protocol](https://github.com/amzn?q=zeek) analyzers
     * Andrew Klaus's [Sniffpass](https://github.com/cybera/zeek-sniffpass) plugin for detecting cleartext passwords in HTTP POST requests
     * Andrew Klaus's [zeek-httpattacks](https://github.com/precurse/zeek-httpattacks) plugin for detecting noncompliant HTTP requests
     * [ICS protocol analyzers](https://github.com/cisagov/ICSNPP) for Zeek published by Idaho National Lab and DHS CISA
     * Numerous packages from [Corelight, Inc.](https://github.com/corelight)
     * FoxIO's [JA4+](https://blog.foxio.io/ja4%2B-network-fingerprinting) network fingerprinting plugin
-    * J-Gras's [Zeek::AF_Packet](https://github.com/J-Gras/zeek-af_packet-plugin) plugin
     * Johanna Amann's [CVE-2020-0601](https://github.com/0xxon/cve-2020-0601) ECC certificate validation plugin and [CVE-2020-13777](https://github.com/0xxon/cve-2020-13777) GnuTLS unencrypted session ticket detection plugin
     * Lexi Brent's [EternalSafety](https://github.com/0xl3x1/zeek-EternalSafety) plugin
     * MITRE Cyber Analytics Repository's [Bro/Zeek ATT&CK®-Based Analytics (BZAR)](https://github.com/mitre-attack/car/tree/master/implementations) scripts

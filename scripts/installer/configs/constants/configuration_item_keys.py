@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 """
 Configuration key constants for Malcolm
@@ -54,17 +54,14 @@ KEY_CONFIG_ITEM_FILEBEAT_TCP_PARSE_DROP_FIELD = "filebeatTcpParseDropField"
 KEY_CONFIG_ITEM_FILEBEAT_TCP_TAG = "filebeatTcpTag"
 
 # File carve/extraction options
-KEY_CONFIG_ITEM_FILE_CARVE_ENABLED = "fileCarveEnabled"
 KEY_CONFIG_ITEM_FILE_CARVE_MODE = "fileCarveMode"
 KEY_CONFIG_ITEM_FILE_PRESERVE_MODE = "filePreserveMode"
 KEY_CONFIG_ITEM_FILE_CARVE_HTTP_SERVER = "fileCarveHttpServer"
 KEY_CONFIG_ITEM_FILE_CARVE_HTTP_SERVER_ZIP = "fileCarveHttpServerZip"
 KEY_CONFIG_ITEM_FILE_CARVE_HTTP_SERVE_ENCRYPT_KEY = "fileCarveHttpServeEncryptKey"
-KEY_CONFIG_ITEM_CLAM_AV_SCAN = "clamAvScan"
-KEY_CONFIG_ITEM_YARA_SCAN = "yaraScan"
-KEY_CONFIG_ITEM_CAPA_SCAN = "capaScan"
-KEY_CONFIG_ITEM_VTOT_API_KEY = "vtotApiKey"
 KEY_CONFIG_ITEM_FILE_SCAN_RULE_UPDATE = "fileScanRuleUpdate"
+KEY_CONFIG_ITEM_PIPELINE_ENABLED = "pipelineEnabled"
+KEY_CONFIG_ITEM_PIPELINE_WORKERS = "pipelineWorkers"
 
 # Logstash options
 KEY_CONFIG_ITEM_LS_MEMORY = "lsMemory"
@@ -141,6 +138,7 @@ KEY_CONFIG_ITEM_CLEAN_UP_OLD_INDICES = "cleanUpOldIndices"
 KEY_CONFIG_ITEM_USE_DEFAULT_STORAGE_LOCATIONS = "useDefaultStorageLocations"
 KEY_CONFIG_ITEM_PCAP_DIR = "pcapDir"
 KEY_CONFIG_ITEM_ZEEK_LOG_DIR = "zeekLogDir"
+KEY_CONFIG_ITEM_FILESCAN_LOG_DIR = "filescanLogDir"
 KEY_CONFIG_ITEM_SURICATA_LOG_DIR = "suricataLogDir"
 KEY_CONFIG_ITEM_INDEX_DIR = "indexDir"
 KEY_CONFIG_ITEM_INDEX_SNAPSHOT_DIR = "indexSnapshotDir"
@@ -164,6 +162,8 @@ KEY_CONFIG_ITEM_ZEEK_INTEL_ON_STARTUP = "zeekIntelOnStartup"
 KEY_CONFIG_ITEM_ZEEK_INTEL_FEED_SINCE = "zeekIntelFeedSince"
 KEY_CONFIG_ITEM_ZEEK_INTEL_CRON_EXPRESSION = "zeekIntelCronExpression"
 KEY_CONFIG_ITEM_ZEEK_INTEL_ITEM_EXPIRATION = "zeekIntelItemExpiration"
+KEY_CONFIG_ITEM_ZEEK_INTEL_LIVE = "zeekIntelLive"
+KEY_CONFIG_ITEM_ZEEK_INTEL_OFFLINE = "zeekIntelOffline"
 
 
 def get_configuration_item_keys_dict():

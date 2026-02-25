@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 import sys
 
@@ -461,6 +461,23 @@ def checkWiseFile():
     if not os.path.isfile(wiseFile):
         logging.info(f"Creating {wiseFile} from {os.path.basename(wiseExampleFile)}")
         shutil.copyfile(wiseExampleFile, wiseFile)
+
+
+def getNginxAuthMethod():
+    global args
+    global dotenvImported
+
+    authCommonEnvFile = os.path.join(args.configDir, 'auth-common.env')
+    if args.authMode:
+        nginxAuthMode = str(args.authMode).lower()
+    else:
+        nginxAuthMode = 'unknown'
+        if os.path.isfile(authCommonEnvFile):
+            nginxAuthMode = str(
+                dotenvImported.dotenv_values(authCommonEnvFile).get('NGINX_AUTH_MODE', nginxAuthMode)
+            ).lower()
+
+    return nginxAuthMode
 
 
 def malcolm_iso_services_op(start):
@@ -1279,9 +1296,10 @@ def stop(wipe=False):
                 # there is some overlap here among some of these containers, but it doesn't matter
                 boundPathsToWipe = (
                     BoundPath("filebeat", "/zeek", True, None, None),
-                    BoundPath("file-monitor", "/zeek/logs", True, None, None),
+                    BoundPath("filescan", "/filescan/data/logs", True, None, ["."]),
                     BoundPath("opensearch", "/usr/share/opensearch/data", True, ["nodes"], None),
                     BoundPath("pcap-monitor", "/pcap", True, ["arkime-live", "processed", "upload"], None),
+                    BoundPath("redis", "/data", True, None, None),
                     BoundPath("suricata", "/var/log/suricata", True, None, ["."]),
                     BoundPath(
                         "upload",
@@ -1371,20 +1389,25 @@ def start():
     global dotenvImported
 
     if args.service is None:
-        touch(os.path.join(GetMalcolmPath(), os.path.join('htadmin', 'metadata')))
         touch(os.path.join(GetMalcolmPath(), '.opensearch.primary.curlrc'))
         touch(os.path.join(GetMalcolmPath(), '.opensearch.secondary.curlrc'))
+        touch(os.path.join(GetMalcolmPath(), os.path.join('htadmin', 'metadata')))
+        touch(os.path.join(GetMalcolmPath(), os.path.join('nginx', 'htpasswd')))
         touch(os.path.join(GetMalcolmPath(), os.path.join('nginx', 'nginx_ldap.conf')))
 
         # make sure the auth files exist. if we are in an interactive shell and we're
         # missing any of the auth files, prompt to create them now
         if sys.__stdin__.isatty() and (
-            not MalcolmAuthFilesExist(configDir=args.configDir, run_profile=args.composeProfile)
+            not MalcolmAuthFilesExist(
+                configDir=args.configDir, run_profile=args.composeProfile, auth_method=getNginxAuthMethod()
+            )
         ):
             authSetup()
 
         # still missing? sorry charlie
-        if not MalcolmAuthFilesExist(configDir=args.configDir, run_profile=args.composeProfile):
+        if not MalcolmAuthFilesExist(
+            configDir=args.configDir, run_profile=args.composeProfile, auth_method=getNginxAuthMethod()
+        ):
             raise Exception(
                 'Files relating to authentication and/or secrets are missing, please run ./scripts/auth_setup to generate them'
             )
@@ -1427,7 +1450,8 @@ def start():
         if args.service is None:
             # make sure some directories exist before we start
             boundPathsToCreate = (
-                BoundPath("file-monitor", "/zeek/logs", False, None, None),
+                BoundPath("filescan", "/filescan/data/logs", False, None, None),
+                BoundPath("filescan", "/filescan/data/files", False, None, None),
                 BoundPath("nginx-proxy", "/var/local/ca-trust", False, None, None),
                 BoundPath("netbox", "/opt/netbox/netbox/media", False, None, None),
                 BoundPath("postgres", "/var/lib/postgresql/data", False, None, None),
@@ -1443,10 +1467,10 @@ def start():
                     [os.path.join('tmp', 'spool'), "variants"],
                     None,
                 ),
-                BoundPath("zeek", "/zeek/extract_files", False, None, None),
+                BoundPath("zeek", "/zeek/extract_files", False, ["filescan"], None),
                 BoundPath("zeek", "/zeek/upload", False, None, None),
-                BoundPath("zeek", "/opt/zeek/share/zeek/site/custom", False, None, None),
-                BoundPath("zeek", "/opt/zeek/share/zeek/site/intel", False, ["Mandiant", "MISP", "STIX"], None),
+                BoundPath("zeek", "/usr/local/zeek/share/zeek/site/custom", False, None, None),
+                BoundPath("zeek", "/usr/local/zeek/share/zeek/site/intel", False, ["Mandiant", "MISP", "STIX"], None),
                 BoundPath("zeek-live", "/zeek/live", False, ["spool"], None),
                 BoundPath(
                     "filebeat", "/zeek", False, ["processed", "current", "live", "extract_files", "upload"], None
@@ -1592,8 +1616,10 @@ def start():
                 imageSource=args.imageSource,
                 imageTag=args.imageTag,
                 injectResources=args.injectResources,
+                preferHeavyWorkloadSeparation=args.preferHeavyWorkloadSeparation,
                 startCapturePods=not args.noCapturePodsStart,
                 noCapabilities=args.noCapabilities,
+                dryrun=args.dryRun,
             )
 
             if dictsearch(startResults, 'error'):
@@ -1601,7 +1627,8 @@ def start():
                     f"Starting the {args.namespace} namespace and creating its underlying resources returned the following error(s):\n"
                 )
                 logging.error(startResults)
-
+            elif args.dryRun:
+                logging.info(json.dumps(startResults))
             else:
                 logging.debug(startResults)
 
@@ -1635,11 +1662,11 @@ def authSetup():
     if (pyPlatform != PLATFORM_WINDOWS) and which("croc"):
         txRxScript = 'tx-rx-secure.sh' if which('tx-rx-secure.sh') else None
         if not txRxScript:
-            txRxScript = os.path.join(GetMalcolmPath(), os.path.join('shared', os.path.join('bin', 'tx-rx-secure.sh')))
+            txRxScript = os.path.join(GetMalcolmPath(), os.path.join('scripts', 'tx-rx-secure.sh'))
             txRxScript = (
                 txRxScript
                 if (txRxScript and os.path.isfile(txRxScript))
-                else os.path.join(GetMalcolmPath(), os.path.join('scripts', 'tx-rx-secure.sh'))
+                else os.path.join(GetMalcolmPath(), os.path.join('shared', os.path.join('bin', 'tx-rx-secure.sh')))
             )
             txRxScript = txRxScript if (txRxScript and os.path.isfile(txRxScript)) else '/usr/local/bin/tx-rx-secure.sh'
             txRxScript = txRxScript if (txRxScript and os.path.isfile(txRxScript)) else '/usr/bin/tx-rx-secure.sh'
@@ -1649,15 +1676,8 @@ def authSetup():
     authCommonEnvFile = os.path.join(args.configDir, 'auth-common.env')
     nginxEnvFile = os.path.join(args.configDir, 'nginx.env')
     openSearchEnvFile = os.path.join(args.configDir, 'opensearch.env')
+    nginxAuthMode = getNginxAuthMethod()
 
-    if args.authMode:
-        nginxAuthMode = str(args.authMode).lower()
-    else:
-        nginxAuthMode = 'unknown'
-        if os.path.isfile(authCommonEnvFile):
-            nginxAuthMode = str(
-                dotenvImported.dotenv_values(authCommonEnvFile).get('NGINX_AUTH_MODE', nginxAuthMode)
-            ).lower()
     netboxMode = ''
     if os.path.isfile(netboxCommonEnvFile):
         netboxMode = str(dotenvImported.dotenv_values(netboxCommonEnvFile).get('NETBOX_MODE', '')).lower()
@@ -1869,6 +1889,7 @@ def authSetup():
     defaultBehavior = (
         UserInputDefaultsBehavior.DefaultsPrompt if not args.cmdAuthSetupNonInteractive else noninteractiveBehavior
     )
+    authMethodChanged = False
 
     try:
         for authItem in authConfigChoices[1:]:
@@ -1926,6 +1947,7 @@ def authSetup():
                             choices=authMethodChoices,
                         ).lower()
                     if newNginxAuthMode:
+                        authMethodChanged = nginxAuthMode != newNginxAuthMode
                         nginxAuthMode = newNginxAuthMode
 
                     ldapStartTLS = False
@@ -2015,6 +2037,13 @@ def authSetup():
                             ],
                             stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH,
                         )
+
+                    if authMethodChanged and (authConfigChoice == 'all'):
+                        DisplayMessage(
+                            f'Authentication method has changed! Please re-run auth_setup for new options.',
+                            defaultBehavior=defaultBehavior,
+                        )
+                        break
 
                 elif authItem[0] == 'admin':
                     # prompt username and password
@@ -3068,6 +3097,15 @@ def main():
         help='Inject container resources from kubernetes-container-resources.yml (only for "start" operation with Kubernetes)',
     )
     kubernetesGroup.add_argument(
+        '--separate-heavy-workloads',
+        dest='preferHeavyWorkloadSeparation',
+        type=str2bool,
+        nargs='?',
+        const=True,
+        default=False,
+        help='Attempt to schedule "workload-group: heavy" deployments on different nodes (only for "start" operation with Kubernetes)',
+    )
+    kubernetesGroup.add_argument(
         '--image-source',
         required=False,
         dest='imageSource',
@@ -3083,7 +3121,7 @@ def main():
         metavar='<string>',
         type=str,
         default=os.getenv('MALCOLM_IMAGE_TAG', None),
-        help='Tag for container images (e.g., "25.12.0"; only for "start" operation with Kubernetes)',
+        help='Tag for container images (e.g., "26.02.0"; only for "start" operation with Kubernetes)',
     )
     kubernetesGroup.add_argument(
         '--delete-namespace',
@@ -3093,6 +3131,15 @@ def main():
         const=True,
         default=False,
         help='Delete Kubernetes namespace (only for "wipe" operation with Kubernetes)',
+    )
+    kubernetesGroup.add_argument(
+        '--dry-run',
+        dest='dryRun',
+        type=str2bool,
+        nargs='?',
+        const=True,
+        default=False,
+        help="Dry run, don't actually deploy (only for \"start\" operation with Kubernetes)",
     )
 
     authSetupGroup = parser.add_argument_group('Authentication Setup')

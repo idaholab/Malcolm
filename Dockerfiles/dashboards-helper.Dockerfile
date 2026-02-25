@@ -1,6 +1,6 @@
 FROM debian:13-slim
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -12,20 +12,20 @@ LABEL org.opencontainers.image.description='Malcolm container providing OpenSear
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "helper"
-ENV PGROUP "helper"
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="helper"
+ENV PGROUP="helper"
 # This is to handle an issue when running with rootless podman and
 #   "userns_mode: keep-id". It seems that anything defined as a VOLUME
 #   in the Dockerfile is getting set with an ownership of 999:999.
 #   This is to override that, although I'm not yet sure if there are
 #   other implications. See containers/podman#23347.
-ENV PUSER_CHOWN "/data/init"
-ENV PUSER_PRIV_DROP true
+ENV PUSER_CHOWN="/data/init"
+ENV PUSER_PRIV_DROP=true
 USER root
 
-ENV TERM xterm
+ENV TERM=xterm
 
 ARG CREATE_OS_ARKIME_SESSION_INDEX="true"
 ARG ISM_SNAPSHOT_COMPRESSED=false
@@ -36,21 +36,21 @@ ARG DASHBOARDS_DARKMODE="true"
 ARG DASHBOARDS_TIMEPICKER_FROM="now-24h"
 ARG DASHBOARDS_TIMEPICKER_TO="now"
 
-ENV CREATE_OS_ARKIME_SESSION_INDEX $CREATE_OS_ARKIME_SESSION_INDEX
-ENV ISM_SNAPSHOT_COMPRESSED $ISM_SNAPSHOT_COMPRESSED
-ENV ISM_SNAPSHOT_REPO $ISM_SNAPSHOT_REPO
-ENV OFFLINE_REGION_MAPS_PORT $OFFLINE_REGION_MAPS_PORT
-ENV OPENSEARCH_DEFAULT_DASHBOARD $OPENSEARCH_DEFAULT_DASHBOARD
-ENV DASHBOARDS_DARKMODE $DASHBOARDS_DARKMODE
-ENV DASHBOARDS_TIMEPICKER_FROM $DASHBOARDS_TIMEPICKER_FROM
-ENV DASHBOARDS_TIMEPICKER_TO $DASHBOARDS_TIMEPICKER_TO
+ENV CREATE_OS_ARKIME_SESSION_INDEX=$CREATE_OS_ARKIME_SESSION_INDEX
+ENV ISM_SNAPSHOT_COMPRESSED=$ISM_SNAPSHOT_COMPRESSED
+ENV ISM_SNAPSHOT_REPO=$ISM_SNAPSHOT_REPO
+ENV OFFLINE_REGION_MAPS_PORT=$OFFLINE_REGION_MAPS_PORT
+ENV OPENSEARCH_DEFAULT_DASHBOARD=$OPENSEARCH_DEFAULT_DASHBOARD
+ENV DASHBOARDS_DARKMODE=$DASHBOARDS_DARKMODE
+ENV DASHBOARDS_TIMEPICKER_FROM=$DASHBOARDS_TIMEPICKER_FROM
+ENV DASHBOARDS_TIMEPICKER_TO=$DASHBOARDS_TIMEPICKER_TO
 ENV PATH="/data:${PATH}"
 
-ENV SUPERCRONIC_VERSION "0.2.39"
-ENV SUPERCRONIC_URL "https://github.com/aptible/supercronic/releases/download/v$SUPERCRONIC_VERSION/supercronic-linux-"
-ENV SUPERCRONIC_CRONTAB "/etc/crontab"
+ENV SUPERCRONIC_VERSION="0.2.43"
+ENV SUPERCRONIC_URL="https://github.com/aptible/supercronic/releases/download/v$SUPERCRONIC_VERSION/supercronic-linux-"
+ENV SUPERCRONIC_CRONTAB="/etc/crontab"
 
-ENV ECS_RELEASES_URL "https://api.github.com/repos/elastic/ecs/releases/latest"
+ENV ECS_RELEASES_URL="https://api.github.com/repos/elastic/ecs/releases/latest"
 
 COPY --from=ghcr.io/mmguero-dev/gostatic --chmod=755 /goStatic /usr/bin/goStatic
 ADD dashboards/dashboards /opt/dashboards
@@ -73,7 +73,6 @@ ADD --chmod=644 scripts/malcolm_constants.py /usr/local/bin/
 
 RUN export BINARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') && \
     apt-get -q update && \
-    apt-get -y -q --no-install-recommends upgrade && \
     apt-get -y -q --allow-downgrades --allow-remove-essential --allow-change-held-packages install --no-install-recommends \
       bash \
       bc \
@@ -140,9 +139,9 @@ VOLUME ["/data/init"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

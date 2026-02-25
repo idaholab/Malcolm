@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 FROM debian:13-slim
 
@@ -13,31 +13,31 @@ LABEL org.opencontainers.image.description='Malcolm container providing Arkime'
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "arkime"
-ENV PGROUP "arkime"
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="arkime"
+ENV PGROUP="arkime"
 # not dropping privileges globally: supervisord will take care of it
 # for all processes, but first we need root to sure capabilities for
 # traffic capturing tools are in-place before they are started.
 # despite doing setcap here in the Dockerfile, the chown in
 # docker-uid-gid-setup.sh will cause them to be lost, so we need
 # a final check in docker_entrypoint.sh before startup
-ENV PUSER_PRIV_DROP false
-ENV PUSER_RLIMIT_UNLOCK true
+ENV PUSER_PRIV_DROP=false
+ENV PUSER_RLIMIT_UNLOCK=true
 USER root
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-ENV ARKIME_DIR "/opt/arkime"
-ENV ARKIME_VERSION "5.8.3"
-ENV ARKIME_DEB_URL "https://github.com/arkime/arkime/releases/download/v${ARKIME_VERSION}/arkime_${ARKIME_VERSION}-1.debian13_XXX.deb"
-ENV ARKIME_JA4_SO_URL "https://github.com/arkime/arkime/releases/download/v${ARKIME_VERSION}/ja4plus.XXX.so"
-ENV ARKIME_LOCALELASTICSEARCH no
-ENV ARKIME_INET yes
+ENV ARKIME_DIR="/opt/arkime"
+ENV ARKIME_VERSION="5.8.3"
+ENV ARKIME_DEB_URL="https://github.com/arkime/arkime/releases/download/v${ARKIME_VERSION}/arkime_${ARKIME_VERSION}-1.debian13_XXX.deb"
+ENV ARKIME_JA4_SO_URL="https://github.com/arkime/arkime/releases/download/v${ARKIME_VERSION}/ja4plus.XXX.so"
+ENV ARKIME_LOCALELASTICSEARCH=no
+ENV ARKIME_INET=yes
 
 ARG MALCOLM_USERNAME=admin
 ARG ARKIME_ECS_PROVIDER=arkime
@@ -68,45 +68,43 @@ ARG MAXMIND_GEOIP_DB_LICENSE_KEY=""
 ARG MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL=""
 
 # Declare envs vars for each arg
-ENV MALCOLM_USERNAME $MALCOLM_USERNAME
+ENV MALCOLM_USERNAME=$MALCOLM_USERNAME
 # this needs to be present, but is unused as nginx is going to handle auth for us
-ENV ARKIME_PASSWORD "ignored"
-ENV ARKIME_ECS_PROVIDER $ARKIME_ECS_PROVIDER
-ENV ARKIME_ECS_DATASET $ARKIME_ECS_DATASET
-ENV ARKIME_DIR "/opt/arkime"
-ENV ARKIME_AUTO_ANALYZE_PCAP_FILES $ARKIME_AUTO_ANALYZE_PCAP_FILES
-ENV ARKIME_AUTO_ANALYZE_PCAP_THREADS $ARKIME_AUTO_ANALYZE_PCAP_THREADS
-ENV ARKIME_PACKET_THREADS $ARKIME_PACKET_THREADS
-ENV ARKIME_TPACKETV3_NUM_THREADS $ARKIME_TPACKETV3_NUM_THREADS
-ENV ARKIME_PCAP_PROCESSOR $ARKIME_PCAP_PROCESSOR
-ENV ARKIME_LIVE_CAPTURE $ARKIME_LIVE_CAPTURE
-ENV ARKIME_COMPRESSION_TYPE $ARKIME_COMPRESSION_TYPE
-ENV ARKIME_COMPRESSION_LEVEL $ARKIME_COMPRESSION_LEVEL
-ENV ARKIME_ROTATED_PCAP $ARKIME_ROTATED_PCAP
-ENV WISE $WISE
-ENV VIEWER $VIEWER
-ENV ARKIME_SSL $ARKIME_SSL
-ENV ARKIME_VIEWER_PORT $ARKIME_VIEWER_PORT
-ENV MANAGE_PCAP_FILES $MANAGE_PCAP_FILES
-ENV AUTO_TAG $AUTO_TAG
-ENV PCAP_PIPELINE_VERBOSITY $PCAP_PIPELINE_VERBOSITY
-ENV PCAP_MONITOR_HOST $PCAP_MONITOR_HOST
-ENV PCAP_NODE_NAME $PCAP_NODE_NAME
-ENV PCAP_PROCESSED_DIRECTORY $PCAP_PROCESSED_DIRECTORY
+ENV ARKIME_PASSWORD="ignored"
+ENV ARKIME_ECS_PROVIDER=$ARKIME_ECS_PROVIDER
+ENV ARKIME_ECS_DATASET=$ARKIME_ECS_DATASET
+ENV ARKIME_DIR="/opt/arkime"
+ENV ARKIME_AUTO_ANALYZE_PCAP_FILES=$ARKIME_AUTO_ANALYZE_PCAP_FILES
+ENV ARKIME_AUTO_ANALYZE_PCAP_THREADS=$ARKIME_AUTO_ANALYZE_PCAP_THREADS
+ENV ARKIME_PACKET_THREADS=$ARKIME_PACKET_THREADS
+ENV ARKIME_TPACKETV3_NUM_THREADS=$ARKIME_TPACKETV3_NUM_THREADS
+ENV ARKIME_PCAP_PROCESSOR=$ARKIME_PCAP_PROCESSOR
+ENV ARKIME_LIVE_CAPTURE=$ARKIME_LIVE_CAPTURE
+ENV ARKIME_COMPRESSION_TYPE=$ARKIME_COMPRESSION_TYPE
+ENV ARKIME_COMPRESSION_LEVEL=$ARKIME_COMPRESSION_LEVEL
+ENV ARKIME_ROTATED_PCAP=$ARKIME_ROTATED_PCAP
+ENV WISE=$WISE
+ENV VIEWER=$VIEWER
+ENV ARKIME_SSL=$ARKIME_SSL
+ENV ARKIME_VIEWER_PORT=$ARKIME_VIEWER_PORT
+ENV MANAGE_PCAP_FILES=$MANAGE_PCAP_FILES
+ENV AUTO_TAG=$AUTO_TAG
+ENV PCAP_PIPELINE_VERBOSITY=$PCAP_PIPELINE_VERBOSITY
+ENV PCAP_MONITOR_HOST=$PCAP_MONITOR_HOST
+ENV PCAP_NODE_NAME=$PCAP_NODE_NAME
+ENV PCAP_PROCESSED_DIRECTORY=$PCAP_PROCESSED_DIRECTORY
 
 ADD --chmod=644 arkime/requirements.txt /usr/local/src/
 
 RUN export DEBARCH=$(dpkg --print-architecture) && \
     sed -i "s/main$/main contrib non-free/g" /etc/apt/sources.list.d/debian.sources && \
     apt-get -q update && \
-    apt-get -y -q --no-install-recommends upgrade && \
     apt-get install -q -y --no-install-recommends \
       bc \
       bzip2 \
       curl \
       ethtool \
       file \
-      geoip-bin \
       git \
       gzip \
       inotify-tools \
@@ -129,6 +127,7 @@ RUN export DEBARCH=$(dpkg --print-architecture) && \
       libzmq5 \
       lua5.4 \
       lzma \
+      mmdb-bin \
       p7zip-full \
       procps \
       psmisc \
@@ -166,7 +165,6 @@ COPY --from=ghcr.io/mmguero-dev/gostatic --chmod=755 /goStatic /usr/bin/goStatic
 ADD --chmod=755 shared/bin/docker-uid-gid-setup.sh /usr/local/bin/
 ADD --chmod=755 shared/bin/service_check_passthrough.sh /usr/local/bin/
 ADD --chmod=755 shared/bin/self_signed_key_gen.sh /usr/local/bin/
-ADD --chmod=755 shared/bin/maxmind-mmdb-download.sh /usr/local/bin/
 ADD --chmod=755 shared/bin/nic-capture-setup.sh /usr/local/bin/
 ADD --chmod=755 shared/bin/opensearch_status.sh /usr/local/bin/
 ADD --chmod=755 shared/bin/pcap_processor.py /usr/local/bin/
@@ -224,9 +222,9 @@ CMD ["/usr/local/bin/supervisord", "-c", "/etc/supervisord.conf", "-n"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

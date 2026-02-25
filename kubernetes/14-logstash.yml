@@ -38,20 +38,11 @@ spec:
       labels:
         app: logstash
         role: log-processor
+        workload-group: heavy
     spec:
-      # affinity:
-      #   podAntiAffinity:
-      #     requiredDuringSchedulingIgnoredDuringExecution:
-      #     - labelSelector:
-      #         matchExpressions:
-      #         - key: app
-      #           operator: In
-      #           values:
-      #           - opensearch
-      #       topologyKey: "kubernetes.io/hostname"
       containers:
       - name: logstash-container
-        image: ghcr.io/idaholab/malcolm/logstash-oss:25.12.0
+        image: ghcr.io/idaholab/malcolm/logstash-oss:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -83,6 +74,8 @@ spec:
               name: netbox-common-env
           - configMapRef:
               name: netbox-env
+          - configMapRef:
+              name: filescan-env
           - secretRef:
               name: netbox-secret-env
           - configMapRef:
@@ -114,7 +107,7 @@ spec:
             subPath: "logstash"
       initContainers:
       - name: logstash-dirinit-container
-        image: ghcr.io/idaholab/malcolm/dirinit:25.12.0
+        image: ghcr.io/idaholab/malcolm/dirinit:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true

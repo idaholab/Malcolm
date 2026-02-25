@@ -1,6 +1,6 @@
 FROM debian:13-slim
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -12,28 +12,27 @@ LABEL org.opencontainers.image.description='Malcolm container providing an inter
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "freq"
-ENV PGROUP "freq"
-ENV PUSER_PRIV_DROP true
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="freq"
+ENV PGROUP="freq"
+ENV PUSER_PRIV_DROP=true
 USER root
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
 
 ARG FREQ_API_PORT=10004
 ARG FREQ_LOOKUP=true
 
-ENV FREQ_API_PORT $FREQ_API_PORT
-ENV FREQ_LOOKUP   $FREQ_LOOKUP
+ENV FREQ_API_PORT=$FREQ_API_PORT
+ENV FREQ_LOOKUP=$FREQ_LOOKUP
 
-ENV FREQ_URL "https://codeload.github.com/markbaggett/freq/tar.gz/master"
+ENV FREQ_URL="https://codeload.github.com/markbaggett/freq/tar.gz/master"
 
 ADD --chmod=644 freq-server/requirements.txt /usr/local/src/
 
 RUN apt-get -q update && \
-    apt-get -y -q --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
       curl \
       git \
@@ -85,9 +84,9 @@ CMD ["/usr/local/bin/supervisord", "-c", "/etc/supervisord.conf", "-n"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

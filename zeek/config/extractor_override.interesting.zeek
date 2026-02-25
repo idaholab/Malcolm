@@ -1,6 +1,6 @@
 #!/usr/bin/env zeek
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 export {
   redef extractor_always_extract_unknown = F;
@@ -101,6 +101,7 @@ export {
     ["application/zip"]= "zip",
     ["text/javascript"]= "js",
     ["text/jscript"]= "jsx",
+    ["text/php"]= "php",
     ["text/rtf"]= "rtf",
     ["text/vbscript"]= "vbs"
   } &default="dat";

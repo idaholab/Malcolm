@@ -108,6 +108,9 @@ PYCODE
   done
   cp ./config/includes.binary/install/preseed_base.cfg ./config/includes.binary/install/preseed_minimal.cfg
   cp ./config/includes.binary/install/preseed_base.cfg ./config/includes.binary/install/preseed_base_crypto.cfg
+
+  [[ "$IMAGE_NAME" == "hedgehog" ]] && VAR_PAR_SIZES="32000 48000 64000" || VAR_PAR_SIZES="48000 64000 72000"
+  sed -i "s/MALCOLM_VAR_PAR_SIZES/$VAR_PAR_SIZES/g" ./config/includes.binary/install/preseed_multipar.cfg
   cp ./config/includes.binary/install/preseed_multipar.cfg ./config/includes.binary/install/preseed_multipar_crypto.cfg
   cp ./config/includes.binary/install/preseed_multipar.cfg ./config/includes.binary/install/preseed_multipar_nolvm.cfg
   cp ./config/includes.binary/install/preseed_vmware.cfg ./config/includes.binary/install/preseed_vmware_nolvm.cfg
@@ -162,14 +165,12 @@ PYCODE
   mkdir -p "$MALCOLM_DEST_DIR/arkime/rules/"
   mkdir -p "$MALCOLM_DEST_DIR/config/"
   mkdir -p "$MALCOLM_DEST_DIR/filebeat/certs/"
-  mkdir -p "$MALCOLM_DEST_DIR/logstash/certs/"
+  mkdir -p "$MALCOLM_DEST_DIR/filescan-logs/"
   mkdir -p "$MALCOLM_DEST_DIR/htadmin/"
   mkdir -p "$MALCOLM_DEST_DIR/logstash/certs/"
   mkdir -p "$MALCOLM_DEST_DIR/logstash/maps/"
   mkdir -p "$MALCOLM_DEST_DIR/netbox/custom-plugins/requirements/"
   mkdir -p "$MALCOLM_DEST_DIR/netbox/media/"
-  mkdir -p "$MALCOLM_DEST_DIR/postgres/"
-  mkdir -p "$MALCOLM_DEST_DIR/redis/"
   mkdir -p "$MALCOLM_DEST_DIR/netbox/preload/"
   mkdir -p "$MALCOLM_DEST_DIR/nginx/ca-trust/"
   mkdir -p "$MALCOLM_DEST_DIR/nginx/certs/"
@@ -179,14 +180,16 @@ PYCODE
   mkdir -p "$MALCOLM_DEST_DIR/pcap/processed/"
   mkdir -p "$MALCOLM_DEST_DIR/pcap/upload/tmp/spool/"
   mkdir -p "$MALCOLM_DEST_DIR/pcap/upload/variants/"
+  mkdir -p "$MALCOLM_DEST_DIR/postgres/"
+  mkdir -p "$MALCOLM_DEST_DIR/redis/"
   mkdir -p "$MALCOLM_DEST_DIR/scripts/"
+  mkdir -p "$MALCOLM_DEST_DIR/strelka/"
   mkdir -p "$MALCOLM_DEST_DIR/suricata-logs/live/"
-  mkdir -p "$MALCOLM_DEST_DIR/suricata/rules/"
   mkdir -p "$MALCOLM_DEST_DIR/suricata/include-configs/"
+  mkdir -p "$MALCOLM_DEST_DIR/suricata/rules/"
   mkdir -p "$MALCOLM_DEST_DIR/yara/rules/"
   mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/current/"
-  mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/extract_files/preserved/"
-  mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/extract_files/quarantine/"
+  mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/extract_files/filescan/"
   mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/live/"
   mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/processed/"
   mkdir -p "$MALCOLM_DEST_DIR/zeek-logs/upload/"
@@ -201,6 +204,7 @@ PYCODE
   cp ./scripts/install.py "$MALCOLM_DEST_DIR/scripts/"
   cp -r ./scripts/installer/ "$MALCOLM_DEST_DIR/scripts/"
   rm -rf "$MALCOLM_DEST_DIR/scripts/installer/tests" "$MALCOLM_DEST_DIR/scripts/installer/ui/gui"
+  cp ./scripts/tx-rx-secure.sh "$MALCOLM_DEST_DIR/scripts/"
   cp ./scripts/control.py "$MALCOLM_DEST_DIR/scripts/"
   pushd "$MALCOLM_DEST_DIR/scripts/" >/dev/null 2>&1
   ln -s ./control.py auth_setup
@@ -220,10 +224,12 @@ PYCODE
   cp ./scripts/malcolm_constants.py "$MALCOLM_DEST_DIR/scripts/"
   cp ./scripts/malcolm_kubernetes.py "$MALCOLM_DEST_DIR/scripts/"
   cp ./scripts/malcolm_utils.py "$MALCOLM_DEST_DIR/scripts/"
+  cp ./scripts/package_zeek_logs.sh "$MALCOLM_DEST_DIR/scripts/"
   cp ./arkime/etc/wise.ini.example "$MALCOLM_DEST_DIR/arkime/etc/"
   cp ./arkime/rules/*.yml "$MALCOLM_DEST_DIR/arkime/rules/"
   cp ./logstash/maps/malcolm_severity.yaml "$MALCOLM_DEST_DIR/logstash/maps/"
   cp -r ./netbox/config/ "$MALCOLM_DEST_DIR/netbox/"
+  cp -r ./strelka/config/ "$MALCOLM_DEST_DIR/strelka/"
   cp ./netbox/preload/*.yml "$MALCOLM_DEST_DIR/netbox/preload/"
 
   sed -i "s/^\(MALCOLM_PROFILE=\).*/\1"${IMAGE_NAME}"/" "$MALCOLM_DEST_DIR"/config/process.env.example

@@ -1,6 +1,6 @@
 FROM postgres:16-alpine
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -12,15 +12,15 @@ LABEL org.opencontainers.image.description='Malcolm container providing the Post
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "postgres"
-ENV PGROUP "postgres"
-ENV PUSER_PRIV_DROP true
-ENV PUSER_CHOWN "/run/postgresql;/var/lib/postgresql"
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="postgres"
+ENV PGROUP="postgres"
+ENV PUSER_PRIV_DROP=true
+ENV PUSER_CHOWN="/run/postgresql;/var/lib/postgresql"
 USER root
 
-ENV TERM xterm
+ENV TERM=xterm
 
 COPY --from=ghcr.io/mmguero-dev/gostatic --chmod=755 /goStatic /usr/bin/goStatic
 ADD --chmod=755 shared/bin/docker-uid-gid-setup.sh /usr/local/bin/
@@ -31,7 +31,6 @@ ADD --chmod=755 postgres-scripts/docker-entrypoint-startdb.d/*.sh /docker-entryp
 ADD --chmod=755 postgres-scripts/*.sh /usr/local/bin/
 
 RUN apk update --no-cache && \
-    apk upgrade --no-cache && \
     apk add --no-cache bash jq procps psmisc rsync shadow tini && \
     apk add --no-cache --virtual .build-deps rsync && \
     rsync -a /usr/local/bin/ /usr/bin/ && \
@@ -59,9 +58,9 @@ CMD ["/usr/bin/docker-entrypoint.sh", "postgres"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

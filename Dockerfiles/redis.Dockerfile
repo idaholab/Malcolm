@@ -1,6 +1,6 @@
 FROM redis:7-alpine
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -12,14 +12,14 @@ LABEL org.opencontainers.image.description='Malcolm container providing Redis, a
 
 ARG DEFAULT_UID=999
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "redis"
-ENV PGROUP "redis"
-ENV PUSER_PRIV_DROP true
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="redis"
+ENV PGROUP="redis"
+ENV PUSER_PRIV_DROP=true
 USER root
 
-ENV TERM xterm
+ENV TERM=xterm
 
 COPY --from=ghcr.io/mmguero-dev/gostatic --chmod=755 /goStatic /usr/bin/goStatic
 ADD --chmod=755 shared/bin/docker-uid-gid-setup.sh /usr/local/bin/
@@ -27,11 +27,12 @@ ADD --chmod=755 shared/bin/service_check_passthrough.sh /usr/local/bin/
 ADD --chmod=755 container-health-scripts/redis.sh /usr/local/bin/container_health.sh
 
 RUN apk update --no-cache && \
-    apk upgrade --no-cache && \
     apk --no-cache add bash jq psmisc rsync shadow tini && \
     addgroup ${PUSER} tty
 
 WORKDIR /home/${PUSER}
+
+EXPOSE 6379
 
 ENTRYPOINT ["/sbin/tini", \
             "--", \
@@ -43,9 +44,9 @@ ENTRYPOINT ["/sbin/tini", \
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION
