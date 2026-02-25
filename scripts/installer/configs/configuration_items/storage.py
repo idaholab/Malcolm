@@ -76,7 +76,7 @@ CONFIG_ITEM_INDEX_DIR = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="OpenSearch index directory (blank for the default storage directory)",
-    widget_type=WidgetType.DIRECTORY,
+    widget_type=WidgetType.TEXT,
 )
 
 CONFIG_ITEM_INDEX_SNAPSHOT_DIR = ConfigItem(
@@ -86,7 +86,7 @@ CONFIG_ITEM_INDEX_SNAPSHOT_DIR = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="OpenSearch index snapshots directory (blank for the default storage directory)",
-    widget_type=WidgetType.DIRECTORY,
+    widget_type=WidgetType.TEXT,
 )
 
 CONFIG_ITEM_PCAP_DIR = ConfigItem(
@@ -96,7 +96,7 @@ CONFIG_ITEM_PCAP_DIR = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="PCAP storage directory (blank for the default storage directory)",
-    widget_type=WidgetType.DIRECTORY,
+    widget_type=WidgetType.TEXT,
     sort_priority=91,
 )
 
@@ -107,7 +107,7 @@ CONFIG_ITEM_ZEEK_LOG_DIR = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="Zeek log storage directory (blank for the default storage directory)",
-    widget_type=WidgetType.DIRECTORY,
+    widget_type=WidgetType.TEXT,
 )
 
 CONFIG_ITEM_FILESCAN_LOG_DIR = ConfigItem(
@@ -117,7 +117,7 @@ CONFIG_ITEM_FILESCAN_LOG_DIR = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="File scanning log storage directory (blank for the default storage directory)",
-    widget_type=WidgetType.DIRECTORY,
+    widget_type=WidgetType.TEXT,
     sort_priority=92,
 )
 
@@ -128,7 +128,7 @@ CONFIG_ITEM_SURICATA_LOG_DIR = ConfigItem(
     accept_blank=True,
     validator=lambda x: isinstance(x, str),
     question="Suricata log storage directory (blank for the default storage directory)",
-    widget_type=WidgetType.DIRECTORY,
+    widget_type=WidgetType.TEXT,
     sort_priority=93,
 )
 

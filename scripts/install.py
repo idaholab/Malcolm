@@ -461,22 +461,26 @@ def handle_config_export(parsed_args, malcolm_config, install_context):
 def determine_presentation_mode(parsed_args: argparse.Namespace) -> PresentationMode:
     """Determine which interface mode to use based on args and environment."""
 
-    # def check_for_gui_environment():
-    #     if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
-    #         try:
-    #             import customtkinter
-    #         except ImportError:
-    #             pass  # GUI not available
-    #     return
-
     def check_for_gui_environment() -> bool:
         if sys.platform.startswith("linux"):
             return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
         return True
 
-    def check_for_gui_library():
-        if not check_for_gui_environment():
+    def _ensure_venv_site_packages():
+        """Add the local .venv site-packages to sys.path if running under sudo."""
+        import glob
+
+        repo_root = os.path.realpath(os.path.join(SCRIPT_PATH, ".."))
+        pattern = os.path.join(repo_root, ".venv", "lib", "python*", "site-packages")
+        for sp in glob.glob(pattern):
+            if sp not in sys.path:
+                sys.path.insert(0, sp)
+
+    def check_for_gui_library(explicit=False):
+        if not explicit and not check_for_gui_environment():
             return None
+        if explicit:
+            _ensure_venv_site_packages()
         if not DoDynamicImport("customtkinter", "customtkinter"):
             return None
         return PresentationMode.MODE_GUI
@@ -508,11 +512,11 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
             return dui_mode
         raise RuntimeError("DUI mode was requested but python-dialog is not available")
     if parsed_args.gui:
-        if gui_mode:
-            return gui_mode
-        if dui_mode:
-            return dui_mode
-        return PresentationMode.MODE_TUI
+        # User explicitly asked for GUI - skip DISPLAY check, just try to import
+        gui_mode_explicit = check_for_gui_library(explicit=True)
+        if gui_mode_explicit:
+            return gui_mode_explicit
+        raise RuntimeError("GUI mode was requested but customtkinter is not available")
 
     # if nothing was explicitly requested attempt GUI, then DUI, else default to TUI
     if gui_mode:

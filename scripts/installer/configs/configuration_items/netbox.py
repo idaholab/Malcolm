@@ -21,8 +21,9 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_NETBOX_SITE_NAME,
     KEY_CONFIG_ITEM_NETBOX_URL,
 )
+from scripts.installer.configs.constants.profile_scope_keys import META_CHOICE_ALLOWED_PROFILES
 from scripts.malcolm_common import ValidNetBoxSubnetFilter
-from scripts.malcolm_constants import WidgetType
+from scripts.malcolm_constants import WidgetType, PROFILE_MALCOLM
 
 CONFIG_ITEM_NETBOX_MODE = ConfigItem(
     key=KEY_CONFIG_ITEM_NETBOX_MODE,
@@ -32,6 +33,11 @@ CONFIG_ITEM_NETBOX_MODE = ConfigItem(
     validator=lambda x: isinstance(x, str) and x in [v.value for v in NetboxMode],
     question="Select NetBox mode",
     widget_type=WidgetType.SELECT,
+    metadata={
+        META_CHOICE_ALLOWED_PROFILES: {
+            NetboxMode.LOCAL.value: [PROFILE_MALCOLM],
+        },
+    },
 )
 
 CONFIG_ITEM_NETBOX_URL = ConfigItem(

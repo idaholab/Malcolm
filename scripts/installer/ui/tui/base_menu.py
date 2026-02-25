@@ -86,6 +86,7 @@ class BaseMenu(ABC):
         return prompt_config_item_value(
             ui_mode=self.ui_mode,
             config_item=config_item,
+            malcolm_config=getattr(self, "malcolm_config", None),
             back_label=None,
             show_preamble=show_preamble,
         )

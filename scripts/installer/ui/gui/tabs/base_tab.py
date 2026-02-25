@@ -6,12 +6,6 @@
 from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 import customtkinter
 
-from scripts.installer.configs.constants.enums import (
-    FileExtractionMode,
-    NetboxMode,
-    OpenPortsChoices,
-    SearchEngineMode,
-)
 from scripts.installer.ui.gui.components.styles import (
     PANEL_BORDER_WIDTH,
     PANEL_COLORS,
@@ -22,23 +16,11 @@ from scripts.installer.ui.gui.components.styles import (
 
 from scripts.installer.ui.gui.widgets.config_item_widget import create_config_item_widget
 from scripts.installer.ui.gui.components.collapsible_container import CollapsibleContainer
+from scripts.installer.configs.constants.configuration_item_keys import KEY_CONFIG_ITEM_MALCOLM_PROFILE
+from scripts.installer.core.profile_scope import item_allowed_for_profile
 
 if TYPE_CHECKING:
     from scripts.installer.core.malcolm_config import MalcolmConfig
-
-
-# ENUM values that indicate children should be collapsed (feature disabled/minimal config)
-COLLAPSE_ENUM_VALUES = {
-    # Open Ports: NO/YES are presets, CUSTOMIZE shows children
-    OpenPortsChoices.NO.value,
-    OpenPortsChoices.YES.value,
-    # NetBox: DISABLED means children not needed
-    NetboxMode.DISABLED.value,
-    # File Extraction: NONE means no children needed
-    FileExtractionMode.NONE.value,
-    # OpenSearch: LOCAL means no remote URL needed
-    SearchEngineMode.OPENSEARCH_LOCAL.value,
-}
 
 
 class BaseTab:
@@ -111,6 +93,9 @@ class BaseTab:
 
         def render_item(key: str, item: Any, depth: int, parent_frame: customtkinter.CTkFrame):
             """Render a single item, recursively rendering children if it has any."""
+            if self._should_omit_item_for_profile(key):
+                return
+
             if key in rendered_keys:
                 return
             rendered_keys.add(key)
@@ -211,6 +196,14 @@ class BaseTab:
         )
         self._update_panel_style(key, is_visible)
 
+        # Hide iso_only items at build time when invisible
+        if not is_visible:
+            item = self.malcolm_config.get_item(key)
+            if item and item.metadata.get("iso_only"):
+                target = self.pack_targets.get(key)
+                if target:
+                    target.pack_forget()
+
         # Observe changes to update enabled/disabled state
         self.malcolm_config.observe(
             key,
@@ -218,25 +211,19 @@ class BaseTab:
         )
 
     def _compute_initial_collapse_state(self, key: str) -> bool:
-        """Compute collapse state based on parent value.
+        """Compute collapse state based on whether children are visible.
 
         Returns True if should be collapsed, False if expanded.
 
-        For boolean values: collapse when False (feature disabled)
-        For ENUM/string values: collapse when value is in COLLAPSE_ENUM_VALUES
+        Uses the dependency system as the source of truth: if no children
+        are visible, collapse the container.
         """
-        value = self.malcolm_config.get_value(key)
+        child_keys = self._children_map.get(key, [])
+        if not child_keys:
+            return False
 
-        # Boolean: collapse when False (feature disabled)
-        if isinstance(value, bool):
-            return not value
-
-        # String (ENUM value): check against known collapse values
-        if isinstance(value, str):
-            return value in COLLAPSE_ENUM_VALUES
-
-        # Default: expanded
-        return False
+        # Collapse when none of the children are visible
+        return not any(self.malcolm_config.is_item_visible(ck) for ck in child_keys)
 
     def _on_collapse_toggle(self, key: str, collapsed: bool):
         """Handle user clicking a collapse toggle."""
@@ -441,46 +428,117 @@ class BaseTab:
             parent, key, item, self.malcolm_config, accent_colors=self.accent_colors
         )
 
+    def _should_omit_item_for_profile(self, key: str) -> bool:
+        """Return True when item should be omitted entirely for selected profile."""
+        from itertools import product
+        from scripts.installer.core.dependencies import DEPENDENCY_CONFIG
+        from scripts.malcolm_constants import PROFILE_HEDGEHOG, PROFILE_MALCOLM
+
+        current_profile = self.malcolm_config.get_value(KEY_CONFIG_ITEM_MALCOLM_PROFILE)
+        if current_profile not in (PROFILE_HEDGEHOG, PROFILE_MALCOLM):
+            return False
+
+        item = self.malcolm_config.get_item(key)
+        if item and not item_allowed_for_profile(item, current_profile):
+            return True
+
+        dep_spec = DEPENDENCY_CONFIG.get(key)
+        if not dep_spec or not dep_spec.visibility or not dep_spec.visibility.depends_on:
+            return False
+
+        vis = dep_spec.visibility
+        if not callable(vis.condition):
+            return False
+
+        dep_keys = vis.depends_on if isinstance(vis.depends_on, list) else [vis.depends_on]
+        if KEY_CONFIG_ITEM_MALCOLM_PROFILE not in dep_keys:
+            return False
+
+        other_profile = PROFILE_MALCOLM if current_profile == PROFILE_HEDGEHOG else PROFILE_HEDGEHOG
+        non_profile_keys = [dk for dk in dep_keys if dk != KEY_CONFIG_ITEM_MALCOLM_PROFILE]
+
+        option_lists = []
+        combo_count = 1
+        for dep_key in non_profile_keys:
+            dep_item = self.malcolm_config.get_item(dep_key)
+            options = []
+            if dep_item and getattr(dep_item, "choices", None):
+                for choice in dep_item.choices:
+                    value = choice[0] if isinstance(choice, tuple) and len(choice) >= 1 else choice
+                    if value not in options:
+                        options.append(value)
+            else:
+                options = [self.malcolm_config.get_value(dep_key)]
+
+            option_lists.append(options if options else [self.malcolm_config.get_value(dep_key)])
+            combo_count *= max(1, len(option_lists[-1]))
+            if combo_count > 128:
+                return False
+
+        if not option_lists:
+            option_lists = [[None]]
+
+        any_current_visible = False
+        any_other_visible = False
+        for combo in product(*option_lists):
+            vals_current = []
+            vals_other = []
+            combo_idx = 0
+            for dep_key in dep_keys:
+                if dep_key == KEY_CONFIG_ITEM_MALCOLM_PROFILE:
+                    vals_current.append(current_profile)
+                    vals_other.append(other_profile)
+                else:
+                    val = combo[combo_idx]
+                    combo_idx += 1
+                    vals_current.append(val)
+                    vals_other.append(val)
+
+            if vis.condition(*vals_current):
+                any_current_visible = True
+            if vis.condition(*vals_other):
+                any_other_visible = True
+
+            if any_current_visible and any_other_visible:
+                return False
+
+        return (not any_current_visible) and any_other_visible
+
     def _update_widget_visibility(self, key: str):
         """Update widget enabled/disabled state based on MalcolmConfig visibility.
 
-        Items are always shown (packed) but disabled when their visibility condition is false.
-        This keeps all options visible with a clear disabled state.
+        Items are shown (packed) but disabled when their visibility condition is false.
+        iso_only items are fully hidden when invisible.
 
         Args:
             key: The ConfigItem key
         """
-        from tkinter import TclError
-
         if key not in self.widget_map:
             return
 
         container = self.widget_map[key]
         is_visible = self.malcolm_config.is_item_visible(key)
 
-        # Get the item to check if it has dependencies
         item = self.malcolm_config.get_item(key)
         if not item:
             return
 
-        # Enable or disable based on visibility condition
         if is_visible:
-            # Enable all child widgets recursively
             self._set_widget_state_recursive(container, "normal")
         else:
-            # Disable all child widgets recursively (grey them out)
             self._set_widget_state_recursive(container, "disabled")
         self._update_panel_style(key, is_visible)
 
-        hide_when_invisible = bool(item.metadata.get("iso_only"))
-        target = self.pack_targets.get(key)
-        if hide_when_invisible and target:
-            if is_visible:
-                if not target.winfo_ismapped():
-                    target.pack(**self.pack_options.get(key, {}))
-            else:
-                if target.winfo_ismapped():
-                    target.pack_forget()
+        # iso_only items get fully hidden/shown
+        if item.metadata.get("iso_only"):
+            target = self.pack_targets.get(key)
+            if target:
+                if is_visible:
+                    if not target.winfo_ismapped():
+                        target.pack(**self.pack_options.get(key, {}))
+                else:
+                    if target.winfo_ismapped():
+                        target.pack_forget()
 
     def _set_widget_state_recursive(self, widget, state: str):
         """Recursively set state for all child widgets that support it.

@@ -32,6 +32,8 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_REMOTE_MALCOLM_HOST,
     KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
 )
+from scripts.installer.configs.constants.profile_scope_keys import META_CHOICE_ALLOWED_PROFILES
+from scripts.malcolm_constants import PROFILE_MALCOLM
 
 CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE = ConfigItem(
     key=KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
@@ -41,6 +43,11 @@ CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE = ConfigItem(
     validator=lambda x: x in DATABASE_MODE_ENUMS.keys(),
     question="Select primary Malcolm document store",
     widget_type=WidgetType.SELECT,
+    metadata={
+        META_CHOICE_ALLOWED_PROFILES: {
+            DATABASE_MODE_LABELS[DatabaseMode.OpenSearchLocal]: [PROFILE_MALCOLM],
+        },
+    },
 )
 
 CONFIG_ITEM_REMOTE_MALCOLM_HOST = ConfigItem(

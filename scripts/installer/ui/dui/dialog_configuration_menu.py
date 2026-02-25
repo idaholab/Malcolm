@@ -250,6 +250,7 @@ class DialogConfigurationMenu:
                 new_value = prompt_config_item_value(
                     ui_mode=self.ui_mode,
                     config_item=item,
+                    malcolm_config=self.mc,
                     back_label=BACK_LABEL,
                     show_preamble=True,
                 )

@@ -99,7 +99,7 @@ class TestUIParityDrivenPrompts(unittest.TestCase):
         shutil.rmtree(self.tmpdir_tui, ignore_errors=True)
         shutil.rmtree(self.tmpdir_dui, ignore_errors=True)
 
-    def _scripted_prompt(self, ui_mode, config_item, back_label=None, show_preamble=True):
+    def _scripted_prompt(self, ui_mode, config_item, back_label=None, show_preamble=True, **kwargs):
         # Return preselected answers by key when present; otherwise keep current value
         key = getattr(config_item, "key", None)
         if key in self.config_answers:

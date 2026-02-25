@@ -93,6 +93,10 @@ from scripts.installer.utils.exceptions import (
 )
 from scripts.installer.core.observable import ObservableStoreMixin
 from scripts.installer.core.transform_registry import apply_inbound
+from scripts.installer.core.profile_scope import (
+    choice_allowed_for_profile,
+    choice_value,
+)
 
 
 def overrides_set_value(obj):
@@ -133,6 +137,29 @@ class MalcolmConfig(ObservableStoreMixin):
 
         self._dependency_manager = DependencyManager(self)
         self._dependency_manager.register_all_dependencies()
+        self.observe(KEY_CONFIG_ITEM_MALCOLM_PROFILE, lambda _value: self._enforce_profile_choice_scopes())
+        self._enforce_profile_choice_scopes()
+
+    def _enforce_profile_choice_scopes(self) -> None:
+        """Ensure profile-scoped select choices are valid for the active profile."""
+        profile = self.get_value(KEY_CONFIG_ITEM_MALCOLM_PROFILE)
+        if not isinstance(profile, str) or not profile:
+            return
+
+        for key, item in self._items.items():
+            if not getattr(item, "choices", None):
+                continue
+            current_value = item.get_value()
+            if choice_allowed_for_profile(item, current_value, profile):
+                continue
+
+            allowed_values = []
+            for raw_choice in item.choices:
+                if choice_allowed_for_profile(item, raw_choice, profile):
+                    allowed_values.append(choice_value(raw_choice))
+
+            if allowed_values:
+                self.apply_default(key, allowed_values[0], ignore_errors=True)
 
     def _set_item_visible(self, key: str, visible: bool) -> None:
         """Set item visibility and propagate changes to dependents."""
@@ -384,6 +411,7 @@ class MalcolmConfig(ObservableStoreMixin):
                 self._modified_keys.append(key)
 
             self._notify_observers(key, item.get_value())
+            self._enforce_profile_choice_scopes()
         except Exception as e:
             if ignore_errors:
                 InstallerLogger.error(f'Ignored exception setting "{key}"="{value}": "{e}"')

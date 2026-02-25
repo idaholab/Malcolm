@@ -8,6 +8,8 @@ import tkinter as tk
 import customtkinter
 
 from scripts.malcolm_constants import WidgetType
+from scripts.installer.configs.constants.configuration_item_keys import KEY_CONFIG_ITEM_MALCOLM_PROFILE
+from scripts.installer.core.profile_scope import filter_choices_for_profile
 from scripts.installer.utils.logger_utils import InstallerLogger
 from scripts.installer.ui.gui.components.styles import TEXT_COLOR_MUTED
 from scripts.installer.ui.gui.components.validation_state import (
@@ -351,12 +353,17 @@ def _create_dropdown(
 
     container = customtkinter.CTkFrame(parent, fg_color="transparent")
 
+    selected_profile = malcolm_config.get_value(KEY_CONFIG_ITEM_MALCOLM_PROFILE)
+    choices = filter_choices_for_profile(list(item.choices), item, selected_profile)
+    if not choices:
+        choices = list(item.choices)
+
     values = []
     value_map = {}
     current_value = item.get_value()
     initial_display = ""
 
-    for choice in item.choices:
+    for choice in choices:
         if isinstance(choice, tuple) and len(choice) == 2:
             internal_value, display_text = choice
             values.append(display_text)

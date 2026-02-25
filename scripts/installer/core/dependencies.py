@@ -130,8 +130,8 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     ),
     KEY_MENU_ITEM_ANALYSIS_HISTORICAL: DependencySpec(
         visibility=VisibilityRule(
-            depends_on=None,  # Always visible, parent relationship handled via ui_parent
-            condition=True,
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
             ui_parent=KEY_MENU_ITEM_ANALYSIS,
         )
     ),
@@ -172,8 +172,8 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     ),
     KEY_MENU_ITEM_RUNTIME_RESOURCES: DependencySpec(
         visibility=VisibilityRule(
-            depends_on=None,  # Always visible, parent relationship handled via ui_parent
-            condition=True,
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
             ui_parent=KEY_MENU_ITEM_RUNTIME_SETTINGS,
         )
     ),
@@ -303,11 +303,9 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
         ),
         value=ValueRule(
-            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-            condition=True,
-            default_value=lambda profile: (
-                NetboxMode.LOCAL.value if profile == PROFILE_MALCOLM else NetboxMode.REMOTE.value
-            ),
+            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
+            condition=lambda profile, mode: (profile == PROFILE_HEDGEHOG and mode == NetboxMode.LOCAL.value),
+            default_value=NetboxMode.REMOTE.value,
             only_if_unmodified=False,
         ),
     ),
@@ -343,12 +341,12 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             ),
         ),
     ),
-    # Hedgehog profile items
+    # Hedgehog profile items (visible only in Hedgehog mode, shown in Network tab)
     KEY_CONFIG_ITEM_REMOTE_MALCOLM_HOST: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_HEDGEHOG,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
@@ -361,7 +359,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_HEDGEHOG,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_CONFIG_ITEM_REMOTE_MALCOLM_HOST,
         ),
         value=ValueRule(
             depends_on=[
@@ -514,13 +512,12 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
         ),
         value=ValueRule(
-            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-            condition=True,
-            default_value=lambda profile: (
-                SearchEngineMode.OPENSEARCH_LOCAL.value
-                if (profile == PROFILE_MALCOLM)
-                else SearchEngineMode.OPENSEARCH_REMOTE.value
+            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE],
+            condition=lambda profile, mode: (
+                profile == PROFILE_HEDGEHOG and mode == SearchEngineMode.OPENSEARCH_LOCAL.value
             ),
+            default_value=SearchEngineMode.OPENSEARCH_REMOTE.value,
+            only_if_unmodified=False,
         ),
     ),
     KEY_CONFIG_ITEM_LS_MEMORY: DependencySpec(
@@ -569,7 +566,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 SearchEngineMode.OPENSEARCH_REMOTE.value,
                 SearchEngineMode.ELASTICSEARCH_REMOTE.value,
             ],
-            ui_parent=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE,
         )
     ),
     KEY_CONFIG_ITEM_OS_MEMORY: DependencySpec(
@@ -621,7 +618,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 SearchEngineMode.OPENSEARCH_REMOTE.value,
                 SearchEngineMode.ELASTICSEARCH_REMOTE.value,
             ],
-            ui_parent=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
+            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE,
         )
     ),
     KEY_CONFIG_ITEM_DASHBOARDS_URL: DependencySpec(
@@ -973,8 +970,8 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     # -------------------------------------------------------------------------
     KEY_CONFIG_ITEM_NETBOX_URL: DependencySpec(
         visibility=VisibilityRule(
-            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
-            condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode == NetboxMode.REMOTE.value)),
+            depends_on=KEY_CONFIG_ITEM_NETBOX_MODE,
+            condition=lambda mode: (mode == NetboxMode.REMOTE.value),
             ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
@@ -1087,7 +1084,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 KEY_CONFIG_ITEM_FILE_CARVE_MODE,
             ],
             condition=lambda enabled, mode: bool(enabled) and (mode != FileExtractionMode.NONE.value),
-            ui_parent=KEY_CONFIG_ITEM_FILE_CARVE_MODE,
+            ui_parent=KEY_CONFIG_ITEM_PIPELINE_ENABLED,
         )
     ),
     KEY_CONFIG_ITEM_FILE_SCAN_RULE_UPDATE: DependencySpec(
