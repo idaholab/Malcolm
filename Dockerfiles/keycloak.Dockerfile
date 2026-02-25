@@ -13,7 +13,7 @@ RUN mkdir -p /mnt/rootfs && \
     dnf --installroot /mnt/rootfs clean all && \
     rpm --root /mnt/rootfs -e --nodeps setup
 
-FROM quay.io/keycloak/keycloak:26.4 AS builder
+FROM quay.io/keycloak/keycloak:26.5 AS builder
 
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=false
@@ -24,9 +24,9 @@ WORKDIR /opt/keycloak
 
 RUN /opt/keycloak/bin/kc.sh build
 
-FROM quay.io/keycloak/keycloak:26.4
+FROM quay.io/keycloak/keycloak:26.5
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -38,24 +38,24 @@ LABEL org.opencontainers.image.description='Malcolm container providing Keycloak
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUID $DEFAULT_UID
-ENV PUSER "keycloak"
-ENV PGROUP "keycloak"
-ENV PUSER_PRIV_DROP true
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUID=$DEFAULT_UID
+ENV PUSER="keycloak"
+ENV PGROUP="keycloak"
+ENV PUSER_PRIV_DROP=true
 # This is to handle an issue when running with rootless podman and
 #   "userns_mode: keep-id". It seems that anything defined as a VOLUME
 #   in the Dockerfile is getting set with an ownership of 999:999.
 #   This is to override that, although I'm not yet sure if there are
 #   other implications. See containers/podman#23347.
-ENV PUSER_CHOWN "/var/local/ca-trust"
+ENV PUSER_CHOWN="/var/local/ca-trust"
 USER root
 
-ENV TERM xterm
+ENV TERM=xterm
 
-ENV TINI_VERSION v0.19.0
-ENV TINI_URL https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini
+ENV TINI_VERSION=v0.19.0
+ENV TINI_URL=https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini
 
 COPY --from=ubi-micro-build /mnt/rootfs /
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
@@ -90,9 +90,9 @@ CMD ["/opt/keycloak/bin/kc.sh"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

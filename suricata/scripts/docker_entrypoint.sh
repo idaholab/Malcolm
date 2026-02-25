@@ -5,13 +5,23 @@ setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip CAP_IPC_LOCK+eip' /usr/bin/suricata ||
 
 [[ -x /usr/bin/suricata-offline ]] && SURICATA_TEST_CONFIG_BIN=/usr/bin/suricata-offline || SURICATA_TEST_CONFIG_BIN=/usr/bin/suricata
 
-# modify suricata.yaml according to environment variables (as non-root)
+
+# - modify suricata.yaml according to environment variables (as non-root)
+# - if SURICATA_DISABLE_SIDS contains entries for disable.conf, write it and run suricata-update to apply
 if [[ "$(id -u)" == "0" ]] && [[ -n "$PUSER" ]]; then
     su -s /bin/bash -p ${PUSER} << EOF
         /usr/local/bin/suricata_config_populate.py --suricata ${SURICATA_TEST_CONFIG_BIN} ${SURICATA_TEST_CONFIG_VERBOSITY:-} >&2
+        if [[ -n "${SURICATA_DISABLE_SIDS}" ]]; then
+            tr ',' '\n' <<<"${SURICATA_DISABLE_SIDS}" | awk '{ gsub(/^[[:space:]]+|[[:space:]]+$/, ""); if (length) print }' >> /etc/suricata/disable.conf
+            SURICATA_UPDATE_RULES=true SURICATA_UPDATE_SOURCES=false SURICATA_UPDATE_ETOPEN=false /usr/local/bin/suricata-update-rules.sh
+        fi
 EOF
 else
     /usr/local/bin/suricata_config_populate.py --suricata ${SURICATA_TEST_CONFIG_BIN} ${SURICATA_TEST_CONFIG_VERBOSITY:-} >&2
+    if [[ -n "${SURICATA_DISABLE_SIDS}" ]]; then
+        tr ',' '\n' <<<"${SURICATA_DISABLE_SIDS}" | awk '{ gsub(/^[[:space:]]+|[[:space:]]+$/, ""); if (length) print }' >> /etc/suricata/disable.conf
+        SURICATA_UPDATE_RULES=true SURICATA_UPDATE_SOURCES=false SURICATA_UPDATE_ETOPEN=false /usr/local/bin/suricata-update-rules.sh
+    fi
 fi
 
 # generate 1..n suricata-offline socket instances

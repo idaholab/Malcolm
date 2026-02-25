@@ -27,12 +27,13 @@ if type suricata-update >/dev/null 2>&1; then
     UPDATE_IGNORE='with same revision, keeping the first rule seen'
   fi
 
-  suricata-update update-sources \
-    $DEBUG_FLAG \
-    --suricata /usr/bin/suricata-offline \
-    --data-dir "${SURICATA_MANAGED_DIR:-/var/lib/suricata}" \
-    --config "${SURICATA_UPDATE_CONFIG_FILE:-/etc/suricata/update.yaml}" \
-    --suricata-conf "${SURICATA_CONFIG_FILE:-/etc/suricata/suricata.yaml}" 2>&1
+  [[ "${SURICATA_UPDATE_SOURCES:-"true"}" == "true" ]] && \
+    suricata-update update-sources \
+      $DEBUG_FLAG \
+      --suricata /usr/bin/suricata-offline \
+      --data-dir "${SURICATA_MANAGED_DIR:-/var/lib/suricata}" \
+      --config "${SURICATA_UPDATE_CONFIG_FILE:-/etc/suricata/update.yaml}" \
+      --suricata-conf "${SURICATA_CONFIG_FILE:-/etc/suricata/suricata.yaml}" 2>&1
 
   suricata-update update \
     $DEBUG_FLAG \

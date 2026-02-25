@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 if [ -z "$BASH_VERSION" ]; then
   echo "Wrong interpreter, please run \"$0\" with bash"
@@ -122,9 +122,9 @@ fi
 # build the image(s)
 DOCKER_COMPOSE_COMMAND="${DOCKER_COMPOSE_BIN[@]} --profile malcolm -f "$CONFIG_FILE""
 if [[ $CONFIRMATION =~ ^[Yy] ]]; then
-  $DOCKER_COMPOSE_COMMAND --progress=plain build --force-rm --no-cache --build-arg TARGETPLATFORM="$TARGET_PLATFORM" --build-arg GITHUB_TOKEN="$GITHUB_API_TOKEN" --build-arg MAXMIND_GEOIP_DB_LICENSE_KEY="$MAXMIND_API_KEY" --build-arg MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL="${MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL:-}" --build-arg ZEEK_DEB_ALTERNATE_DOWNLOAD_URL="${ZEEK_DEB_ALTERNATE_DOWNLOAD_URL:-}" --build-arg BUILD_DATE="$BUILD_DATE" --build-arg MALCOLM_VERSION="$MALCOLM_VERSION" --build-arg VCS_REVISION="$VCS_REVISION" "$@"
+  $DOCKER_COMPOSE_COMMAND --progress=plain build --force-rm --no-cache --build-arg TARGETPLATFORM="$TARGET_PLATFORM" --build-arg GITHUB_TOKEN="$GITHUB_API_TOKEN" --build-arg MAXMIND_GEOIP_DB_LICENSE_KEY="$MAXMIND_API_KEY" --build-arg MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL="${MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL:-}" --build-arg BUILD_DATE="$BUILD_DATE" --build-arg MALCOLM_VERSION="$MALCOLM_VERSION" --build-arg VCS_REVISION="$VCS_REVISION" "$@"
 else
-  $DOCKER_COMPOSE_COMMAND --progress=plain build --build-arg TARGETPLATFORM="$TARGET_PLATFORM" --build-arg GITHUB_TOKEN="$GITHUB_API_TOKEN" --build-arg MAXMIND_GEOIP_DB_LICENSE_KEY="$MAXMIND_API_KEY" --build-arg MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL="${MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL:-}" --build-arg ZEEK_DEB_ALTERNATE_DOWNLOAD_URL="${ZEEK_DEB_ALTERNATE_DOWNLOAD_URL:-}" --build-arg BUILD_DATE="$BUILD_DATE" --build-arg MALCOLM_VERSION="$MALCOLM_VERSION" --build-arg VCS_REVISION="$VCS_REVISION" "$@"
+  $DOCKER_COMPOSE_COMMAND --progress=plain build --build-arg TARGETPLATFORM="$TARGET_PLATFORM" --build-arg GITHUB_TOKEN="$GITHUB_API_TOKEN" --build-arg MAXMIND_GEOIP_DB_LICENSE_KEY="$MAXMIND_API_KEY" --build-arg MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL="${MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL:-}" --build-arg BUILD_DATE="$BUILD_DATE" --build-arg MALCOLM_VERSION="$MALCOLM_VERSION" --build-arg VCS_REVISION="$VCS_REVISION" "$@"
 fi
 
 if (( $# == 0 )); then
@@ -133,7 +133,7 @@ if (( $# == 0 )); then
     "/usr/share/filebeat-logs/filebeat-logs.yml;filebeat-oss"
     "/var/www/upload/filepond/dist/filepond.js;file-upload"
     "/opt/freq_server/freq_server.py;freq"
-    "/usr/local/bin/capa;file-monitor"
+    "/filescan/filescan-config.yml;filescan"
     "/var/www/htadmin/htadmin.php;htadmin"
     "/etc/ip_protocol_name_to_number.yaml;logstash"
     "/etc/vendor_macs.yaml;logstash"
@@ -143,9 +143,9 @@ if (( $# == 0 )); then
     "/opt/arkime/etc/oui.txt;arkime"
     "/opt/arkime/bin/capture;arkime"
     "/opt/netbox-devicetype-library-import/repo/schema/components.json;netbox"
-    "/opt/zeek/bin/zeek;zeek"
-    "/opt/zeek/bin/spicyz;zeek"
-    "/opt/zeek/share/zeek/site/iana_service_map.txt;zeek"
+    "/usr/local/zeek/bin/zeek;zeek"
+    "/usr/local/zeek/bin/spicyz;zeek"
+    "/usr/local/zeek/share/zeek/site/iana_service_map.txt;zeek"
     "/usr/share/nginx/html/index.html;nginx-proxy"
   )
   for i in ${FILES_IN_IMAGES[@]}; do
@@ -155,7 +155,7 @@ if (( $# == 0 )); then
   done
 
   DIRS_IN_IMAGES=(
-    "/var/lib/clamav;file-monitor;200000000"
+    "/var/lib/clamav;strelka-backend;200000000"
   )
   for i in ${DIRS_IN_IMAGES[@]}; do
     DIR="$(echo "$i" | cut -d';' -f1)"

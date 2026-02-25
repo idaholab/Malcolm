@@ -32,10 +32,11 @@ spec:
       labels:
         app: opensearch
         role: log-store
+        workload-group: heavy
     spec:
       containers:
       - name: opensearch-container
-        image: ghcr.io/idaholab/malcolm/opensearch:25.12.0
+        image: ghcr.io/idaholab/malcolm/opensearch:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -75,7 +76,7 @@ spec:
             subPath: "opensearch"
       initContainers:
       - name: opensearch-dirinit-container
-        image: ghcr.io/idaholab/malcolm/dirinit:25.12.0
+        image: ghcr.io/idaholab/malcolm/dirinit:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true

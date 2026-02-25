@@ -17,10 +17,11 @@ spec:
       labels:
         app: zeek-offline
         role: ingest
+        workload-group: heavy
     spec:
       containers:
       - name: zeek-offline-container
-        image: ghcr.io/idaholab/malcolm/zeek:25.12.0
+        image: ghcr.io/idaholab/malcolm/zeek:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -33,8 +34,6 @@ spec:
               name: upload-common-env
           - configMapRef:
               name: zeek-env
-          - secretRef:
-              name: zeek-secret-env
           - configMapRef:
               name: zeek-offline-env
         livenessProbe:
@@ -57,16 +56,16 @@ spec:
           - mountPath: "/zeek/upload"
             name: zeek-offline-zeek-volume
             subPath: "upload"
-          - mountPath: "/opt/zeek/share/zeek/site/custom/configmap"
+          - mountPath: "/usr/local/zeek/share/zeek/site/custom/configmap"
             name: zeek-offline-custom-volume
-          - mountPath: "/opt/zeek/share/zeek/site/intel-preseed/configmap"
+          - mountPath: "/usr/local/zeek/share/zeek/site/intel-preseed/configmap"
             name: zeek-offline-intel-preseed-volume
-          - mountPath: "/opt/zeek/share/zeek/site/intel"
+          - mountPath: "/usr/local/zeek/share/zeek/site/intel"
             name: zeek-offline-intel-volume
             subPath: "zeek/intel"
       initContainers:
       - name: zeek-offline-dirinit-container
-        image: ghcr.io/idaholab/malcolm/dirinit:25.12.0
+        image: ghcr.io/idaholab/malcolm/dirinit:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -82,7 +81,7 @@ spec:
               name: process-env
         env:
           - name: PUSER_MKDIR
-            value: "/data/config:zeek/intel/Google,zeek/intel/Mandiant,zeek/intel/MISP,zeek/intel/STIX;/data/pcap:processed;/data/zeek-logs:current,extract_files/preserved,extract_files/quarantine,live,processed,upload"
+            value: "/data/config:zeek/intel/Google,zeek/intel/Mandiant,zeek/intel/MISP,zeek/intel/STIX;/data/pcap:processed;/data/zeek-logs:current,extract_files/filescan,live,processed,upload"
         volumeMounts:
           - name: zeek-offline-intel-volume
             mountPath: "/data/config"

@@ -14,20 +14,20 @@ Here are the basic steps to perform an upgrade if Malcolm was checked with a `gi
 
 1. stop Malcolm
     * `./scripts/stop`
-1. stash changes to `docker-compose.yml` and other files
+2. stash changes to `docker-compose.yml` and other files
     * `git stash save "pre-upgrade Malcolm configuration changes"`
-1. save a backup of the [environment variable files](malcolm-config.md#MalcolmConfigEnvVars) in the Malcolm `./config/` directory
-1. pull changes from GitHub repository
+3. save a backup of the [environment variable files](malcolm-config.md#MalcolmConfigEnvVars) in the Malcolm `./config/` directory
+4. pull changes from GitHub repository
     * `git pull --rebase`
-1. pull new images (this will take a while)
+5. pull new images (this will take a while)
     * `docker compose --profile malcolm pull`
-1. apply saved configuration change stashed earlier
+6. apply saved configuration change stashed earlier
     * `git stash pop`
-1. if `Merge conflict` messages appear, resolve the [conflicts](https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging#_basic_merge_conflicts) with a text editor
-1. re-run `./scripts/configure` as described in [Malcolm Configuration](malcolm-hedgehog-e2e-iso-install.md#MalcolmConfig) in case there are any new configuration parameters for Malcolm that need to be set up
-1. start Malcolm
+7. if `Merge conflict` messages appear, resolve the [conflicts](https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging#_basic_merge_conflicts) with a text editor
+8. re-run `./scripts/configure` as described in [Malcolm Configuration](malcolm-hedgehog-e2e-iso-install.md#MalcolmConfig) in case there are any new configuration parameters for Malcolm that need to be set up
+9. start Malcolm
     * `./scripts/start`
-1. users may be prompted to [configure authentication](authsetup.md#AuthSetup) if there are new authentication-related files that need to be generated
+10. users may be prompted to [configure authentication](authsetup.md#AuthSetup) if there are new authentication-related files that need to be generated
     * users probably do not need to re-generate self-signed certificates
 
 ## Scenario 2: Malcolm was installed from a packaged tarball
@@ -36,17 +36,17 @@ If Malcolm was installed from [pre-packaged installation files]({{ site.github.r
 
 1. stop Malcolm
     * `./scripts/stop`
-1. uncompress the new pre-packaged installation files (using `malcolm_YYYYMMDD_HHNNSS_xxxxxxx.tar.gz` as an example, the file and/or directory names will be different depending on the release)
+2. uncompress the new pre-packaged installation files (using `malcolm_YYYYMMDD_HHNNSS_xxxxxxx.tar.gz` as an example, the file and/or directory names will be different depending on the release)
     * `tar xf malcolm_YYYYMMDD_HHNNSS_xxxxxxx.tar.gz`
-1. backup current Malcolm scripts, configuration files and certificates
+3. backup current Malcolm scripts, configuration files and certificates
     * `mkdir -p ./upgrade_backup_$(date +%Y-%m-%d)`
     * `cp -r filebeat/ htadmin/ logstash/ nginx/ config/ docker-compose*.yml ./scripts ./README.md ./upgrade_backup_$(date +%Y-%m-%d)/`
-1. replace scripts and local documentation in the existing installation with the new ones
+4. replace scripts and local documentation in the existing installation with the new ones
     * `rm -rf ./scripts ./README.md`
     * `cp -r ./malcolm_YYYYMMDD_HHNNSS_xxxxxxx/scripts ./malcolm_YYYYMMDD_HHNNSS_xxxxxxx/README.md ./`
-1. replace (overwrite) `docker-compose*.yml` file with new versions
+5. replace (overwrite) `docker-compose*.yml` file with new versions
     * `cp ./malcolm_YYYYMMDD_HHNNSS_xxxxxxx/docker-compose*.yml ./`
-1. re-run `./scripts/configure` as described in [Malcolm Configuration](malcolm-hedgehog-e2e-iso-install.md#MalcolmConfig)
+6. re-run `./scripts/configure` as described in [Malcolm Configuration](malcolm-hedgehog-e2e-iso-install.md#MalcolmConfig)
     * to do an in-depth comparison of the previous version's settings with the new setings:
         + using a file comparison tool (e.g., `diff`, `meld`, `Beyond Compare`, etc.), compare `docker-compose.yml` and the `docker-compose.yml` files backed up in Step 3, and manually migrate over any customizations in file
         + compare the contents of each  `.env` file  Malcolm's `./config/` directory with its corresponding `.env.example` file. the author uses this command which uses [difftastic](https://github.com/Wilfred/difftastic), [bat](https://github.com/sharkdp/bat), [unbuffer](https://manpages.debian.org/stretch/expect/unbuffer.1.en.html), and [cmp](https://en.wikipedia.org/wiki/Cmp_(Unix)).
@@ -59,11 +59,11 @@ If Malcolm was installed from [pre-packaged installation files]({{ site.github.r
                            ../config/"$FILE.example" "$FILE"; \
         done | bat --color=always
         ```
-1. pull the new images (this will take a while)
+7. pull the new images (this will take a while)
     * `docker compose --profile malcolm pull` to pull them from [GitHub](https://github.com/orgs/idaholab/packages?repo_name=Malcolm) or `docker compose load -i malcolm_YYYYMMDD_HHNNSS_xxxxxxx_images.tar.xz` if an offline tarball of the Malcolm images is available
-1. start Malcolm
+8. start Malcolm
     * `./scripts/start`
-1. users may be prompted to [configure authentication](authsetup.md#AuthSetup) if there are new authentication-related files that need to be generated
+9. users may be prompted to [configure authentication](authsetup.md#AuthSetup) if there are new authentication-related files that need to be generated
     * users probably do not need to re-generate self-signed certificates
 
 ## Post-upgrade

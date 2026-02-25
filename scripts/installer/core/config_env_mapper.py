@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 
 """Map configuration items to .env files and variables.
@@ -95,17 +95,15 @@ _BOOLEAN_VARS = [
     KEY_ENV_OPENSEARCH_SECONDARY_SSL_CERTIFICATE_VERIFICATION,
     KEY_ENV_OPENSEARCH_SSL_CERTIFICATE_VERIFICATION,
     KEY_ENV_PCAP_IFACE_TWEAK,
+    KEY_ENV_PIPELINE_ENABLED,
     KEY_ENV_SURICATA_AUTO_ANALYZE_PCAP_FILES,
     KEY_ENV_SURICATA_STATS_ENABLED,
     KEY_ENV_SURICATA_STATS_EVE_ENABLED,
     KEY_ENV_SURICATA_UPDATE_RULES,
     KEY_ENV_ZEEK_AUTO_ANALYZE_PCAP_FILES,
-    KEY_ENV_ZEEK_FILE_ENABLE_CAPA,
-    KEY_ENV_ZEEK_FILE_ENABLE_CLAMAV,
-    KEY_ENV_ZEEK_FILE_ENABLE_YARA,
     KEY_ENV_ZEEK_FILE_HTTP_SERVER_ENABLE,
     KEY_ENV_ZEEK_FILE_HTTP_SERVER_ZIP,
-    KEY_ENV_ZEEK_FILE_UPDATE_RULES,
+    KEY_ENV_PIPELINE_RULES_UPDATE,
     KEY_ENV_ZEEK_INTEL_REFRESH_ON_STARTUP,
 ]
 
@@ -143,6 +141,7 @@ _STRING_VARS = [
     KEY_ENV_PCAP_IFACE,
     KEY_ENV_PCAP_NODE_NAME,
     KEY_ENV_PGID,
+    KEY_ENV_PIPELINE_WORKERS,
     KEY_ENV_PROFILE_KEY,
     KEY_ENV_PUID,
     KEY_ENV_ZEEK_EXTRACTOR_MODE,
@@ -153,7 +152,6 @@ _STRING_VARS = [
     KEY_ENV_ZEEK_INTEL_FEED_SINCE,
     KEY_ENV_ZEEK_INTEL_ITEM_EXPIRATION,
     KEY_ENV_ZEEK_INTEL_REFRESH_CRON_EXPRESSION,
-    KEY_ENV_ZEEK_VTOT_API2_KEY,
 ]
 
 # 3. List-of-strings transform logic
@@ -178,6 +176,14 @@ CUSTOM_TRANSFORM_HANDLERS: Dict[str, TransformHook] = {
     KEY_ENV_ZEEK_DISABLE_ICS_ALL: TransformHook(
         forward=custom_transform_zeek_disable_ics_all,
         reverse=custom_reverse_transform_zeek_disable_ics_all,
+    ),
+    KEY_ENV_ZEEK_DISABLE_INTEL_LIVE: TransformHook(
+        forward=custom_transform_zeek_disable_intel_live,
+        reverse=custom_reverse_transform_zeek_disable_intel_live,
+    ),
+    KEY_ENV_ZEEK_DISABLE_INTEL_OFFLINE: TransformHook(
+        forward=custom_transform_zeek_disable_intel_offline,
+        reverse=custom_reverse_transform_zeek_disable_intel_offline,
     ),
     KEY_ENV_ZEEK_DISABLE_BEST_GUESS_ICS: TransformHook(
         forward=custom_transform_zeek_disable_best_guess_ics,
@@ -231,14 +237,9 @@ CUSTOM_TRANSFORM_HANDLERS: Dict[str, TransformHook] = {
         forward=custom_transform_suricata_rotated_pcap,
         reverse=custom_reverse_transform_suricata_rotated_pcap,
     ),
-    KEY_ENV_ZEEK_FILE_ENABLE_VTOT: TransformHook(
-        forward=custom_transform_zeek_file_enable_vtot,
-        reverse=custom_reverse_transform_zeek_file_enable_vtot,
-    ),
-    # Preserve secret as string; treat '0' as unset
-    KEY_ENV_ZEEK_VTOT_API2_KEY: TransformHook(
-        forward=custom_transform_zeek_vtot_api2_key,
-        reverse=custom_reverse_transform_zeek_vtot_api2_key,
+    KEY_ENV_PIPELINE_ENABLED: TransformHook(
+        forward=custom_transform_pipeline_enabled,
+        reverse=custom_reverse_transform_pipeline_enabled,
     ),
     KEY_ENV_FILEBEAT_SYSLOG_TCP_LISTEN: TransformHook(
         forward=custom_transform_filebeat_syslog_tcp_listen,
@@ -252,10 +253,6 @@ CUSTOM_TRANSFORM_HANDLERS: Dict[str, TransformHook] = {
     KEY_ENV_ZEEK_ROTATED_PCAP: TransformHook(
         forward=custom_transform_zeek_rotated_pcap,
         reverse=custom_reverse_transform_zeek_rotated_pcap,
-    ),
-    KEY_ENV_ZEEK_FILE_WATCHER_POLLING: TransformHook(
-        forward=custom_transform_zeek_file_watcher_polling,
-        reverse=custom_reverse_transform_zeek_file_watcher_polling,
     ),
     KEY_ENV_PCAP_PIPELINE_POLLING: TransformHook(
         forward=custom_transform_pcap_pipeline_polling,
@@ -658,12 +655,14 @@ class EnvMapper:
             ]
 
             # Zeek
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_ENABLE_VTOT].config_items = [KEY_CONFIG_ITEM_VTOT_API_KEY]
-            # This env var signals presence of a key but cannot reconstruct it; treat as derived
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_ENABLE_VTOT].derived_items = [KEY_CONFIG_ITEM_VTOT_API_KEY]
             self.env_var_by_map_key[KEY_ENV_ZEEK_EXTRACTOR_MODE].config_items = [KEY_CONFIG_ITEM_FILE_CARVE_MODE]
             self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_PRESERVATION].config_items = [KEY_CONFIG_ITEM_FILE_PRESERVE_MODE]
             self.env_var_by_map_key[KEY_ENV_ZEEK_DISABLE_ICS_ALL].config_items = [KEY_CONFIG_ITEM_MALCOLM_ICS]
+            self.env_var_by_map_key[KEY_ENV_ZEEK_DISABLE_INTEL_LIVE].config_items = [KEY_CONFIG_ITEM_ZEEK_INTEL_LIVE]
+            self.env_var_by_map_key[KEY_ENV_ZEEK_DISABLE_INTEL_OFFLINE].config_items = [
+                KEY_CONFIG_ITEM_ZEEK_INTEL_OFFLINE
+            ]
+
             self.env_var_by_map_key[KEY_ENV_ZEEK_DISABLE_BEST_GUESS_ICS].config_items = [
                 KEY_CONFIG_ITEM_ZEEK_ICS_BEST_GUESS
             ]
@@ -698,7 +697,6 @@ class EnvMapper:
             self.env_var_by_map_key[KEY_ENV_ZEEK_INTEL_ITEM_EXPIRATION].config_items = [
                 KEY_CONFIG_ITEM_ZEEK_INTEL_ITEM_EXPIRATION
             ]
-            self.env_var_by_map_key[KEY_ENV_ZEEK_VTOT_API2_KEY].config_items = [KEY_CONFIG_ITEM_VTOT_API_KEY]
             self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT].config_items = [
                 KEY_CONFIG_ITEM_EXTRACTED_FILE_MAX_PERCENT_THRESHOLD
             ]
@@ -714,18 +712,11 @@ class EnvMapper:
             self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_HTTP_SERVER_KEY].config_items = [
                 KEY_CONFIG_ITEM_FILE_CARVE_HTTP_SERVE_ENCRYPT_KEY
             ]
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_ENABLE_YARA].config_items = [KEY_CONFIG_ITEM_YARA_SCAN]
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_ENABLE_CAPA].config_items = [KEY_CONFIG_ITEM_CAPA_SCAN]
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_ENABLE_CLAMAV].config_items = [KEY_CONFIG_ITEM_CLAM_AV_SCAN]
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_UPDATE_RULES].config_items = [
+            self.env_var_by_map_key[KEY_ENV_PIPELINE_ENABLED].config_items = [KEY_CONFIG_ITEM_PIPELINE_ENABLED]
+            self.env_var_by_map_key[KEY_ENV_PIPELINE_WORKERS].config_items = [KEY_CONFIG_ITEM_PIPELINE_WORKERS]
+
+            self.env_var_by_map_key[KEY_ENV_PIPELINE_RULES_UPDATE].config_items = [
                 KEY_CONFIG_ITEM_FILE_SCAN_RULE_UPDATE
-            ]
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_WATCHER_POLLING].config_items = [
-                KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE
-            ]
-            # Polling flags are derived from orchestration mode
-            self.env_var_by_map_key[KEY_ENV_ZEEK_FILE_WATCHER_POLLING].derived_items = [
-                KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE
             ]
 
             # reverse precedence configuration (conflict-prone items)
@@ -735,7 +726,6 @@ class EnvMapper:
                 KEY_ENV_CONTAINER_RUNTIME_KEY,
                 # We don't derive orchestration mode from polling, they could have reason
                 #   to set polling = false without using kubernetes. runtime is enough.
-                # KEY_ENV_ZEEK_FILE_WATCHER_POLLING,
                 # KEY_ENV_PCAP_PIPELINE_POLLING,
                 # KEY_ENV_FILEBEAT_WATCHER_POLLING,
             ]

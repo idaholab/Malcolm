@@ -6,8 +6,8 @@
 
 global true_regex: pattern = /^\s*(?i:t(rue)?|y(es)?|on|1)\s*$/;
 
+global disable_intel = (getenv("ZEEK_DISABLE_INTEL") == true_regex) ? T : F;
 global disable_stats = (getenv("ZEEK_DISABLE_STATS") == true_regex) ? T : F;
-global disable_hash_all_files = (getenv("ZEEK_DISABLE_HASH_ALL_FILES") == true_regex) ? T : F;
 global disable_log_passwords = (getenv("ZEEK_DISABLE_LOG_PASSWORDS") == true_regex) ? T : F;
 global disable_ssl_validate_certs = (getenv("ZEEK_DISABLE_SSL_VALIDATE_CERTS") == true_regex) ? T : F;
 global disable_track_all_assets = (getenv("ZEEK_DISABLE_TRACK_ALL_ASSETS") == true_regex) ? T : F;
@@ -84,7 +84,7 @@ global json_format = (getenv("ZEEK_JSON") == true_regex) ? T : F;
 @load protocols/ftp/detect
 @load protocols/ftp/detect-bruteforcing.zeek
 @load protocols/ftp/software
-@load protocols/http/detect-sqli
+@load protocols/http/detect-sql-injection
 @load protocols/http/detect-webapps
 @load protocols/http/header-names
 @load protocols/http/software
@@ -105,9 +105,9 @@ global json_format = (getenv("ZEEK_JSON") == true_regex) ? T : F;
 @if (!disable_track_all_assets)
   @load tuning/track-all-assets.zeek
 @endif
-@if (!disable_hash_all_files)
-  @load frameworks/files/hash-all-files
-@endif
+@load base/files/hash
+@load frameworks/files/hash-all-files
+@load fuzzy-hash-all-files
 @if (!disable_stats)
   @load policy/misc/stats
   @load policy/misc/capture-loss
@@ -132,8 +132,16 @@ global json_format = (getenv("ZEEK_JSON") == true_regex) ? T : F;
 @if (!disable_ics_all)
   @load ACID/scripts
 @endif
-@load intel
+@if (!disable_intel)
+  @load intel
+@endif
 @load custom
+
+# These are defaults that will be overridden in extractor.zeek.
+#   Note that "PacketFilter::LOG" is just my hacky way of "disabling" th3
+#   plugin altogether, as it's a tiny log that's going to get ignored anyway.
+redef JSONStreaming::enable_log_rotation = F;
+redef JSONStreaming::enabled_logs = set(PacketFilter::LOG);
 
 event zeek_init() &priority=-5 {
 
@@ -325,6 +333,10 @@ event zeek_init() &priority=-5 {
     }
   }
 
+}
+
+event file_new(f: fa_file) {
+  Files::add_analyzer(f, Files::ANALYZER_SHA256);
 }
 
 @if (!disable_log_passwords)

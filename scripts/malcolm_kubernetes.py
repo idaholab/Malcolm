@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 import base64
 import glob
@@ -52,6 +52,8 @@ MALCOLM_IMAGE_PREFIX = 'ghcr.io/idaholab/malcolm/'
 MALCOLM_DOTFILE_SECRET_KEY = 'K8S_SECRET'
 MALCOLM_CONFIGMAP_DIR_REPLACER = '_MALDIR_'
 MALCOLM_DEFAULT_NAMESPACE = 'malcolm'
+MALCOLM_WORKLOAD_GROUP_LABEL_KEY = 'workload-group'
+MALCOLM_HEAVY_WORKLOAD_VALUE = 'heavy'
 
 MALCOLM_CONFIGMAPS = {
     'etc-nginx': [
@@ -146,6 +148,24 @@ MALCOLM_CONFIGMAPS = {
             'path': os.path.join(GetMalcolmPath(), os.path.join('suricata', 'include-configs')),
         },
     ],
+    'strelka-backend-configs': [
+        {
+            'secret': False,
+            'path': os.path.join(GetMalcolmPath(), os.path.join('strelka', os.path.join('config', 'backend'))),
+        },
+    ],
+    'strelka-frontend-configs': [
+        {
+            'secret': False,
+            'path': os.path.join(GetMalcolmPath(), os.path.join('strelka', os.path.join('config', 'frontend'))),
+        },
+    ],
+    'strelka-manager-configs': [
+        {
+            'secret': False,
+            'path': os.path.join(GetMalcolmPath(), os.path.join('strelka', os.path.join('config', 'manager'))),
+        },
+    ],
     'filebeat-certs': [
         {
             'secret': True,
@@ -217,20 +237,23 @@ MALCOLM_PROFILES_CONTAINERS[PROFILE_MALCOLM] = [
     'arkime-live',
     'dashboards',
     'dashboards-helper',
-    'file-monitor',
     'filebeat',
+    'filescan',
     'freq',
     'htadmin',
     'keycloak',
     'logstash',
     'netbox',
-    'postgres',
     'nginx-proxy',
     'opensearch',
     'pcap-capture',
     'pcap-monitor',
+    'postgres',
     'redis',
     'redis-cache',
+    'strelka-backend',
+    'strelka-frontend',
+    'strelka-manager',
     'suricata-live',
     'suricata-offline',
     'upload',
@@ -240,12 +263,15 @@ MALCOLM_PROFILES_CONTAINERS[PROFILE_MALCOLM] = [
 MALCOLM_PROFILES_CONTAINERS[PROFILE_HEDGEHOG] = [
     'arkime',
     'arkime-live',
-    'file-monitor',
     'filebeat',
+    'filescan',
     'pcap-capture',
     'pcap-monitor',
     'redis',
     'redis-cache',
+    'strelka-backend',
+    'strelka-frontend',
+    'strelka-manager',
     'suricata-live',
     'suricata-offline',
     'zeek-live',
@@ -652,7 +678,7 @@ def PrintNodeStatus():
     for node in node_summary:
         statusRows.append([str(x) for x in node_summary[node]])
 
-    tablify(statusRows)
+    tablify(statusRows, do_sort=True, first_row_is_header=True, do_header_divider=True)
 
 
 def PrintPodStatus(namespace=None):
@@ -686,7 +712,7 @@ def PrintPodStatus(namespace=None):
     for pod in pod_summary:
         statusRows.append([str(x) for x in pod_summary[pod]])
 
-    tablify(statusRows)
+    tablify(statusRows, do_sort=True, first_row_is_header=True, do_header_divider=True)
 
 
 def StartMalcolm(
@@ -697,6 +723,7 @@ def StartMalcolm(
     imageSource=None,
     imageTag=None,
     injectResources=False,
+    preferHeavyWorkloadSeparation=False,
     startCapturePods=True,
     noCapabilities=False,
     dryrun=False,
@@ -854,9 +881,36 @@ def StartMalcolm(
                             resourcesFileContents[0] if isinstance(resourcesFileContents[0], dict) else {}
                         )
 
+        heavyWorkloadAntiAffinityRule = (
+            {
+                "affinity": {
+                    "podAntiAffinity": {
+                        "preferredDuringSchedulingIgnoredDuringExecution": [
+                            {
+                                "weight": 100,
+                                "podAffinityTerm": {
+                                    "labelSelector": {
+                                        "matchExpressions": [
+                                            {
+                                                "key": MALCOLM_WORKLOAD_GROUP_LABEL_KEY,
+                                                "operator": "In",
+                                                "values": [MALCOLM_HEAVY_WORKLOAD_VALUE],
+                                            }
+                                        ]
+                                    },
+                                    "topologyKey": "kubernetes.io/hostname",
+                                },
+                            }
+                        ]
+                    }
+                }
+            }
+            if preferHeavyWorkloadSeparation
+            else None
+        )
+
         # apply manifests
-        if not dryrun:
-            results_dict['create_from_yaml']['result'] = dict()
+        results_dict['create_from_yaml']['dry_run' if dryrun else 'result'] = dict()
         yamlFiles = sorted(
             [
                 f
@@ -911,12 +965,48 @@ def StartMalcolm(
                             manYamlFileContents[docIdx] = namespaceChangedDoc
                             modified = True
 
-                        # modify container specs
                         if (
                             ('spec' in manYamlFileContents[docIdx])
                             and ('template' in manYamlFileContents[docIdx]['spec'])
                             and ('spec' in manYamlFileContents[docIdx]['spec']['template'])
                         ):
+
+                            # if all of the following are true:
+                            #   * preferHeavyWorkloadSeparation is True
+                            #   * this is a "heavy" workload
+                            #   * there is not already "affinity" in the template spec
+                            # then add the weighted podAntiAffinity rule to try to keep "heavy" workloads on different nodes
+                            if (
+                                heavyWorkloadAntiAffinityRule
+                                and (
+                                    (
+                                        deep_get(
+                                            manYamlFileContents[docIdx],
+                                            [
+                                                'spec',
+                                                'template',
+                                                'metadata',
+                                                'labels',
+                                                MALCOLM_WORKLOAD_GROUP_LABEL_KEY,
+                                            ],
+                                        )
+                                        == MALCOLM_HEAVY_WORKLOAD_VALUE
+                                    )
+                                )
+                                and (
+                                    not deep_get(
+                                        manYamlFileContents[docIdx],
+                                        ['spec', 'template', 'spec', 'affinity'],
+                                    )
+                                )
+                            ):
+                                deep_merge_in_place(
+                                    heavyWorkloadAntiAffinityRule,
+                                    manYamlFileContents[docIdx]['spec']['template']['spec'],
+                                )
+                                modified = True
+
+                            # modify container specs
                             for containerType in ('containers', 'initContainers'):
                                 if containerType in manYamlFileContents[docIdx]['spec']['template']['spec']:
 
@@ -1015,7 +1105,10 @@ def StartMalcolm(
                             outYaml.width = sys.maxsize
                             outYaml.dump_all(manYamlFileContents, tmpYmlFile)
 
-                    if not dryrun:
+                    if dryrun:
+                        results_dict['create_from_yaml']['dry_run'][os.path.basename(yamlName)] = manYamlFileContents
+
+                    else:
                         try:
                             # load from the temporary file if we made modifications, otherwise load from the original
                             results_dict['create_from_yaml']['result'][os.path.basename(yamlName)] = (

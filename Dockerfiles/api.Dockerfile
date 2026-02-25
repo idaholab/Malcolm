@@ -1,12 +1,11 @@
-FROM python:3-slim-trixie as builder
+FROM python:3-slim-trixie AS builder
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 RUN    apt-get update -q \
-    && apt-get -y -q upgrade \
     && apt-get install -y gcc \
     && python3 -m pip install --break-system-packages --no-cache-dir --upgrade pip \
     && python3 -m pip install --break-system-packages --no-cache-dir flake8==7.2.0
@@ -21,7 +20,7 @@ RUN python3 -m pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheel
 
 FROM python:3-slim-trixie
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -33,17 +32,17 @@ LABEL org.opencontainers.image.description='Malcolm container providing a REST A
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "yeflask"
-ENV PGROUP "yeflask"
-ENV PUSER_PRIV_DROP true
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="yeflask"
+ENV PGROUP="yeflask"
+ENV PUSER_PRIV_DROP=true
 USER root
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 ARG FLASK_ENV=production
 ARG RESULT_SET_LIMIT="500"
@@ -52,8 +51,8 @@ ENV HOME=/malcolm
 ENV APP_HOME="${HOME}"/api
 ENV APP_FOLDER="${APP_HOME}"
 ENV FLASK_APP=project/__init__.py
-ENV FLASK_ENV $FLASK_ENV
-ENV RESULT_SET_LIMIT $RESULT_SET_LIMIT
+ENV FLASK_ENV=$FLASK_ENV
+ENV RESULT_SET_LIMIT=$RESULT_SET_LIMIT
 
 WORKDIR "${APP_HOME}"
 
@@ -69,7 +68,6 @@ ADD --chmod=755 shared/bin/service_check_passthrough.sh /usr/local/bin/
 ADD --chmod=755 container-health-scripts/api.sh /usr/local/bin/container_health.sh
 
 RUN    apt-get -q update \
-    && apt-get -y -q --no-install-recommends upgrade \
     && apt-get -y -q --no-install-recommends install curl jq netcat-openbsd rsync tini \
     && python3 -m pip install --upgrade pip \
     && python3 -m pip install --no-cache /wheels/* \
@@ -93,9 +91,9 @@ ENTRYPOINT ["/usr/bin/tini", \
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

@@ -17,8 +17,6 @@ on:
         required: false
       maxmind_alternate_url:
         required: false
-      zeek_deb_alternate_download_url:
-        required: false
 
 jobs:
   docker:
@@ -42,7 +40,7 @@ jobs:
     steps:
       -
         name: Cancel previous run in progress
-        uses: styfle/cancel-workflow-action@0.12.1
+        uses: styfle/cancel-workflow-action@0.13.0
         with:
           ignore_sha: true
           all_but_latest: true
@@ -50,6 +48,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       -
         name: Generate build timestamp
         shell: bash
@@ -102,7 +102,6 @@ jobs:
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
             ${{ secrets.maxmind_license_key && format('MAXMIND_GEOIP_DB_LICENSE_KEY={0}', secrets.maxmind_license_key) || '' }}
             ${{ secrets.maxmind_alternate_url && format('MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL={0}', secrets.maxmind_alternate_url) || '' }}
-            ${{ secrets.zeek_deb_alternate_download_url && format('ZEEK_DEB_ALTERNATE_DOWNLOAD_URL={0}', secrets.zeek_deb_alternate_download_url) || '' }}
             ${{ inputs.extra_build_args || '' }}
           push: true
           provenance: false
@@ -129,6 +128,6 @@ jobs:
       -
         name: Upload Trivy scan results to GitHub Security tab
         if: ${{ matrix.platform == 'linux/amd64' }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'

@@ -3,6 +3,8 @@ renamed_environment_variable_files:
   #   source_env_file
   postgres:
     netbox_postgres
+  filescan_secret:
+    zeek_secret
 copied_environment_variables:
   # destination_env_file:
   #   source_env_file:
@@ -20,12 +22,39 @@ copied_environment_variables:
     auth_common:
       NGINX_AUTH_MODE:
         NGINX_BASIC_AUTH
+  filescan:
+    filescan:
+        FILESCAN_OUTPUT_PATH:
+          FILESCAN_OUTPUT_PATH:
+            ? "/filescan/data/logs/filescan-%(ts)s.txt"
+            : "/filescan/data/logs/filescan-%(ts)s.log"
+    zeek:
+      FILESCAN_HTTP_SERVER_ZIP:
+        EXTRACTED_FILE_HTTP_SERVER_ZIP
+      FILESCAN_HTTP_SERVER_MAGIC:
+        EXTRACTED_FILE_HTTP_SERVER_MAGIC
+      FILESCAN_HTTP_SERVER_ENABLE:
+        EXTRACTED_FILE_HTTP_SERVER_ENABLE
+      FILESCAN_PRUNE_THRESHOLD_MAX_SIZE:
+        EXTRACTED_FILE_PRUNE_THRESHOLD_MAX_SIZE
+      FILESCAN_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT:
+        EXTRACTED_FILE_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT
+      FILESCAN_PRUNE_INTERVAL_SECONDS:
+        EXTRACTED_FILE_PRUNE_INTERVAL_SECONDS
+      FILESCAN_PRESERVATION:
+        EXTRACTED_FILE_PRESERVATION
+  filescan_secret:
+    filescan_secret:
+      FILESCAN_HTTP_SERVER_KEY:
+        EXTRACTED_FILE_HTTP_SERVER_KEY
   logstash:
     logstash:
       LOGSTASH_NETBOX_ENRICHMENT_DATASETS:
         LOGSTASH_NETBOX_ENRICHMENT_DATASETS:
           ? "suricata.alert,zeek.conn,zeek.dhcp,zeek.dns,zeek.known_hosts,zeek.known_services,zeek.ntlm,zeek.notice,zeek.signatures,zeek.software,zeek.weird"
-          : "suricata.alert,zeek.conn,zeek.dce_rpc,zeek.dhcp,zeek.dns,zeek.known_hosts,zeek.known_routers,zeek.known_services,zeek.login,zeek.ntlm,zeek.notice,zeek.rdp,zeek.rfb,zeek.signatures,zeek.smb_cmd,zeek.smb_files,zeek.smb_mapping,zeek.software,zeek.ssh,zeek.weird"
+          : "filescan.strelka,suricata.alert,zeek.conn,zeek.dce_rpc,zeek.dhcp,zeek.dns,zeek.known_hosts,zeek.known_routers,zeek.known_services,zeek.login,zeek.ntlm,zeek.notice,zeek.rdp,zeek.rfb,zeek.signatures,zeek.smb_cmd,zeek.smb_files,zeek.smb_mapping,zeek.software,zeek.ssh,zeek.weird"
+          ? "suricata.alert,zeek.conn,zeek.dce_rpc,zeek.dhcp,zeek.dns,zeek.known_hosts,zeek.known_routers,zeek.known_services,zeek.login,zeek.ntlm,zeek.notice,zeek.rdp,zeek.rfb,zeek.signatures,zeek.smb_cmd,zeek.smb_files,zeek.smb_mapping,zeek.software,zeek.ssh,zeek.weird"
+          : "filescan.strelka,suricata.alert,zeek.conn,zeek.dce_rpc,zeek.dhcp,zeek.dns,zeek.known_hosts,zeek.known_routers,zeek.known_services,zeek.login,zeek.ntlm,zeek.notice,zeek.rdp,zeek.rfb,zeek.signatures,zeek.smb_cmd,zeek.smb_files,zeek.smb_mapping,zeek.software,zeek.ssh,zeek.weird"
   netbox:
     netbox:
       REMOTE_AUTH_HEADER:
@@ -91,6 +120,12 @@ copied_environment_variables:
     arkime:
       CLUSTER_MAX_SHARDS_PER_NODE:
         OPENSEARCH_MAX_SHARDS_PER_NODE
+  pipeline:
+    zeek:
+      YARA_CUSTOM_RULES_ONLY:
+        EXTRACTED_FILE_YARA_CUSTOM_ONLY
+      RULES_UPDATE_ENABLED:
+        EXTRACTED_FILE_UPDATE_RULES
   postgres:
     netbox:
       DB_HOST:
@@ -182,8 +217,35 @@ removed_environment_variables:
     - DB_PASSWORD
   suricata_offline:
     - SURICATA_PCAP_PROCESSOR
+  zeek:
+    - CAPA_MAX_REQUESTS
+    - CLAMD_MAX_REQUESTS
+    - EXTRACTED_FILE_CAPA_VERBOSE
+    - EXTRACTED_FILE_ENABLE_CAPA
+    - EXTRACTED_FILE_ENABLE_CLAMAV
+    - EXTRACTED_FILE_ENABLE_VTOT
+    - EXTRACTED_FILE_ENABLE_YARA
+    - EXTRACTED_FILE_HTTP_SERVER_ENABLE
+    - EXTRACTED_FILE_HTTP_SERVER_MAGIC
+    - EXTRACTED_FILE_HTTP_SERVER_RECURSIVE
+    - EXTRACTED_FILE_HTTP_SERVER_RECURSIVE
+    - EXTRACTED_FILE_HTTP_SERVER_ZIP
+    - EXTRACTED_FILE_IGNORE_EXISTING
+    - EXTRACTED_FILE_MIN_BYTES
+    - EXTRACTED_FILE_PIPELINE_VERBOSITY
+    - EXTRACTED_FILE_PRESERVATION
+    - EXTRACTED_FILE_PRUNE_INTERVAL_SECONDS
+    - EXTRACTED_FILE_PRUNE_THRESHOLD_MAX_SIZE
+    - EXTRACTED_FILE_PRUNE_THRESHOLD_TOTAL_DISK_USAGE_PERCENT
+    - EXTRACTED_FILE_WATCHER_POLLING
+    - EXTRACTED_FILE_WATCHER_POLLING_ASSUME_CLOSED_SEC
+    - EXTRACTED_FILE_YARA_CUSTOM_ONLY
+    - VTOT_REQUESTS_PER_MINUTE
+    - YARA_MAX_REQUESTS
   zeek_offline:
     - ZEEK_PCAP_PROCESSOR
+  zeek_secret:
+    - VTOT_API2_KEY
 relocated_files:
   # Files/directories to relocate (relative to Malcolm installation directory)
   # Only occurs if Malcolm is not running, source exists, and destination does not.

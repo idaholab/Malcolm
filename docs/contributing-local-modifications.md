@@ -150,6 +150,11 @@ services:
       - type: bind
         bind:
           create_host_path: false
+        source: ./filescan-logs
+        target: /filescan
+      - type: bind
+        bind:
+          create_host_path: false
         source: ./filebeat/certs/ca.crt
         target: /certs/ca.crt
         read_only: true
@@ -184,13 +189,18 @@ services:
           create_host_path: false
         source: ./arkime/lua
         target: /opt/arkime/lua
-        read_only: true        
+        read_only: true
       - type: bind
         bind:
           create_host_path: false
         source: ./arkime/rules
         target: /opt/arkime/rules
         read_only: true
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./arkime/etc/wise.ini
+        target: /opt/arkime/wiseini/wise.ini
       - type: bind
         bind:
           create_host_path: false
@@ -215,12 +225,18 @@ services:
           create_host_path: false
         source: ./arkime/lua
         target: /opt/arkime/lua
-        read_only: true        
+        read_only: true
       - type: bind
         bind:
           create_host_path: false
         source: ./arkime/rules
         target: /opt/arkime/rules
+        read_only: true
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./arkime/etc/wise.ini
+        target: /opt/arkime/wiseini/wise.ini
         read_only: true
       - type: bind
         bind:
@@ -254,12 +270,12 @@ services:
         bind:
           create_host_path: false
         source: ./zeek/intel
-        target: /opt/zeek/share/zeek/site/intel
+        target: /usr/local/zeek/share/zeek/site/intel
       - type: bind
         bind:
           create_host_path: false
         source: ./zeek/custom
-        target: /opt/zeek/share/zeek/site/custom
+        target: /usr/local/zeek/share/zeek/site/custom
         read_only: true
   zeek-live:
     volumes:
@@ -283,12 +299,12 @@ services:
         bind:
           create_host_path: false
         source: ./zeek/intel
-        target: /opt/zeek/share/zeek/site/intel
+        target: /usr/local/zeek/share/zeek/site/intel
       - type: bind
         bind:
           create_host_path: false
         source: ./zeek/custom
-        target: /opt/zeek/share/zeek/site/custom
+        target: /usr/local/zeek/share/zeek/site/custom
         read_only: true
   suricata:
     volumes:
@@ -345,7 +361,7 @@ services:
         source: ./suricata/include-configs
         target: /opt/suricata/include-configs
         read_only: true
-  file-monitor:
+  filescan:
     volumes:
       - type: bind
         bind:
@@ -361,13 +377,62 @@ services:
       - type: bind
         bind:
           create_host_path: false
-        source: ./zeek-logs/current
-        target: /zeek/logs
+        source: ./filescan-logs
+        target: /filescan/data/logs
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./zeek-logs/extract_files/filescan
+        target: /filescan/data/files
+        read_only: true
+  strelka-backend:
+    volumes:
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./nginx/ca-trust
+        target: /var/local/ca-trust
+        read_only: true
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./strelka/config/backend/
+        target: /etc/strelka/configmap
+        read_only: true
       - type: bind
         bind:
           create_host_path: false
         source: ./yara/rules
         target: /yara-rules/custom
+        read_only: true
+  strelka-frontend:
+    volumes:
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./nginx/ca-trust
+        target: /var/local/ca-trust
+        read_only: true
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./strelka/config/frontend/
+        target: /etc/strelka/configmap
+        read_only: true
+      - strelka-logs:/var/log/strelka/
+  strelka-manager:
+    volumes:
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./nginx/ca-trust
+        target: /var/local/ca-trust
+        read_only: true
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./strelka/config/manager/
+        target: /etc/strelka/configmap
         read_only: true
   pcap-capture:
     volumes:
@@ -457,7 +522,7 @@ services:
         bind:
           create_host_path: false
         source: ./netbox/config
-        target: /etc/netbox/config
+        target: /etc/netbox/config/configmap
         read_only: true
       - type: bind
         bind:
@@ -524,6 +589,14 @@ services:
         source: ./.opensearch.primary.curlrc
         target: /var/local/curlrc/.opensearch.primary.curlrc
         read_only: true
+  keycloak:
+    volumes:
+      - type: bind
+        bind:
+          create_host_path: false
+        source: ./nginx/ca-trust
+        target: /var/local/ca-trust
+        read_only: true
   nginx-proxy:
     volumes:
       - nginx-log-path:/var/log/nginx
@@ -575,4 +648,4 @@ Another method for modifying local copies of Malcolm's services' containers is t
 
 For example, imagine a user wanted to create a Malcolm container that includes a new dashboard for OpenSearch Dashboards and a new enrichment filter `.conf` file for Logstash. After placing these files under `./dashboards/dashboards` and `./logstash/pipelines/enrichment`, respectively, in the Malcolm working copy, run `./build.sh dashboards-helper logstash` to build just those containers. After the build completes, run `docker images` to see the fresh images for `ghcr.io/idaholab/malcolm/dashboards-helper` and `ghcr.io/idaholab/malcolm/logstash-oss`. Users may need to review the contents of the [Dockerfiles]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/Dockerfiles) to determine the correct service and filesystem location within that service's image depending on the nature of the task.
 
-Alternately, forks of Malcolm on GitHub contain [workflow files]({{ site.github.repository_url }}/tree/{{ site.github.build_revision }}/.github/workflows/) that contain instructions for GitHub to build the images and [sensor](live-analysis.md#Hedgehog) and [Malcolm](malcolm-iso.md#ISO) installer ISOs. The resulting images are named according to the pattern `ghcr.io/owner/malcolm/image:branch` (e.g., if the GitHub user `romeogdetlevjr` has forked Malcolm, the `arkime` container built for the `main` branch would be named `ghcr.io/romeogdetlevjr/malcolm/arkime:main`). To run a local instance of Malcolm using these images instead of the official ones, users would need to edit their `docker-compose.yml` file(s) and replace the `image:` tags according to this new pattern, or use the bash helper script `./shared/bin/github_image_helper.sh` to pull and re-tag the images.
+Alternately, forks of Malcolm on GitHub contain [workflow files]({{ site.github.repository_url }}/tree/{{ site.github.build_revision }}/.github/workflows/) that contain instructions for GitHub to build the images and [sensor](live-analysis.md#Hedgehog) and [Malcolm](malcolm-iso.md#ISO) installer ISOs. The resulting images are named according to the pattern `ghcr.io/owner/malcolm/image:branch` (e.g., if the GitHub user `romeogdetlevjr` has forked Malcolm, the `arkime` container built for the `main` branch would be named `ghcr.io/romeogdetlevjr/malcolm/arkime:main`). To run a local instance of Malcolm using these images instead of the official ones, users would need to edit their `docker-compose.yml` file(s) and replace the `image:` tags according to this new pattern, or use the bash helper script [`./scripts/github_image_helper.sh`]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/scripts/github_image_helper.sh) to pull and re-tag the images.

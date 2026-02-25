@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+__version__ = '0.1a'
+
+from filescan import logging
+
+logging.basicConfig()
+log = logging.getLogger(__name__)
+
+import anyio
+import redis.exceptions
+import sys
+from datetime import datetime, UTC, timedelta
+from enum import Enum
+from filescan.click import click
+from filescan.config import BaseConfig
+from filescan.model import AnyScanMessageType, FileScanMap, FileEvent, FileResult
+from malcolm_utils import deep_get
+from pathlib import Path, PurePosixPath
+from pydantic import BaseModel, Field
+from redis.asyncio import Redis
+from typing import TextIO
+
+
+################################################################################
+################################################################################
+class FilePreservationMode(Enum):
+    QUARANTINED = "quarantined"
+    ALL = "all"
+    NONE = "none"
+
+
+class LoggerOptions(BaseModel, frozen=True):
+    max_scan_time: timedelta | None = None
+
+
+class PreservationOptions(BaseModel, frozen=True):
+    policy: FilePreservationMode | None = FilePreservationMode.ALL
+    concurrent_deletes: int = Field(default=8, ge=1, le=64)
+
+
+class LoggerConfig(BaseConfig, frozen=True):
+    logger: LoggerOptions = LoggerOptions()
+    preservation: PreservationOptions = PreservationOptions()
+
+
+def safe_unlink(p: PurePosixPath) -> None:
+    path = Path(p)
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        log.warning("failed to unlink %s: %s", path, e)
+
+
+def result_qualifies_for_preservation(scan_result: FileResult | None) -> bool:
+    return (
+        isinstance(scan_result, FileResult)
+        and isinstance(scan_result.result, dict)
+        and (rules := scan_result.result.get('rules'))
+        and isinstance(rules, list)
+    )
+
+
+async def preservation_cleanup_scan_artifacts(
+    scan_file: FileEvent,
+    scan_results: dict[str, FileResult],
+    policy: FilePreservationMode,
+    limiter: anyio.CapacityLimiter,
+) -> None:
+    try:
+        if isinstance(scan_file, FileEvent) and isinstance(scan_results, dict):
+            log.debug(
+                "cleanup policy=%s file=%r results=%r",
+                policy,
+                scan_file,
+                scan_results,
+            )
+            if (policy == FilePreservationMode.NONE) or (
+                (policy == FilePreservationMode.QUARANTINED)
+                and not any(result_qualifies_for_preservation(r) for r in scan_results.values())
+            ):
+                log.info('unlinking %s', scan_file.path.name)
+                async with limiter:
+                    await anyio.to_thread.run_sync(
+                        safe_unlink,
+                        scan_file.path,
+                        abandon_on_cancel=True,
+                    )
+            else:
+                log.info('preserving %s', scan_file.path.name)
+
+    except Exception:
+        log.exception("cleanup failed for scan %s", scan_file.path)
+
+
+async def watch_pubsub(
+    config: LoggerConfig,
+    connection: Redis,
+    output: TextIO,
+) -> None:
+    cleanup_limiter = anyio.CapacityLimiter(config.preservation.concurrent_deletes)
+    async with anyio.create_task_group() as preservation_cleanup_group:
+        # shield cleanup tasks so file deletion completes during shutdown
+        preservation_cleanup_group.cancel_scope.shield = True
+        scans = FileScanMap(
+            max_scan_time=config.logger.max_scan_time,
+        )
+        keys = {
+            config.redis.keys.notify,
+            config.redis.keys.result,
+        }
+        preservation_policy = config.preservation.policy
+        log.info(
+            'subscribing to keys: %s:%d/%d => {%s}, preservation policy: {%s}',
+            config.redis.host,
+            config.redis.port,
+            config.redis.db,
+            ', '.join(keys),
+            preservation_policy.value,
+        )
+        try:
+            pubsub = connection.pubsub()
+            try:
+                await pubsub.subscribe(*keys)
+                while True:
+                    msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
+                    if (
+                        not msg
+                        or msg.get('type') != 'message'
+                        or not msg.get('channel')
+                        or not (data := msg.get('data'))
+                    ):
+                        await anyio.sleep(0.1)
+                        continue
+
+                    if scans.update(AnyScanMessageType.validate_json(data)):
+                        for scan in scans.get_completed_scans():
+                            log.debug('complete: %r', scan)
+                            log.info('complete: %s', scan.id)
+                            output.write(scan.model_dump_json() + "\n")
+                            output.flush()
+                            if preservation_policy != FilePreservationMode.ALL:
+                                preservation_cleanup_group.start_soon(
+                                    preservation_cleanup_scan_artifacts,
+                                    scan.file,
+                                    scan.results,
+                                    preservation_policy,
+                                    cleanup_limiter,
+                                )
+                            await connection.publish(
+                                config.redis.keys.notify,
+                                scan.get_complete().model_dump_json(),
+                            )
+            finally:
+                await pubsub.aclose()
+
+        except anyio.get_cancelled_exc_class():
+            pass
+
+
+################################################################################
+## MAIN LOGIC ##################################################################
+################################################################################
+
+
+@click.command()
+@click.version_option(__version__, help="print the version of this tool and exit")
+@click.option("--verbose", "-v", count=True, help="increase logging verbosity (may be repeated)")
+@click.option("--quiet/--no-quiet", "-q", help="run silently except for critical errors")
+@click.option(
+    "--config", "-c", type=click.Path(exists=True, dir_okay=False, path_type=Path), help="specify a config file to load"
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=Path('./logger-%(ts)s.log'),
+    help="specify an output path, can contain %(ts)s to create " "timestamped output file",
+)
+async def main(
+    verbose: int,
+    quiet: bool,
+    config: Path | None,
+    output: Path,
+) -> None:
+    # setup logging properly as early as possible
+    logging.basicConfig(verbosity=verbose, quiet=quiet, force=True)
+
+    # get an options object, one way or another
+    if config:
+        options = LoggerConfig.from_path(config)
+    else:
+        log.warning('no config file specified, this is probably not what you ' 'want! continuing anyway...')
+        options = LoggerConfig()
+
+    connection: Redis | None = None
+
+    try:
+        try:
+            connection = Redis(
+                host=options.redis.host,
+                port=options.redis.port,
+                db=options.redis.db,
+                username=options.redis.username,
+                password=options.redis.password,
+                decode_responses=True,
+                client_name=Path(sys.argv[0]).stem,
+            )
+            await connection.ping()
+
+        except redis.exceptions.ConnectionError as exc:
+            # log the error, but don't print a novel
+            exc.__suppress_context__ = True
+            log.debug(
+                'failed to open primary redis connection',
+                exc_info=True,
+            )
+            log.fatal(
+                'unable to open primary redis connection: %s:%d/%d',
+                options.redis.host,
+                options.redis.port,
+                options.redis.db,
+            )
+            # this is an error we can't really recover from
+            sys.exit(1)
+
+        # FIXME: we could/should probably make this handle also be async
+        output = Path(
+            str(output)
+            % {
+                'ts': datetime.now(UTC).isoformat(),
+            }
+        )
+
+        with output.open('w') as out_fh:
+            async with anyio.create_task_group() as group:
+                group.start_soon(watch_pubsub, options, connection, out_fh)
+                await anyio.sleep_forever()
+
+    finally:
+        if connection is not None:
+            await connection.aclose()
+
+
+if __name__ == "__main__":
+    main()

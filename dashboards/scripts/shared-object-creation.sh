@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 set -euo pipefail
 shopt -s nocasematch
@@ -116,6 +116,14 @@ function DoReplacersInFile() {
       REFRESH_WITH_UNITS="${ARKIME_INIT_REFRESH_SEC:-60}s" && \
       jq --arg refresh "$REFRESH_WITH_UNITS" 'if has("template") then .template.settings.index.refresh_interval = $refresh else . end' \
         "${REPLFILE}" | sponge "${REPLFILE}"
+
+      if [[ -n "${MALCOLM_INDEX_MAX_RESULT_WINDOW:-}" ]]; then
+        jq --argjson window "$MALCOLM_INDEX_MAX_RESULT_WINDOW" 'if has("template") then .template.settings.index.max_result_window = $window else . end' \
+          "${REPLFILE}" | sponge "${REPLFILE}"
+      else
+        jq 'if has("template") then del(.template.settings.index.max_result_window) else . end' \
+          "${REPLFILE}" | sponge "${REPLFILE}"
+      fi
     fi
 
     [[ "$FILE_TYPE" == "template" ]] && \
@@ -645,7 +653,7 @@ if [[ "${CREATE_OS_ARKIME_SESSION_INDEX:-true}" = "true" ]] ; then
 
             # end OpenSearch Tweaks
             #############################################################################################################################
-            
+
             # OpenSearch Create Initial Indices
 
             CURL_OUT=$(get_tmp_output_filename)
@@ -797,12 +805,34 @@ if [[ "${CREATE_OS_ARKIME_SESSION_INDEX:-true}" = "true" ]] ; then
             rsync -a /opt/alerting/monitors/ "$ALERTING_IMPORT_DIR"/
             DoReplacersForDir "$ALERTING_IMPORT_DIR" "$DATASTORE_TYPE" "$NODE_COUNT" monitor
             for i in "${ALERTING_IMPORT_DIR}"/*.json; do
+
+              # does the monitor exist?
+              MONITOR_NAME=$(jq -r '.name' "$i")
+              MONITOR_ID=$(
+                curl "${CURL_CONFIG_PARAMS[@]}" -s \
+                  "$OPENSEARCH_URL_TO_USE/_plugins/_alerting/monitors/_search" \
+                  -H "$XSRF_HEADER:true" -H 'Content-type:application/json' \
+                  -d "{ \"query\": { \"match\" : { \"monitor.name\": \"${MONITOR_NAME}\" } } }" \
+                | jq -r '.hits.hits | if length==1 then .[0]._id else empty end' \
+                || true
+              )
+              if [[ "$MONITOR_ID" != "null" ]] && [[ -n "$MONITOR_ID" ]]; then
+                echo "Alerting monitor \"${MONITOR_NAME}\" already exists, skipping"
+                continue
+                # or, uncomment this to overwrite with original
+                # MONITOR_METHOD=PUT
+                # MONITOR_URL="$OPENSEARCH_URL_TO_USE/_plugins/_alerting/monitors/$MONITOR_ID"
+              else
+                MONITOR_METHOD=POST
+                MONITOR_URL="$OPENSEARCH_URL_TO_USE/_plugins/_alerting/monitors"
+              fi
+
               CURL_OUT=$(get_tmp_output_filename)
               curl "${CURL_CONFIG_PARAMS[@]}" --location --fail-with-body --output "$CURL_OUT" --silent \
-                -XPOST "$OPENSEARCH_URL_TO_USE/_plugins/_alerting/monitors" \
+                -X${MONITOR_METHOD} "${MONITOR_URL}" \
                 -H "$XSRF_HEADER:true" -H 'Content-type:application/json' \
                 -d "@$i" || ( cat "$CURL_OUT" && echo )
-            done
+            done # monitors loop
 
             echo "$DATASTORE_TYPE alerting objects creation complete!"
 

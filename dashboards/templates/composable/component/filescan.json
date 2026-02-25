@@ -1,0 +1,32 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "filescan": {
+          "properties": {
+            "hits": {
+              "type": "short"
+            },
+            "rules": {
+              "type": "nested",
+              "dynamic": false,
+              "include_in_parent": false,
+              "include_in_root": false,
+              "properties": {
+                "scanner": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "strelka": {
+          "type": "flat_object"
+        }
+      }
+    }
+  }
+}

@@ -36,6 +36,7 @@ from scripts.malcolm_constants import (
     DEFAULT_PCAP_DIR,
     DEFAULT_SURICATA_LOG_DIR,
     DEFAULT_ZEEK_LOG_DIR,
+    DEFAULT_FILESCAN_LOG_DIR,
     ImageArchitecture,
     PROFILE_HEDGEHOG,
     PROFILE_MALCOLM,
@@ -66,6 +67,7 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_EXPOSE_LOGSTASH,
     KEY_CONFIG_ITEM_EXPOSE_OPENSEARCH,
     KEY_CONFIG_ITEM_EXPOSE_SFTP,
+    KEY_CONFIG_ITEM_FILESCAN_LOG_DIR,
     KEY_CONFIG_ITEM_IMAGE_ARCH,
     KEY_CONFIG_ITEM_INDEX_DIR,
     KEY_CONFIG_ITEM_INDEX_SNAPSHOT_DIR,
@@ -414,7 +416,7 @@ def _apply_exposed_services(data: dict, exposed_services_tuple, platform) -> Non
     # reachback request ACL for hedgehog Linux run profile
 
     # remove previously exposed ports from compose
-    for hh_profile_service in ('file-monitor', 'arkime', 'arkime-live'):
+    for hh_profile_service in ('arkime', 'arkime-live', 'filescan'):
         if hh_profile_service in data['services']:
             data['services'][hh_profile_service].pop('ports', None)
 
@@ -436,7 +438,7 @@ def _apply_exposed_services(data: dict, exposed_services_tuple, platform) -> Non
             ],
             reachback_request_acl,
         )
-        aclPorts = {'file-monitor': SERVICE_PORT_HEDGEHOG_PROFILE_EXTRACTED_FILES}
+        aclPorts = {'filescan': SERVICE_PORT_HEDGEHOG_PROFILE_EXTRACTED_FILES}
         if any((pcap_cap_arkime_live, pcap_cap_netsniff, pcap_cap_tcpdump)):
             # expose 8005 for arkime-live or arkime depending on where Arkime viewer will be running
             aclPorts['arkime-live' if pcap_cap_arkime_live else 'arkime'] = SERVICE_PORT_HEDGEHOG_PROFILE_ARKIME_VIEWER
@@ -561,6 +563,9 @@ def update_compose_files(
         use_default = malcolm_config.get_value(KEY_CONFIG_ITEM_USE_DEFAULT_STORAGE_LOCATIONS)
         pcap_dir = get_or_default(malcolm_config, KEY_CONFIG_ITEM_PCAP_DIR, DEFAULT_PCAP_DIR, use_default)
         zeek_log_dir = get_or_default(malcolm_config, KEY_CONFIG_ITEM_ZEEK_LOG_DIR, DEFAULT_ZEEK_LOG_DIR, use_default)
+        filescan_log_dir = get_or_default(
+            malcolm_config, KEY_CONFIG_ITEM_FILESCAN_LOG_DIR, DEFAULT_FILESCAN_LOG_DIR, use_default
+        )
         suricata_log_dir = get_or_default(
             malcolm_config, KEY_CONFIG_ITEM_SURICATA_LOG_DIR, DEFAULT_SURICATA_LOG_DIR, use_default
         )
@@ -590,6 +595,7 @@ def update_compose_files(
                         pcap_dir,
                         suricata_log_dir,
                         zeek_log_dir,
+                        filescan_log_dir,
                         index_dir,
                         index_snapshot_dir,
                     ),

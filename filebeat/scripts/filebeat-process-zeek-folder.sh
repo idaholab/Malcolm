@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 
 # for files (sort -V (natural)) under /zeek that:
@@ -81,7 +81,6 @@ if mkdir $LOCKDIR; then
         TAGS=()
         TAGS_PRESERVED=()
         IFS=",-/_." read -r -a SOURCESPLIT <<< $(echo "$FILENAME" | sed "s/\.[^.]*$//")
-        echo "\"$FILENAME\" -> \"${DESTNAME}\""
         for index in "${!SOURCESPLIT[@]}"
         do
           TAG_CANDIDATE="${SOURCESPLIT[index]}"
@@ -106,10 +105,10 @@ if mkdir $LOCKDIR; then
 
         if [[ "$FILEMIME" == "application/x-ms-evtx" ]]; then
           # special case for Windows event log files that are uploaded uncompressed
-          mv -v "$FILENAME" "$DESTDIR_EXTRACTED"/"$(basename "$DESTNAME")"
+          mv "$FILENAME" "$DESTDIR_EXTRACTED"/"$(basename "$DESTNAME")"
         else
           # extract archive to DESTDIR_EXTRACTED
-          mv -v "$FILENAME" "$DESTNAME"
+          mv "$FILENAME" "$DESTNAME"
           python3 -m pyunpack.cli "$DESTNAME" "$DESTDIR_EXTRACTED"
         fi
 

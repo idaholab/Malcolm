@@ -1,6 +1,6 @@
-FROM netboxcommunity/netbox:v4.4.6
+FROM netboxcommunity/netbox:v4.4.10
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -10,30 +10,30 @@ LABEL org.opencontainers.image.vendor='Idaho National Laboratory'
 LABEL org.opencontainers.image.title='ghcr.io/idaholab/malcolm/netbox'
 LABEL org.opencontainers.image.description='Malcolm container providing the NetBox asset management system'
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
-ENV LANG C.UTF-8
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+ENV LANG=C.UTF-8
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "ubuntu"
-ENV PGROUP "ubuntu"
-ENV PUSER_PRIV_DROP true
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="ubuntu"
+ENV PGROUP="ubuntu"
+ENV PUSER_PRIV_DROP=true
 USER root
 
-ENV NETBOX_INITIALIZERS_VERSION "v4.4.0"
-ENV NETBOX_TOPOLOGY_VERSION "4.4.0"
-ENV NETBOX_HEALTHCHECK_VERSION "0.2.0"
+ENV NETBOX_INITIALIZERS_VERSION="v4.4.0"
+ENV NETBOX_TOPOLOGY_VERSION="4.4.0"
+ENV NETBOX_HEALTHCHECK_VERSION="0.2.0"
 
-ENV YQ_VERSION "4.49.2"
-ENV YQ_URL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_"
+ENV YQ_VERSION="4.52.4"
+ENV YQ_URL="https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_"
 
-ENV NETBOX_DEVICETYPE_LIBRARY_IMPORT_URL "https://codeload.github.com/mmguero-dev/Device-Type-Library-Import/tar.gz/develop"
-ENV NETBOX_DEVICETYPE_LIBRARY_URL "https://codeload.github.com/netbox-community/devicetype-library/tar.gz/master"
+ENV NETBOX_DEVICETYPE_LIBRARY_IMPORT_URL="https://codeload.github.com/mmguero-dev/Device-Type-Library-Import/tar.gz/develop"
+ENV NETBOX_DEVICETYPE_LIBRARY_URL="https://codeload.github.com/netbox-community/devicetype-library/tar.gz/master"
 
 ARG NETBOX_DEVICETYPE_LIBRARY_IMPORT_PATH="/opt/netbox-devicetype-library-import"
 
@@ -42,12 +42,12 @@ ARG NETBOX_PRELOAD_PATH="/opt/netbox-preload"
 ARG NETBOX_CUSTOM_PLUGINS_PATH="/opt/netbox-custom-plugins"
 ARG NETBOX_CONFIG_PATH="/etc/netbox/config"
 
-ENV NETBOX_PATH /opt/netbox
-ENV NETBOX_DEVICETYPE_LIBRARY_IMPORT_PATH $NETBOX_DEVICETYPE_LIBRARY_IMPORT_PATH
-ENV NETBOX_DEFAULT_SITE $NETBOX_DEFAULT_SITE
-ENV NETBOX_PRELOAD_PATH $NETBOX_PRELOAD_PATH
-ENV NETBOX_CUSTOM_PLUGINS_PATH $NETBOX_CUSTOM_PLUGINS_PATH
-ENV NETBOX_CONFIG_PATH $NETBOX_CONFIG_PATH
+ENV NETBOX_PATH=/opt/netbox
+ENV NETBOX_DEVICETYPE_LIBRARY_IMPORT_PATH=$NETBOX_DEVICETYPE_LIBRARY_IMPORT_PATH
+ENV NETBOX_DEFAULT_SITE=$NETBOX_DEFAULT_SITE
+ENV NETBOX_PRELOAD_PATH=$NETBOX_PRELOAD_PATH
+ENV NETBOX_CUSTOM_PLUGINS_PATH=$NETBOX_CUSTOM_PLUGINS_PATH
+ENV NETBOX_CONFIG_PATH=$NETBOX_CONFIG_PATH
 
 ADD --chmod=644 netbox/patch/* /tmp/netbox-patches/
 ADD --chmod=644 netbox/requirements.txt /usr/local/src/
@@ -60,7 +60,6 @@ RUN export BINARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') 
       curl -s https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-keyring.gpg && \
       mv /tmp/unit.list /etc/apt/sources.list.d/unit.list && \
     apt-get -q update && \
-    apt-get -y -q --no-install-recommends upgrade && \
     apt-get install -q -y --no-install-recommends \
       gcc \
       file \
@@ -139,9 +138,9 @@ CMD ["/opt/netbox/docker-entrypoint.sh", "supervisord", "-c", "/etc/supervisord.
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

@@ -46,20 +46,25 @@ Malcolm's Logstash instance can also be configured to accept logs from a [remote
 Configuring Filebeat to forward Zeek logs to Malcolm might look something like this example [`filebeat.yml`](https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-reference-yml.html):
 ```
 filebeat.inputs:
-- type: log
+- type: filestream
+  id: zeek-live
   paths:
     - /var/zeek/*.log
+  prospector:
+    scanner:
+      check_interval: 10s
   fields_under_root: true
-  compression_level: 0
+  tags: ["_filebeat_zeek_malcolm_live"]
   exclude_lines: ['^\s*#']
-  scan_frequency: 10s
   clean_inactive: 180m
   ignore_older: 120m
-  close_inactive: 90m
-  close_renamed: true
-  close_removed: true
-  close_eof: false
-  clean_renamed: true
+  close:
+    on_state_change:
+      inactive: 90m
+      renamed: true
+      removed: true
+    reader:
+      on_eof: false
   clean_removed: true
 
 output.logstash:
@@ -128,7 +133,7 @@ Aside from the settings mentioned above, to quote the Arkime documentation, ofte
 
 Suricata's resource utilization and performance can be tuned using [environment variables](malcolm-config.md#MalcolmConfigEnvVars) that can be added or modified in [`suricata-live.env`]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/config/suricata-live.env.example).
 
-Upon starting, Malcolm's [`suricata_config_populate.py`]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/config/shared/bin/suricata_config_populate.py) script generates the `suricata.yaml` configuration file (see (see [`suricata.yaml.in`](https://github.com/OISF/suricata/blob/master/suricata.yaml.in) and the [Suricata documentation](https://suricata.readthedocs.io/en/latest/configuration/suricata-yaml.html)). The `suricata_config_populate.py` script can use **many** environment variables when generating `suricata.yaml`. See the `DEFAULT_VARS` array in the script for a full list. Note that the environment variables must be prefixed with `SURICATA_` when defined in `suricata-live.env`.
+Upon starting, Malcolm's [`suricata_config_populate.py`]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/suricata/scripts/suricata_config_populate.py) script generates the `suricata.yaml` configuration file (see (see [`suricata.yaml.in`](https://github.com/OISF/suricata/blob/master/suricata.yaml.in) and the [Suricata documentation](https://suricata.readthedocs.io/en/latest/configuration/suricata-yaml.html)). The `suricata_config_populate.py` script can use **many** environment variables when generating `suricata.yaml`. See the `DEFAULT_VARS` array in the script for a full list. Note that the environment variables must be prefixed with `SURICATA_` when defined in `suricata-live.env`.
 
 The following environment variables related to tuning Suricata for live packet capture may be of particular interest, but this list is by no means exhaustive:
 

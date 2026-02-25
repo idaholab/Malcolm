@@ -17,10 +17,11 @@ spec:
       labels:
         app: arkime-live
         role: capture
+        workload-group: heavy
     spec:
       containers:
       - name: arkime-live-container
-        image: ghcr.io/idaholab/malcolm/arkime:25.12.0
+        image: ghcr.io/idaholab/malcolm/arkime:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -79,7 +80,7 @@ spec:
             readOnly: true
       initContainers:
       - name: arkime-live-dirinit-container
-        image: ghcr.io/idaholab/malcolm/dirinit:25.12.0
+        image: ghcr.io/idaholab/malcolm/dirinit:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true

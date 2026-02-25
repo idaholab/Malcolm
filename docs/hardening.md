@@ -35,7 +35,7 @@ The Malcolm aggregator base operating system claims exceptions from the recommen
 
 **6.17 Ensure virus scan Server is enabled**, **6.18 Ensure virus scan Server update is enabled** - As this is a network traffic analysis appliance rather than an end-user device, regular user files will not be created. A virus scan program would impact device performance and would be unnecessary.
 
-**7.1.1 Disable IP Forwarding**, **7.2.4 Log Suspicious Packets**, **7.2.7 Enable RFC-recommended Source Route Validation**, **7.4.1 Install TCP Wrappers** - As Malcolm may operate as a network traffic capture appliance sniffing packets on a network interface configured in promiscuous mode, these recommendations do not apply.
+**7.1.1 Disable IP Forwarding**, **7.2.4 Log Suspicious Packets**, **7.2.7 Enable RFC-recommended Source Route Validation**, **7.4.1 Install TCP Wrappers** - As Malcolm may operate as a network sensor sniffing packets on a network interface configured in promiscuous mode, these recommendations do not apply.
 
 **8.1.1.2 Disable System on Audit Log Full**, **8.1.1.3 Keep All Auditing Information**, **8.1.1.5 Ensure set remote_server for audit service**, **8.1.1.6 Ensure enable_krb5 set to yes for remote audit service**, **8.1.1.7 Ensure set action for audit storage volume is fulled**, **8.1.1.8 Ensure set action for network failure on remote audit service**, **8.1.1.9 Set space left for auditd service**, a few other audit-related items under section **8.1**, **8.2.4 Configure rsyslog to Send Logs to a Remote Log Host** - As maximizing availability is a system requirement, audit processing failures will be logged on the device rather than halting the system. `auditd` is set up to syslog when its local storage capacity is reached.
 
@@ -63,7 +63,7 @@ Password-related recommendations under **9.2** and **10.1** - The library packag
 
 **12.10 Find SUID System Executables**, **12.11 Find SGID System Executables** - The few files found by [these](https://github.com/hardenedlinux/harbian-audit/blob/master/bin/hardening/12.10_find_suid_files.sh) [scripts](https://github.com/hardenedlinux/harbian-audit/blob/master/bin/hardening/12.11_find_sgid_files.sh) are valid exceptions required by the Malcolm aggregator base operating system's core requirements.
 
-**14.1  Defense for NAT Slipstreaming** - As Malcolm may operate as a network traffic capture appliance sniffing packets on a network interface configured in promiscuous mode, this recommendation does not apply.
+**14.1  Defense for NAT Slipstreaming** - As Malcolm may operate as a network sensor sniffing packets on a network interface configured in promiscuous mode, this recommendation does not apply.
 
 Please review the notes for these additional guidelines. While not claiming an exception, the Malcolm aggregator base operating system may implement these guidelines in a manner different than is described by the [CIS Debian Linux 9/10 Benchmark](https://www.cisecurity.org/cis-benchmarks/cis-benchmarks-faq/) or the [hardenedlinux/harbian-audit](https://github.com/hardenedlinux/harbian-audit) audit scripts.
 

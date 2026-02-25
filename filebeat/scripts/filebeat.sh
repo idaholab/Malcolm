@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 if [[ ! ${LOGSTASH_HOST+x} ]]; then
   # variable does not exist at all, use default
@@ -80,19 +80,45 @@ else
   # add the extra tags to all logs
   if [[ -n "${EXTRA_TAGS}" ]]; then
     readarray -td '' EXTRA_TAGS_ARRAY < <(awk '{ gsub(/,/,"\0"); print; }' <<<"${EXTRA_TAGS},"); unset 'EXTRA_TAGS_ARRAY[-1]';
-    yq -P eval "(.\"filebeat.inputs\"[] | select(.type == \"log\").tags) += $(jo -a "${EXTRA_TAGS_ARRAY[@]}")" -i "${TMP_CONFIG_FILE}"
+    yq -P eval "(.\"filebeat.inputs\"[] | select(.type == \"filestream\").tags) += $(jo -a "${EXTRA_TAGS_ARRAY[@]}")" -i "${TMP_CONFIG_FILE}"
   fi
 
-  # for hedgehog profile, add `_filebeat_zeek_hedgehog` just to the Zeek logs
+  # native vs. fingerprint-based identification is based on the FILEBEAT_WATCHER_POLLING variable, see:
+  #   - https://www.elastic.co/blog/introducing-filestream-fingerprint-mode
+  #   - https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-filestream#filebeat-input-filestream-file-identity
+  #   - https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-filestream#filebeat-input-filestream-scan-fingerprint
+
+  if [[ "${FILEBEAT_WATCHER_POLLING:-false}" == "true" ]]; then
+    SCANNER_FINGERPRINT_ENABLED=true
+    FILE_IDENTITY=".fingerprint = ~ | del(.native)"
+  else
+    SCANNER_FINGERPRINT_ENABLED=false
+    FILE_IDENTITY=".native = ~ | del(.fingerprint)"
+  fi
+  yq -P eval "
+    (.\"filebeat.inputs\"[] | select(.type == \"filestream\") .prospector.scanner.fingerprint.enabled) = $SCANNER_FINGERPRINT_ENABLED
+    | (.\"filebeat.inputs\"[] | select(.type == \"filestream\") .file_identity) |= $FILE_IDENTITY
+  " -i "${TMP_CONFIG_FILE}"
+
+  # for hedgehog profile, add `_filebeat_zeek_hedgehog` to the Zeek logs and _filebeat_filescan_hedgehog to the filescan logs
   if [[ "${MALCOLM_PROFILE:-malcolm}" == "hedgehog" ]]; then
      yq -P eval '
       (
         .["filebeat.inputs"][]
         | select(
-            (.type | test("(?i)log")) and
+            (.type | test("(?i)filestream")) and
             (.tags[] | test("^_filebeat_zeek"))
           )
       ).tags += ["_filebeat_zeek_hedgehog"]
+    ' -i "${TMP_CONFIG_FILE}"
+     yq -P eval '
+      (
+        .["filebeat.inputs"][]
+        | select(
+            (.type | test("(?i)filestream")) and
+            (.tags[] | test("^_filebeat_filescan"))
+          )
+      ).tags += ["_filebeat_filescan_hedgehog"]
     ' -i "${TMP_CONFIG_FILE}"
   fi
 

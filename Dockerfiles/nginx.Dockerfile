@@ -1,12 +1,10 @@
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 ####################################################################################
 # first build documentation with jekyll
-FROM ghcr.io/mmguero-dev/jekyll:latest as docbuild
+FROM ghcr.io/mmguero-dev/jekyll:latest AS docbuild
 
-ARG GITHUB_TOKEN
-ARG VCS_REVISION
-ENV VCS_REVISION $VCS_REVISION
+ARG GITHUB_TOKEN=ARG VCS_REVISION=ENV VCS_REVISION=$VCS_REVISION
 
 ADD --chmod=644 README.md _config.yml Gemfile /site/
 ADD _includes/ /site/_includes/
@@ -48,7 +46,7 @@ RUN find /site -type f -name "*.md" -exec sed -i "s/{{[[:space:]]*site.github.bu
     find /site/_site -type f -name "*.html" -exec sed -i 's@\(href=\)"/"@\1"/readme/"@g' "{}" \;
 
 # build NGINX image
-FROM alpine:3.22
+FROM alpine:3.23
 
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
@@ -61,16 +59,16 @@ LABEL org.opencontainers.image.description='Malcolm container providing an NGINX
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "nginx"
-ENV PGROUP "nginx"
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="nginx"
+ENV PGROUP="nginx"
 # not dropping privileges globally so nginx and stunnel can bind privileged ports internally.
 # nginx itself will drop privileges to "nginx" user for worker processes
-ENV PUSER_PRIV_DROP false
+ENV PUSER_PRIV_DROP=false
 USER root
 
-ENV TERM xterm
+ENV TERM=xterm
 
 USER root
 
@@ -95,12 +93,12 @@ ARG NGINX_LDAP_TLS_STUNNEL_CHECK_HOST=
 ARG NGINX_LDAP_TLS_STUNNEL_CHECK_IP=
 ARG NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL=2
 
-ENV NGINX_SSL $NGINX_SSL
-ENV NGINX_AUTH_MODE $NGINX_AUTH_MODE
-ENV NGINX_LDAP_TLS_STUNNEL $NGINX_LDAP_TLS_STUNNEL
-ENV NGINX_LDAP_TLS_STUNNEL_CHECK_HOST $NGINX_LDAP_TLS_STUNNEL_CHECK_HOST
-ENV NGINX_LDAP_TLS_STUNNEL_CHECK_IP $NGINX_LDAP_TLS_STUNNEL_CHECK_IP
-ENV NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL $NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL
+ENV NGINX_SSL=$NGINX_SSL
+ENV NGINX_AUTH_MODE=$NGINX_AUTH_MODE
+ENV NGINX_LDAP_TLS_STUNNEL=$NGINX_LDAP_TLS_STUNNEL
+ENV NGINX_LDAP_TLS_STUNNEL_CHECK_HOST=$NGINX_LDAP_TLS_STUNNEL_CHECK_HOST
+ENV NGINX_LDAP_TLS_STUNNEL_CHECK_IP=$NGINX_LDAP_TLS_STUNNEL_CHECK_IP
+ENV NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL=$NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL
 
 # build latest nginx with nginx-auth-ldap
 ENV OPENRESTY_VERSION=1.27.1.2
@@ -183,7 +181,6 @@ RUN set -x ; \
     --add-module=/usr/src/nginx-auth-ldap \
   " ; \
   apk update --no-cache; \
-  apk upgrade --no-cache; \
   apk add --no-cache curl rsync shadow openssl; \
   addgroup -g ${DEFAULT_GID} -S ${PGROUP} ; \
   adduser -S -D -H -u ${DEFAULT_UID} -h /var/cache/nginx -s /sbin/nologin -G ${PGROUP} -g ${PUSER} ${PUSER} ; \
@@ -312,9 +309,9 @@ CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf", "-u", "root", "-n"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

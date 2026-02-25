@@ -1,6 +1,6 @@
 FROM debian:13-slim
 
-# Copyright (c) 2025 Battelle Energy Alliance, LLC.  All rights reserved.
+# Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
 LABEL org.opencontainers.image.url='https://github.com/idaholab/Malcolm'
@@ -12,22 +12,22 @@ LABEL org.opencontainers.image.description='Malcolm container providing network 
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "pcap"
-ENV PGROUP "pcap"
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="pcap"
+ENV PGROUP="pcap"
 # not dropping privileges globally: supervisord will take care of it
 # for all processes, but first we need root to sure capabilities for
 # traffic capturing tools are in-place before they are started.
 # despite doing setcap here in the Dockerfile, the chown in
 # docker-uid-gid-setup.sh will cause them to be lost, so we need
 # a final check in supervisor.sh before startup
-ENV PUSER_PRIV_DROP false
-ENV PUSER_RLIMIT_UNLOCK true
+ENV PUSER_PRIV_DROP=false
+ENV PUSER_RLIMIT_UNLOCK=true
 USER root
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV TERM xterm
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
 
 ARG PCAP_ENABLE_TCPDUMP=false
 ARG PCAP_ENABLE_NETSNIFF=false
@@ -42,17 +42,17 @@ ARG PCAP_PATH=/pcap
 ARG PCAP_FILTER=
 ARG PCAP_SNAPLEN=0
 
-ENV PCAP_ENABLE_TCPDUMP $PCAP_ENABLE_TCPDUMP
-ENV PCAP_ENABLE_NETSNIFF $PCAP_ENABLE_NETSNIFF
-ENV PCAP_IFACE $PCAP_IFACE
-ENV PCAP_IFACE_TWEAK $PCAP_IFACE_TWEAK
-ENV PCAP_NETSNIFF_MAGIC $PCAP_NETSNIFF_MAGIC
-ENV PCAP_TCPDUMP_FILENAME_PATTERN $PCAP_TCPDUMP_FILENAME_PATTERN
-ENV PCAP_ROTATE_MINUTES $PCAP_ROTATE_MINUTES
-ENV PCAP_ROTATE_MEGABYTES $PCAP_ROTATE_MEGABYTES
-ENV PCAP_PATH $PCAP_PATH
-ENV PCAP_FILTER $PCAP_FILTER
-ENV PCAP_SNAPLEN $PCAP_SNAPLEN
+ENV PCAP_ENABLE_TCPDUMP=$PCAP_ENABLE_TCPDUMP
+ENV PCAP_ENABLE_NETSNIFF=$PCAP_ENABLE_NETSNIFF
+ENV PCAP_IFACE=$PCAP_IFACE
+ENV PCAP_IFACE_TWEAK=$PCAP_IFACE_TWEAK
+ENV PCAP_NETSNIFF_MAGIC=$PCAP_NETSNIFF_MAGIC
+ENV PCAP_TCPDUMP_FILENAME_PATTERN=$PCAP_TCPDUMP_FILENAME_PATTERN
+ENV PCAP_ROTATE_MINUTES=$PCAP_ROTATE_MINUTES
+ENV PCAP_ROTATE_MEGABYTES=$PCAP_ROTATE_MEGABYTES
+ENV PCAP_PATH=$PCAP_PATH
+ENV PCAP_FILTER=$PCAP_FILTER
+ENV PCAP_SNAPLEN=$PCAP_SNAPLEN
 
 COPY --from=ghcr.io/mmguero-dev/gostatic --chmod=755 /goStatic /usr/bin/goStatic
 ADD --chmod=755 shared/bin/docker-uid-gid-setup.sh /usr/local/bin/
@@ -66,7 +66,6 @@ ADD --chmod=644 pcap-capture/templates/*.template /etc/supervisor.d/
 ADD --chmod=644 pcap-capture/requirements.txt /usr/local/src/requirements.txt
 
 RUN apt-get -q update && \
-    apt-get -y -q --no-install-recommends upgrade && \
     apt-get install --no-install-recommends -y -q \
       bc \
       ethtool \
@@ -116,9 +115,9 @@ CMD ["/usr/local/bin/supervisor.sh"]
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION

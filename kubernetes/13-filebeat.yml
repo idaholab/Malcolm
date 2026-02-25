@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
       - name: filebeat-container
-        image: ghcr.io/idaholab/malcolm/filebeat-oss:25.12.0
+        image: ghcr.io/idaholab/malcolm/filebeat-oss:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -54,6 +54,10 @@ spec:
               name: upload-common-env
           - configMapRef:
               name: nginx-env
+          - secretRef:
+              name: redis-env
+          - configMapRef:
+              name: zeek-env
           - configMapRef:
               name: beats-common-env
           - configMapRef:
@@ -80,12 +84,14 @@ spec:
             name: filebeat-zeek-volume
           - mountPath: "/suricata"
             name: filebeat-suricata-volume
+          - mountPath: "/filescan"
+            name: filebeat-filescan-volume
           - name: filebeat-nginx-runtime-logs-volume
             mountPath: /nginx
             subPath: "nginx"
       initContainers:
       - name: filebeat-dirinit-container
-        image: ghcr.io/idaholab/malcolm/dirinit:25.12.0
+        image: ghcr.io/idaholab/malcolm/dirinit:26.02.0
         imagePullPolicy: Always
         stdin: false
         tty: true
@@ -121,6 +127,9 @@ spec:
         - name: filebeat-suricata-volume
           persistentVolumeClaim:
             claimName: suricata-claim
+        - name: filebeat-filescan-volume
+          persistentVolumeClaim:
+            claimName: filescan-claim
         - name: filebeat-nginx-runtime-logs-volume
           persistentVolumeClaim:
             claimName: runtime-logs-claim

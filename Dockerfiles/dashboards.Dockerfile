@@ -1,4 +1,4 @@
-FROM opensearchproject/opensearch-dashboards:3.3.0
+FROM opensearchproject/opensearch-dashboards:3.5.0
 
 LABEL maintainer="malcolm@inl.gov"
 LABEL org.opencontainers.image.authors='malcolm@inl.gov'
@@ -11,27 +11,26 @@ LABEL org.opencontainers.image.description='Malcolm container providing OpenSear
 
 ARG DEFAULT_UID=1000
 ARG DEFAULT_GID=1000
-ENV DEFAULT_UID $DEFAULT_UID
-ENV DEFAULT_GID $DEFAULT_GID
-ENV PUSER "opensearch-dashboards"
-ENV PGROUP "opensearch-dashboards"
-ENV PUSER_PRIV_DROP true
+ENV DEFAULT_UID=$DEFAULT_UID
+ENV DEFAULT_GID=$DEFAULT_GID
+ENV PUSER="opensearch-dashboards"
+ENV PGROUP="opensearch-dashboards"
+ENV PUSER_PRIV_DROP=true
 USER root
 
-ENV TERM xterm
+ENV TERM=xterm
 
-ENV TINI_VERSION v0.19.0
-ENV TINI_URL https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini
+ENV TINI_VERSION=v0.19.0
+ENV TINI_URL=https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini
 
 ARG NODE_OPTIONS="--max_old_space_size=4096"
-ENV NODE_OPTIONS $NODE_OPTIONS
+ENV NODE_OPTIONS=$NODE_OPTIONS
 
 ENV PATH="/data:${PATH}"
 
 USER root
 
 RUN export BINARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') && \
-    yum upgrade -y && \
     yum install -y curl-minimal psmisc findutils util-linux jq openssl rsync procps-ng python3 zip unzip && \
     yum remove -y vim-* && \
     usermod -a -G tty ${PUSER} && \
@@ -66,9 +65,9 @@ EXPOSE 5601
 ARG BUILD_DATE
 ARG MALCOLM_VERSION
 ARG VCS_REVISION
-ENV BUILD_DATE $BUILD_DATE
-ENV MALCOLM_VERSION $MALCOLM_VERSION
-ENV VCS_REVISION $VCS_REVISION
+ENV BUILD_DATE=$BUILD_DATE
+ENV MALCOLM_VERSION=$MALCOLM_VERSION
+ENV VCS_REVISION=$VCS_REVISION
 
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.version=$MALCOLM_VERSION
