@@ -430,7 +430,6 @@ class BaseTab:
 
     def _should_omit_item_for_profile(self, key: str) -> bool:
         """Return True when item should be omitted entirely for selected profile."""
-        from itertools import product
         from scripts.installer.core.dependencies import DEPENDENCY_CONFIG
         from scripts.malcolm_constants import PROFILE_HEDGEHOG, PROFILE_MALCOLM
 
@@ -455,54 +454,18 @@ class BaseTab:
             return False
 
         other_profile = PROFILE_MALCOLM if current_profile == PROFILE_HEDGEHOG else PROFILE_HEDGEHOG
-        non_profile_keys = [dk for dk in dep_keys if dk != KEY_CONFIG_ITEM_MALCOLM_PROFILE]
-
-        option_lists = []
-        combo_count = 1
-        for dep_key in non_profile_keys:
-            dep_item = self.malcolm_config.get_item(dep_key)
-            options = []
-            if dep_item and getattr(dep_item, "choices", None):
-                for choice in dep_item.choices:
-                    value = choice[0] if isinstance(choice, tuple) and len(choice) >= 1 else choice
-                    if value not in options:
-                        options.append(value)
+        current_values = []
+        other_values = []
+        for dep_key in dep_keys:
+            if dep_key == KEY_CONFIG_ITEM_MALCOLM_PROFILE:
+                current_values.append(current_profile)
+                other_values.append(other_profile)
             else:
-                options = [self.malcolm_config.get_value(dep_key)]
+                value = self.malcolm_config.get_value(dep_key)
+                current_values.append(value)
+                other_values.append(value)
 
-            option_lists.append(options if options else [self.malcolm_config.get_value(dep_key)])
-            combo_count *= max(1, len(option_lists[-1]))
-            if combo_count > 128:
-                return False
-
-        if not option_lists:
-            option_lists = [[None]]
-
-        any_current_visible = False
-        any_other_visible = False
-        for combo in product(*option_lists):
-            vals_current = []
-            vals_other = []
-            combo_idx = 0
-            for dep_key in dep_keys:
-                if dep_key == KEY_CONFIG_ITEM_MALCOLM_PROFILE:
-                    vals_current.append(current_profile)
-                    vals_other.append(other_profile)
-                else:
-                    val = combo[combo_idx]
-                    combo_idx += 1
-                    vals_current.append(val)
-                    vals_other.append(val)
-
-            if vis.condition(*vals_current):
-                any_current_visible = True
-            if vis.condition(*vals_other):
-                any_other_visible = True
-
-            if any_current_visible and any_other_visible:
-                return False
-
-        return (not any_current_visible) and any_other_visible
+        return (not vis.condition(*current_values)) and vis.condition(*other_values)
 
     def _update_widget_visibility(self, key: str):
         """Update widget enabled/disabled state based on MalcolmConfig visibility.
