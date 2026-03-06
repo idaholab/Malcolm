@@ -6029,6 +6029,322 @@
                 }
               }
             },
+            "iec104_ctrl": {
+              "properties": {
+                "action": {
+                  "type": "keyword"
+                },
+                "asdu_type": {
+                  "type": "keyword"
+                },
+                "cot": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "time_sync": {
+                  "type": "keyword"
+                },
+                "tsc": {
+                  "type": "long"
+                },
+                "qrp": {
+                  "type": "long"
+                },
+                "actcon_ts": {
+                  "type": "date"
+                },
+                "actterm_ts": {
+                  "type": "date"
+                },
+                "duration": {
+                  "type": "float"
+                },
+                "missing": {
+                  "type": "keyword"
+                },
+                "error": {
+                  "type": "keyword"
+                },
+                "error_reason": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "iec104_query": {
+              "properties": {
+                "action": {
+                  "type": "keyword"
+                },
+                "asdu_type": {
+                  "type": "keyword"
+                },
+                "cot": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "qoi": {
+                  "type": "long"
+                },
+                "qcc_rqt": {
+                  "type": "long"
+                },
+                "qcc_frz": {
+                  "type": "long"
+                },
+                "actcon_ts": {
+                  "type": "date"
+                },
+                "actterm_ts": {
+                  "type": "date"
+                },
+                "duration": {
+                  "type": "float"
+                },
+                "missing": {
+                  "type": "keyword"
+                },
+                "error": {
+                  "type": "keyword"
+                },
+                "error_reason": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "iec104_read": {
+              "properties": {
+                "action": {
+                  "type": "keyword"
+                },
+                "asdu_type": {
+                  "type": "keyword"
+                },
+                "cot": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "raw_data": {
+                  "type": "long"
+                },
+                "actcon_ts": {
+                  "type": "date"
+                },
+                "duration": {
+                  "type": "float"
+                },
+                "missing": {
+                  "type": "keyword"
+                },
+                "error": {
+                  "type": "keyword"
+                },
+                "error_reason": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "iec104_write": {
+              "properties": {
+                "action": {
+                  "type": "keyword"
+                },
+                "asdu_type": {
+                  "type": "keyword"
+                },
+                "cot": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "value": {
+                  "type": "keyword"
+                },
+                "se": {
+                  "type": "keyword"
+                },
+                "qualifier": {
+                  "type": "long"
+                },
+                "actcon_ts": {
+                  "type": "date"
+                },
+                "actterm_ts": {
+                  "type": "date"
+                },
+                "duration": {
+                  "type": "float"
+                },
+                "missing": {
+                  "type": "keyword"
+                },
+                "error": {
+                  "type": "keyword"
+                },
+                "error_reason": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "iec104_file": {
+              "properties": {
+                "ts_end": {
+                  "type": "date"
+                },
+                "duration": {
+                  "type": "float"
+                },
+                "direction": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "fname": {
+                  "type": "long"
+                },
+                "segments": {
+                  "type": "long"
+                },
+                "bytes": {
+                  "type": "long"
+                },
+                "status": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "iec104_telemetry": {
+              "properties": {
+                "asdu_type": {
+                  "type": "keyword"
+                },
+                "cot": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "value": {
+                  "type": "keyword"
+                },
+                "spi": {
+                  "type": "keyword"
+                },
+                "bl": {
+                  "type": "keyword"
+                },
+                "sb": {
+                  "type": "keyword"
+                },
+                "nt": {
+                  "type": "keyword"
+                },
+                "iv": {
+                  "type": "keyword"
+                },
+                "ov": {
+                  "type": "keyword"
+                },
+                "cp24": {
+                  "type": "keyword"
+                },
+                "cp56": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "iec104_param": {
+              "properties": {
+                "action": {
+                  "type": "keyword"
+                },
+                "asdu_type": {
+                  "type": "keyword"
+                },
+                "cot": {
+                  "type": "keyword"
+                },
+                "ca": {
+                  "type": "long"
+                },
+                "ioa": {
+                  "type": "long"
+                },
+                "value": {
+                  "type": "keyword"
+                },
+                "qpm_kpa": {
+                  "type": "long"
+                },
+                "qpm_pop": {
+                  "type": "keyword"
+                },
+                "qpm_lpc": {
+                  "type": "keyword"
+                },
+                "qpa": {
+                  "type": "long"
+                },
+                "actcon_ts": {
+                  "type": "date"
+                },
+                "actterm_ts": {
+                  "type": "date"
+                },
+                "duration": {
+                  "type": "float"
+                },
+                "missing": {
+                  "type": "keyword"
+                },
+                "error": {
+                  "type": "keyword"
+                },
+                "error_reason": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                }
+              }
+            },
             "synchrophasor": {
               "properties": {
                 "data_frame_count": {

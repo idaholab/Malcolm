@@ -110,6 +110,7 @@ ZKG_GITHUB_URLS=(
   "https://github.com/cisagov/icsnpp-profinet-io-cm"
   "https://github.com/mmguero-dev/icsnpp-roc-plus"
   "https://github.com/cisagov/icsnpp-s7comm"
+  "https://github.com/cert-lv/spicy-iec104|main"
   "https://github.com/cisagov/icsnpp-synchrophasor"
   "https://github.com/corelight/callstranger-detector"
   "https://github.com/corelight/CVE-2020-16898"
