@@ -196,6 +196,8 @@ class ValueFormatter:
         Returns:
             Formatted string representation for summary
         """
+        if value and (("password" in label.lower()) or ("api key" in label.lower())):
+            return "********"
         return _format_scalar(value, empty_label="Not Set")
 
 

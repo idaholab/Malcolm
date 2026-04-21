@@ -80,6 +80,7 @@ class MainWindow:
         self.key_to_tab = {}  # config_key -> menu_key (for finding which tab has a field)
 
         self.selected_profile = selected_profile or PROFILE_MALCOLM
+        self.accent_colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
         self.header_image = header_image
         self._build_only = build_only
         self._main_frame: Optional[customtkinter.CTkFrame] = None
@@ -103,14 +104,11 @@ class MainWindow:
         # Header bar with profile image and info
         self._create_header(self._main_frame)
 
-        # Get accent colors for selected profile
-        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
-
         self.tab_view = customtkinter.CTkTabview(
             self._main_frame,
-            segmented_button_selected_color=colors["primary"],
-            segmented_button_selected_hover_color=colors["hover"],
-            text_color=colors["text"],
+            segmented_button_selected_color=self.accent_colors["primary"],
+            segmented_button_selected_hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
         )
         self.tab_view.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -190,16 +188,13 @@ class MainWindow:
         )
         appearance_label.pack(side="left", padx=(0, 10))
 
-        # Get accent colors for selected profile
-        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
-
         appearance_switch = customtkinter.CTkSwitch(
             appearance_frame,
             text="Light/Dark",
             command=self._toggle_appearance_mode,
-            fg_color=colors["primary"],
-            progress_color=colors["hover"],
-            button_hover_color=colors["hover"],
+            fg_color=self.accent_colors["primary"],
+            progress_color=self.accent_colors["hover"],
+            button_hover_color=self.accent_colors["hover"],
         )
         appearance_switch.pack(side="left")
         appearance_switch.select() if self._is_dark_mode() else appearance_switch.deselect()
@@ -249,9 +244,7 @@ class MainWindow:
 
             tab_frame = self.tab_view.add(tab_label)
 
-            # Get accent colors for selected profile
-            colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
-            base_tab = BaseTab(tab_frame, self.malcolm_config, menu_key, accent_colors=colors)
+            base_tab = BaseTab(tab_frame, self.malcolm_config, menu_key, accent_colors=self.accent_colors)
             self.tabs[menu_key] = base_tab
             self.tab_labels[menu_key] = tab_label
 
@@ -265,9 +258,6 @@ class MainWindow:
         Args:
             parent: The parent frame to attach the button bar to
         """
-        # Get accent colors for selected profile
-        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
-
         button_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
         button_frame.pack(fill="x", padx=10, pady=10)
         self._button_bar = button_frame
@@ -277,9 +267,9 @@ class MainWindow:
             text="Save & Continue",
             command=self._on_save,
             width=150,
-            fg_color=colors["primary"],
-            hover_color=colors["hover"],
-            text_color=colors["text"],
+            fg_color=self.accent_colors["primary"],
+            hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
         )
         save_button.pack(side="left", padx=5)
 
@@ -288,9 +278,9 @@ class MainWindow:
             text="Search",
             command=self._on_search,
             width=100,
-            fg_color=colors["primary"],
-            hover_color=colors["hover"],
-            text_color=colors["text"],
+            fg_color=self.accent_colors["primary"],
+            hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
         )
         search_button.pack(side="left", padx=5)
 
@@ -299,9 +289,9 @@ class MainWindow:
             text="Exit",
             command=self._on_exit,
             width=100,
-            fg_color=colors["primary"],
-            hover_color=colors["hover"],
-            text_color=colors["text"],
+            fg_color=self.accent_colors["primary"],
+            hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
         )
         exit_button.pack(side="right", padx=5)
 
@@ -338,9 +328,6 @@ class MainWindow:
         Args:
             issues: List of ValidationIssue objects
         """
-        # Get accent colors for selected profile
-        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
-
         dialog = customtkinter.CTkToplevel(self.root)
         dialog.title("Configuration Issues")
         dialog.geometry("650x450")
@@ -406,9 +393,9 @@ class MainWindow:
                 command=make_jump_callback(issue.key),
                 width=100,
                 height=28,
-                fg_color=colors["primary"],
-                hover_color=colors["hover"],
-                text_color=colors["text"],
+                fg_color=self.accent_colors["primary"],
+                hover_color=self.accent_colors["hover"],
+                text_color=self.accent_colors["text"],
             )
             go_button.pack(side="right", padx=10, pady=8)
 
@@ -418,9 +405,9 @@ class MainWindow:
             text="Close",
             command=dialog.destroy,
             width=120,
-            fg_color=colors["primary"],
-            hover_color=colors["hover"],
-            text_color=colors["text"],
+            fg_color=self.accent_colors["primary"],
+            hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
         )
         close_button.pack(pady=15)
 
@@ -586,12 +573,11 @@ class MainWindow:
         Args:
             parent: The parent frame to attach the search panel to
         """
-        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
         self._search_panel = SearchPanel(
             parent,
             malcolm_config=self.malcolm_config,
             on_jump=self._jump_to_item,
-            accent_colors=colors,
+            accent_colors=self.accent_colors,
             pack_before=self._button_bar,
         )
 
@@ -649,16 +635,13 @@ class MainWindow:
         """Handle Exit button click."""
         from scripts.installer.ui.gui.components.dialog import show_confirmation_dialog
 
-        # Get accent colors for selected profile
-        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
-
         if show_confirmation_dialog(
             self.root,
             "Are you sure you want to exit? Any unsaved changes will be lost.",
             title="Confirm Exit",
             ok_text="Yes",
             cancel_text="No",
-            accent_colors=colors,
+            accent_colors=self.accent_colors,
         ):
             self.result = False
             self.root.destroy()
