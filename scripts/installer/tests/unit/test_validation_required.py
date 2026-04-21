@@ -23,6 +23,7 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_MALCOLM_PROFILE,
     KEY_CONFIG_ITEM_NETBOX_MODE,
     KEY_CONFIG_ITEM_NETBOX_URL,
+    KEY_CONFIG_ITEM_OPEN_PORTS,
     KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
     KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_URL,
     KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE,
@@ -39,7 +40,7 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_USE_DEFAULT_STORAGE_LOCATIONS,
     KEY_CONFIG_ITEM_ZEEK_LOG_DIR,
 )
-from scripts.installer.configs.constants.enums import SearchEngineMode, NetboxMode
+from scripts.installer.configs.constants.enums import OpenPortsChoices, SearchEngineMode, NetboxMode
 
 
 def _issue_keys(issues):
@@ -141,6 +142,9 @@ class TestValidationRequired(unittest.TestCase):
 
     def test_traefik_opensearch_host_required_when_local_primary(self):
         # traefik labels + local OpenSearch primary
+        # OPEN_PORTS=customize is required to make EXPOSE_OPENSEARCH visible/effective;
+        # without it the dependency system resets EXPOSE_OPENSEARCH back to False.
+        self.cfg.set_value(KEY_CONFIG_ITEM_OPEN_PORTS, OpenPortsChoices.CUSTOMIZE.value)
         self.cfg.set_value(KEY_CONFIG_ITEM_EXPOSE_OPENSEARCH, True)
         self.cfg.set_value(KEY_CONFIG_ITEM_TRAEFIK_LABELS, True)
         self.cfg.set_value(

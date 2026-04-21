@@ -17,32 +17,6 @@ from scripts.installer.configs.constants.enums import InstallerResult
 from scripts.installer.tests.mock.test_framework import BaseInstallerTest
 
 
-class TestPlatformDockerInstall(BaseInstallerTest):
-    """Validate platform-level docker install orchestration handles success/failure."""
-
-    def test_platform_docker_install_success(self):
-        ctx = self.create_test_context()
-        with patch.object(self.mock_platform, "install_docker", return_value=True) as mock_install:
-            result = self.mock_platform.install_docker(ctx)
-        self.assertTrue(result)
-        mock_install.assert_called_once_with(ctx)
-
-    def test_platform_docker_install_failure(self):
-        ctx = self.create_test_context()
-        with patch.object(self.mock_platform, "install_docker", return_value=False) as mock_install:
-            result = self.mock_platform.install_docker(ctx)
-        self.assertFalse(result)
-        mock_install.assert_called_once_with(ctx)
-
-
-class TestDockerComposeInstall(BaseInstallerTest):
-    def test_docker_compose_install_calls_platform(self):
-        with patch.object(self.mock_platform, "install_docker_compose", return_value=True) as mock_install:
-            ok = self.mock_platform.install_docker_compose()
-        self.assertTrue(ok)
-        mock_install.assert_called_once()
-
-
 class TestFilesystemAction(BaseInstallerTest):
 
     def test_filesystem_step_success(self):
