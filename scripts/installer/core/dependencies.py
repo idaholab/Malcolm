@@ -767,27 +767,13 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         ),
     ),
     KEY_CONFIG_ITEM_PCAP_TCPDUMP: DependencySpec(
+        # Visibility only — no auto-default. PCAP_NETSNIFF is the default capture engine
+        # for Malcolm/local; tcpdump is opt-in and would otherwise race with netsniff in
+        # observer ordering since their value rules are mutually exclusive.
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
             ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
-        ),
-        value=ValueRule(
-            depends_on=[
-                KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
-                KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-                KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
-                KEY_CONFIG_ITEM_PCAP_NETSNIFF,
-                KEY_CONFIG_ITEM_LIVE_ARKIME,
-            ],
-            condition=True,
-            default_value=lambda live_traffic, profile, mode, netsniff, arkime: (
-                bool(live_traffic)
-                and (profile == PROFILE_MALCOLM)
-                and (mode == SearchEngineMode.OPENSEARCH_LOCAL.value)
-                and (not bool(netsniff))
-                and (not bool(arkime))
-            ),
         ),
     ),
     KEY_CONFIG_ITEM_LIVE_ARKIME: DependencySpec(

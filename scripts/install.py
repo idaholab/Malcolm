@@ -852,16 +852,12 @@ def main():
                 sys.exit(1)
         else:
             # GUI mode: config directory handling will be done during GUI flow
-            try:
-                success, input_dir, output_dir = handle_config_directories_gui_mode(malcolm_config)
-                if not success:
-                    InstallerLogger.error("Config directory setup cancelled by user.")
-                    sys.exit(1)
-                dirs.input_dir = input_dir
-                dirs.output_dir = output_dir
-            except NotImplementedError:
-                InstallerLogger.error("GUI mode is not yet implemented.")
+            success, input_dir, output_dir = handle_config_directories_gui_mode(malcolm_config)
+            if not success:
+                InstallerLogger.error("Config directory setup cancelled by user.")
                 sys.exit(1)
+            dirs.input_dir = input_dir
+            dirs.output_dir = output_dir
     else:
         # TUI/DUI/Silent modes: use traditional flow
         if not handle_config_directories_tui_mode(

@@ -20,6 +20,7 @@ from scripts.installer.ui.gui.components.styles import (
     PANEL_CORNER_RADIUS,
 )
 from scripts.installer.ui.gui.tabs.base_tab import BaseTab
+from scripts.installer.ui.gui.components.search_panel import SearchPanel
 from scripts.installer.configs.constants.configuration_item_keys import KEY_CONFIG_ITEM_MALCOLM_PROFILE
 
 if TYPE_CHECKING:
@@ -83,6 +84,8 @@ class MainWindow:
         self._build_only = build_only
         self._main_frame: Optional[customtkinter.CTkFrame] = None
         self._logo_label: Optional[customtkinter.CTkLabel] = None
+        self._button_bar: Optional[customtkinter.CTkFrame] = None
+        self._search_panel: Optional[SearchPanel] = None
 
         self.root = root or customtkinter.CTk()
         profile_display = "Malcolm" if self.selected_profile == PROFILE_MALCOLM else "Hedgehog"
@@ -113,6 +116,8 @@ class MainWindow:
 
         self._create_tabs()
         self._create_button_bar(self._main_frame)
+        self._create_search_panel(self._main_frame)
+        self.root.bind_all("<Control-f>", lambda _e: self._on_search())
 
     def display(self) -> None:
         """Make the pre-built window visible.
@@ -265,6 +270,7 @@ class MainWindow:
 
         button_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
         button_frame.pack(fill="x", padx=10, pady=10)
+        self._button_bar = button_frame
 
         save_button = customtkinter.CTkButton(
             button_frame,
@@ -574,10 +580,70 @@ class MainWindow:
         except (AttributeError, Exception):
             pass
 
+    def _create_search_panel(self, parent):
+        """Create the bottom-docked search panel (initially hidden).
+
+        Args:
+            parent: The parent frame to attach the search panel to
+        """
+        colors = ACCENT_COLORS.get(self.selected_profile, ACCENT_COLORS[PROFILE_MALCOLM])
+        self._search_panel = SearchPanel(
+            parent,
+            malcolm_config=self.malcolm_config,
+            on_jump=self._jump_to_item,
+            accent_colors=colors,
+            pack_before=self._button_bar,
+        )
+
     def _on_search(self):
-        """Handle Search button click."""
-        # TODO: Phase 5 - Implement search functionality using shared search_utils
-        InstallerLogger.info("Search functionality will be implemented in Phase 5")
+        """Toggle the search panel. Triggered by the Search button or Ctrl+F."""
+        if self._search_panel is not None:
+            self._search_panel.toggle()
+
+    def _jump_to_item(self, key: str) -> None:
+        """Switch to the tab containing the given key, scroll it into view, and pulse it.
+
+        Accepts both ConfigItem keys and MenuItem keys. For MenuItem keys, the tab
+        itself (or the tab containing the submenu) is selected; for ConfigItem keys,
+        the owning tab is selected and the target widget is scrolled and pulsed.
+        """
+        menu_item = self.malcolm_config.get_menu_item(key)
+        if menu_item is not None:
+            tab_key = self._resolve_tab_for_menu_item(key)
+            if tab_key is None:
+                InstallerLogger.debug(f"Search jump: no tab found for menu key '{key}'")
+                return
+            self._switch_to_tab(tab_key)
+            return
+
+        tab_key = self.key_to_tab.get(key)
+        if tab_key is None:
+            InstallerLogger.debug(f"Search jump: no tab found for config key '{key}'")
+            return
+        self._switch_to_tab(tab_key)
+        base_tab = self.tabs.get(tab_key)
+        if base_tab is not None:
+            base_tab.scroll_to_item(key)
+            base_tab.pulse_item(key)
+
+    def _resolve_tab_for_menu_item(self, menu_key: str) -> Optional[str]:
+        """Walk up the MenuItem hierarchy until we find a key that owns a tab."""
+        current_key = menu_key
+        visited: set = set()
+        while current_key and current_key not in visited:
+            visited.add(current_key)
+            if current_key in self.tab_labels:
+                return current_key
+            parent_menu = self.malcolm_config.get_menu_item(current_key)
+            if parent_menu is None:
+                return None
+            current_key = parent_menu.ui_parent
+        return None
+
+    def _switch_to_tab(self, menu_key: str) -> None:
+        tab_label = self.tab_labels.get(menu_key)
+        if tab_label:
+            self.tab_view.set(tab_label)
 
     def _on_exit(self):
         """Handle Exit button click."""

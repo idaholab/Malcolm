@@ -53,6 +53,7 @@ class BaseTab:
         self._containers: Dict[str, CollapsibleContainer] = {}
         self._children_map: Dict[str, List[str]] = {}  # parent_key -> [child_keys]
         self._items_with_children: Set[str] = set()
+        self._scrollable_frame: Optional[customtkinter.CTkScrollableFrame] = None
 
         self._build_ui()
 
@@ -74,6 +75,7 @@ class BaseTab:
             bg_color=self._tab_bg,
         )
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self._scrollable_frame = scrollable_frame
         self._bind_mousewheel(scrollable_frame)
 
         # Get all items with depth and children info
@@ -636,3 +638,83 @@ class BaseTab:
             return stored_color
 
         return fallback
+
+    def scroll_to_item(self, key: str) -> None:
+        """Scroll the tab so the given item is visible, expanding collapsed ancestors.
+
+        Args:
+            key: ConfigItem key to bring into view
+        """
+        self._expand_ancestors(key)
+
+        target = self.pack_targets.get(key)
+        if target is None or self._scrollable_frame is None:
+            return
+        canvas = getattr(self._scrollable_frame, "_parent_canvas", None)
+        if canvas is None:
+            return
+
+        canvas.update_idletasks()
+        inner_children = canvas.winfo_children()
+        inner_frame = inner_children[0] if inner_children else None
+        total_height = inner_frame.winfo_height() if inner_frame else canvas.winfo_height()
+        if total_height <= 0:
+            return
+
+        target_y = target.winfo_y()
+        # Small leading margin so the item isn't flush to the top edge
+        fraction = max(0.0, min(1.0, (target_y - 20) / total_height))
+        canvas.yview_moveto(fraction)
+
+    def _expand_ancestors(self, key: str) -> None:
+        """Expand any collapsed ancestor containers so the target becomes reachable."""
+        item = self.malcolm_config.get_item(key)
+        if not item:
+            return
+        parent_key = item.ui_parent
+        while parent_key:
+            container = self._containers.get(parent_key)
+            if container and self._collapse_state.get(parent_key):
+                container.set_collapsed(False)
+                self._collapse_state[parent_key] = False
+            parent_item = self.malcolm_config.get_item(parent_key)
+            if not parent_item:
+                break
+            parent_key = parent_item.ui_parent
+
+    def pulse_item(self, key: str, pulses: int = 2, interval_ms: int = 180) -> None:
+        """Flash the target item's container border with the accent color.
+
+        Args:
+            key: ConfigItem key whose container should pulse
+            pulses: Number of on/off cycles
+            interval_ms: Delay between toggles
+        """
+        target = self.pack_targets.get(key)
+        if target is None or not self.accent_colors:
+            return
+        accent = self.accent_colors.get("primary")
+        if not accent:
+            return
+
+        try:
+            original_color = target.cget("border_color")
+            original_width = target.cget("border_width")
+        except (AttributeError, ValueError, TypeError):
+            return
+
+        steps_remaining = pulses * 2  # each pulse = one "on" + one "off"
+
+        def step():
+            nonlocal steps_remaining
+            if steps_remaining <= 0:
+                target.configure(border_color=original_color, border_width=original_width)
+                return
+            if steps_remaining % 2 == 0:
+                target.configure(border_color=original_color, border_width=original_width)
+            else:
+                target.configure(border_color=accent, border_width=3)
+            steps_remaining -= 1
+            target.after(interval_ms, step)
+
+        step()

@@ -1002,7 +1002,7 @@ class MalcolmConfig(ObservableStoreMixin):
                     raise DependencyError(f"Observer for {key} failed: {e}") from e
 
     def search_items(self, search_term: str) -> List[Dict[str, Any]]:
-        """Search for configuration items across key, label, question, and definition name.
+        """Search for configuration items and menu sections across key, label, question, and definition name.
 
         Args:
             search_term: The term to search for in item keys, labels, questions, or CONFIG_ITEM constants
@@ -1016,6 +1016,7 @@ class MalcolmConfig(ObservableStoreMixin):
             - 'dependency_chain': List of keys that need to be enabled for this item to be visible
             - 'definition_name': CONFIG_ITEM_* constant associated with the item
             - 'question': The prompt/question text tied to the item (may be empty)
+            - 'item_type': "config" for ConfigItems, "menu" for MenuItems (tab/section groupings)
         """
         search_term = search_term.lower()
         results = []
@@ -1034,7 +1035,6 @@ class MalcolmConfig(ObservableStoreMixin):
             if not any(search_term in target for target in search_targets if target):
                 continue
 
-            # Find dependency chain for invisible items
             dependency_chain = []
             if not item.is_visible:
                 dependency_chain = self._get_dependency_chain(key)
@@ -1048,6 +1048,27 @@ class MalcolmConfig(ObservableStoreMixin):
                     "dependency_chain": dependency_chain,
                     "definition_name": definition_name,
                     "question": question_text,
+                    "item_type": "config",
+                }
+            )
+
+        for key, menu_item in self._menu_items.items():
+            label_text = menu_item.label or ""
+            search_targets = (key.lower(), label_text.lower())
+
+            if not any(search_term in target for target in search_targets if target):
+                continue
+
+            results.append(
+                {
+                    "key": key,
+                    "label": menu_item.label,
+                    "visible": menu_item.is_visible,
+                    "ui_parent": menu_item.ui_parent,
+                    "dependency_chain": [],
+                    "definition_name": "",
+                    "question": "",
+                    "item_type": "menu",
                 }
             )
 
