@@ -75,6 +75,9 @@ class MainWindow:
         self.main_menu_keys = main_menu_keys
         self.debug_mode = debug_mode
         self.result = False
+        self.phase = "config"  # "config" | "install" | "summary"
+        self.config_dir: Optional[str] = None
+        self.is_dry_run: bool = False
         self.tabs = {}  # menu_key -> BaseTab
         self.tab_labels = {}  # menu_key -> tab_label (for switching tabs)
         self.key_to_tab = {}  # config_key -> menu_key (for finding which tab has a field)
@@ -92,8 +95,6 @@ class MainWindow:
         profile_display = "Malcolm" if self.selected_profile == PROFILE_MALCOLM else "Hedgehog"
         self.root.title(f"{profile_display} Installer Configuration")
         self.root.geometry("900x700")
-        # Minimum size keeps header + tab content + search panel (260) + bottom bar
-        # visible even when the user drags the window edges inward.
         self.root.minsize(720, 600)
 
         self._build_ui()
@@ -262,8 +263,6 @@ class MainWindow:
             parent: The parent frame to attach the button bar to
         """
         button_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
-        # side=bottom anchors the bar to the window edge so any later bottom-packed
-        # sibling (the SearchPanel) stacks ABOVE it instead of pushing it offscreen.
         button_frame.pack(side="bottom", fill="x", padx=10, pady=10)
         self._button_bar = button_frame
 
@@ -282,12 +281,13 @@ class MainWindow:
             button_frame,
             text="Save & Continue",
             command=self._on_save,
-            width=150,
+            width=180,
             fg_color=self.accent_colors["primary"],
             hover_color=self.accent_colors["hover"],
             text_color=self.accent_colors["text"],
         )
         save_button.pack(side="right", padx=(10, 0))
+        self._save_button = save_button
 
         self._search_entry = customtkinter.CTkEntry(
             button_frame,
@@ -302,29 +302,21 @@ class MainWindow:
         self._search_entry.bind("<FocusIn>", self._on_search_focus_in)
 
     def _on_save(self):
-        """Handle Save & Continue button click with validation blocking.
+        """Handle Save & Continue for the current phase.
 
-        Validates the entire form before allowing the user to proceed.
-        If validation fails, shows a dialog with all issues and highlights invalid fields.
-        If validation passes, closes the window and returns True. The summary dialog
-        is shown by install.py via show_final_configuration_summary().
+        Config phase validates MalcolmConfig first. Install and summary phases
+        simply mark success and exit the mainloop so the next phase can load.
         """
-        from scripts.installer.core.validation import validate_required
+        if self.phase == "config":
+            from scripts.installer.core.validation import validate_required
 
-        # Clear any previous error highlighting before re-validating
-        self._clear_error_highlighting()
+            self._clear_error_highlighting()
+            issues = validate_required(self.malcolm_config)
+            if issues:
+                self._highlight_invalid_fields(issues)
+                self._show_validation_issues_dialog(issues)
+                return
 
-        # Run form-level validation
-        issues = validate_required(self.malcolm_config)
-
-        if issues:
-            # Validation failed - show issues dialog and highlight fields
-            self._highlight_invalid_fields(issues)
-            self._show_validation_issues_dialog(issues)
-            return  # BLOCK - don't save
-
-        # Validation passed - close window and return True
-        # Summary dialog is shown by install.py via show_final_configuration_summary()
         self.result = True
         self._shutdown()
 
@@ -689,27 +681,10 @@ class MainWindow:
             self.result = False
             self._shutdown()
 
-    def _shutdown(self) -> None:
-        """Tear down the window safely for teardown -> next phase transitions.
-
-        Clicking a CTkButton schedules an ~100ms .after() click-animation callback
-        against the clicked widget. If we destroy the root synchronously inside
-        the command handler, that callback fires against dead widget IDs and
-        leaks into the next Tcl interpreter (see install.py's gather_install_options
-        creating a fresh CTk root). The cascade surfaces as bgerror and can hang
-        the whole process. To avoid it: hide immediately, then after the animation
-        window has elapsed, cancel any other pending .after() callbacks and destroy.
-        """
+    def _rebuild_tab_view(self) -> None:
+        """Destroy and recreate the CTkTabview to guarantee a clean slate."""
         try:
-            self.root.withdraw()
-        except Exception:
-            pass
-        self.root.after(150, self._finalize_shutdown)
-
-    def _finalize_shutdown(self) -> None:
-        try:
-            pending = self.root.tk.call("after", "info") or ()
-            for after_id in pending:
+            for after_id in self.root.tk.call("after", "info") or ():
                 try:
                     self.root.after_cancel(after_id)
                 except Exception:
@@ -717,7 +692,150 @@ class MainWindow:
         except Exception:
             pass
         try:
-            self.root.destroy()
+            self.tab_view.destroy()
+        except Exception:
+            pass
+        self.tabs.clear()
+        self.tab_labels.clear()
+        self.key_to_tab.clear()
+        self.tab_view = customtkinter.CTkTabview(
+            self._main_frame,
+            segmented_button_selected_color=self.accent_colors["primary"],
+            segmented_button_selected_hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
+        )
+        self.tab_view.pack(fill="both", expand=True, padx=10, pady=10, before=self._button_bar)
+
+    def _set_search_visible(self, visible: bool) -> None:
+        """Show or hide the bottom-bar search entry and close any open panel."""
+        entry = getattr(self, "_search_entry", None)
+        if entry is None:
+            return
+        if visible:
+            entry.pack(side="left", fill="x", expand=True, padx=5)
+        else:
+            try:
+                entry.pack_forget()
+            except Exception:
+                pass
+            if self._search_panel is not None:
+                self._search_panel.hide()
+
+    def _set_save_text(self, text: str) -> None:
+        if getattr(self, "_save_button", None) is not None:
+            try:
+                self._save_button.configure(text=text)
+            except Exception:
+                pass
+
+    def load_config_phase(self, main_menu_keys: Optional[list] = None) -> None:
+        """Swap tab view back to configuration tabs (used on validation re-entry)."""
+        if main_menu_keys is not None:
+            self.main_menu_keys = main_menu_keys
+        self.phase = "config"
+        self.result = False
+        self._rebuild_tab_view()
+        self._create_tabs()
+        self._set_search_visible(True)
+        self._set_save_text("Save & Continue")
+
+    def load_install_phase(self, install_context: "InstallContext") -> None:
+        """Swap tab view to the installation-options tab rendered via BaseTab."""
+        self.install_context = install_context
+        self.phase = "install"
+        self.result = False
+        self._rebuild_tab_view()
+        self._set_search_visible(False)
+        self._set_save_text("Continue")
+        tab_frame = self.tab_view.add("Installation Options")
+        self.tab_labels["__install__"] = "Installation Options"
+        install_tab = BaseTab(
+            tab_frame,
+            install_context,
+            menu_item_key=None,
+            accent_colors=self.accent_colors,
+            hide_invisible=True,
+        )
+        self.tabs["__install__"] = install_tab
+        self._build_install_extras(tab_frame, install_context)
+        install_context.observe(
+            "autoTweaks",
+            lambda _value: self.root.after(50, self._refresh_install_phase),
+        )
+
+    def _refresh_install_phase(self) -> None:
+        if self.phase != "install" or self.install_context is None:
+            return
+        self.load_install_phase(self.install_context)
+        try:
+            self.tab_view.set("Installation Options")
+            self.root.update_idletasks()
+        except Exception:
+            pass
+
+    def _build_install_extras(self, parent, install_context: "InstallContext") -> None:
+        """Append the small 'Additional Options' footer under the install tab."""
+        extras = customtkinter.CTkFrame(parent, corner_radius=8)
+        extras.pack(fill="x", padx=20, pady=(0, 10), side="bottom")
+
+        customtkinter.CTkLabel(
+            extras,
+            text="Additional Options",
+            font=("Helvetica", 12, "bold"),
+        ).pack(anchor="w", padx=15, pady=(10, 5))
+
+        config_only_var = customtkinter.BooleanVar(value=install_context.config_only)
+        customtkinter.CTkCheckBox(
+            extras,
+            text="Configuration Only (skip installation, just save configuration)",
+            variable=config_only_var,
+            command=lambda: setattr(install_context, 'config_only', config_only_var.get()),
+        ).pack(anchor="w", padx=15, pady=(5, 10))
+
+    def load_summary_phase(
+        self,
+        malcolm_config: "MalcolmConfig",
+        config_dir: str,
+        install_context: "InstallContext",
+        is_dry_run: bool = False,
+    ) -> None:
+        """Swap tab view to the read-only summary tab."""
+        from scripts.installer.ui.gui.dialogs.summary_dialog import build_summary_content
+
+        self.malcolm_config = malcolm_config
+        self.install_context = install_context
+        self.config_dir = config_dir
+        self.is_dry_run = is_dry_run
+        self.phase = "summary"
+        self.result = False
+        self._rebuild_tab_view()
+        self._set_search_visible(False)
+        if is_dry_run:
+            save_text = "Close"
+        elif install_context.config_only:
+            save_text = "Save Configuration"
+        else:
+            save_text = "Proceed with Installation"
+        self._set_save_text(save_text)
+        tab_frame = self.tab_view.add("Review")
+        self.tab_labels["__summary__"] = "Review"
+        content = customtkinter.CTkFrame(tab_frame, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=10, pady=10)
+        build_summary_content(content, malcolm_config, config_dir, install_context, is_dry_run)
+        try:
+            self.tab_view.set("Review")
+            self.root.update_idletasks()
+        except Exception:
+            pass
+
+    def _shutdown(self) -> None:
+        """Schedule final teardown after CTk animations settle."""
+        self.root.after(150, self._finalize_shutdown)
+
+    def _finalize_shutdown(self) -> None:
+        """Exit the mainloop; widgets stay alive for subsequent phases."""
+        try:
+            self.root.quit()
         except Exception:
             pass
 

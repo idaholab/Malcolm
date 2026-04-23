@@ -33,6 +33,7 @@ class GUIInstallerUI(InstallerUI):
         customtkinter.set_appearance_mode("system")
         customtkinter.set_default_color_theme("blue")
         self._root = None
+        self._main_window: Optional["MainWindow"] = None
 
     def _ensure_root(self):
         """Ensure a root window exists for dialogs."""
@@ -266,48 +267,25 @@ class GUIInstallerUI(InstallerUI):
                 # Still waiting, check again
                 self._root.after(50, check_splash_complete)
 
-        check_splash_complete()
+        if self._main_window is None:
+            check_splash_complete()
+        else:
+            self._main_window.load_config_phase(main_menu_keys)
 
-        # Run the event loop
         self._root.mainloop()
-
-        # Return the result (set by main window)
-        result = getattr(self, "_config_result", False)
-        self._root = None
-        return result
+        return self._main_window.result if self._main_window else False
 
     def _show_main_window(
         self,
         main_window: "MainWindow",
         header_image,
     ) -> None:
-        """Display the pre-built main configuration window.
-
-        Args:
-            main_window: Pre-built MainWindow instance (created during loading phase)
-            header_image: CTkImage for header display
-        """
+        """Display the pre-built main configuration window."""
         self._main_window = main_window
-
-        # Set the header image (wasn't available during background build)
         if header_image:
             self._main_window.set_header_image(header_image)
-
-        # Display the pre-built window
         self._main_window.display()
-
-        # Ensure window close matches Exit button behavior
         self._root.protocol("WM_DELETE_WINDOW", self._main_window._on_exit)
-
-        # The main window will call root.destroy() when done
-        # We need to intercept that to get the result
-        original_destroy = self._root.destroy
-
-        def wrapped_destroy():
-            self._config_result = self._main_window.result
-            original_destroy()
-
-        self._root.destroy = wrapped_destroy
 
     def gather_install_options(
         self,
@@ -315,28 +293,12 @@ class GUIInstallerUI(InstallerUI):
         malcolm_config: "MalcolmConfig",
         install_context: "InstallContext",
     ) -> Optional["InstallContext"]:
-        """Gather installation options from the user using GUI dialog.
-
-        Args:
-            platform: The platform-specific installer instance
-            malcolm_config: MalcolmConfig instance for accessing configuration
-            install_context: Pre-created InstallContext instance to populate
-
-        Returns:
-            Updated InstallContext with user's installation choices, or None if cancelled
-        """
-        from scripts.installer.ui.gui.dialogs.installation_dialog import show_installation_dialog
-
-        self._ensure_root()
-        self._root.withdraw()  # Keep root hidden during dialog
-
-        try:
-            result = show_installation_dialog(self._root, malcolm_config, install_context)
-            return result
-        finally:
-            if self._root:
-                self._root.destroy()
-                self._root = None
+        """Swap the main window into install-options phase and wait for the user."""
+        if self._main_window is None:
+            return install_context
+        self._main_window.load_install_phase(install_context)
+        self._root.mainloop()
+        return install_context if self._main_window.result else None
 
     def show_final_configuration_summary(
         self,
@@ -345,32 +307,9 @@ class GUIInstallerUI(InstallerUI):
         install_context: "InstallContext",
         is_dry_run: bool = False,
     ) -> bool:
-        """Show final configuration summary and get user confirmation to proceed.
-
-        Args:
-            malcolm_config: MalcolmConfig instance containing all configuration
-            config_dir: Configuration directory path where files will be saved
-            install_context: The populated InstallContext with installation choices.
-            is_dry_run: When True, display summary as a dry-run and adjust prompt wording.
-
-        Returns:
-            True if user confirms to proceed with installation, False otherwise
-        """
-        from scripts.installer.ui.gui.dialogs.summary_dialog import show_summary_dialog
-
-        self._ensure_root()
-        self._root.withdraw()  # Keep root hidden during dialog
-
-        try:
-            result = show_summary_dialog(
-                self._root,
-                malcolm_config,
-                config_dir,
-                install_context,
-                is_dry_run
-            )
-            return result
-        finally:
-            if self._root:
-                self._root.destroy()
-                self._root = None
+        """Swap the main window into summary phase and wait for the user."""
+        if self._main_window is None:
+            return False
+        self._main_window.load_summary_phase(malcolm_config, config_dir, install_context, is_dry_run)
+        self._root.mainloop()
+        return bool(self._main_window.result)

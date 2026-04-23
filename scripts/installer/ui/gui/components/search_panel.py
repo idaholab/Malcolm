@@ -75,14 +75,7 @@ class SearchPanel(customtkinter.CTkFrame):
         self._render_placeholder("Start typing to search...")
 
     def show(self):
-        """Dock the panel above the bottom bar.
-
-        Relies on the button bar having been packed with side="bottom" first.
-        Packing this panel with side="bottom" (without `before=`) places it
-        above the bar in pack order — Tk processes bottom-sided widgets in
-        pack-list order and each claims the bottom of the remaining cavity,
-        so the second bottom widget lands above the first.
-        """
+        """Dock the panel above the bottom bar."""
         if not self.winfo_ismapped():
             self.pack(side="bottom", fill="x", padx=10, pady=(0, 5))
 

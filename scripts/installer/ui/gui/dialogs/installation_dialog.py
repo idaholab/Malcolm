@@ -5,7 +5,7 @@
 
 """Installation options dialog for GUI installer."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import Any, Dict, TYPE_CHECKING, Optional
 import customtkinter
 
 from scripts.installer.utils.logger_utils import InstallerLogger
@@ -43,6 +43,73 @@ def show_installation_dialog(
     dialog = InstallationDialog(parent, malcolm_config, install_context)
     result = dialog.run()
     return result
+
+
+INDENT_PER_DEPTH = 20
+
+
+def build_install_options_content(
+    parent,
+    malcolm_config: "MalcolmConfig",
+    install_context: "InstallContext",
+) -> Dict[str, Any]:
+    """Populate `parent` with the installation-options UI used by the dialog."""
+    widget_map: Dict[str, Any] = {}
+    _build_installation_items_into(parent, malcolm_config, install_context, widget_map)
+    _build_extended_options_into(parent, install_context)
+    return widget_map
+
+
+def _build_installation_items_into(parent, malcolm_config, install_context, widget_map):
+    rows = [r for r in build_rows_from_items(install_context.items.items(), install_context) if r.visible]
+    if not rows:
+        customtkinter.CTkLabel(
+            parent,
+            text="No installation options available for your platform.",
+            font=("Helvetica", 11),
+            text_color="gray",
+        ).pack(pady=20)
+        return
+
+    runtime_bin = malcolm_config.get_value(KEY_CONFIG_ITEM_RUNTIME_BIN) or ""
+
+    for row in rows:
+        item = install_context.get_item(row.key)
+        if not item:
+            continue
+
+        display_label = installation_item_display_label(row.key, item.label or row.key, runtime_bin.lower())
+        widget = create_config_item_widget(
+            parent,
+            row.key,
+            item,
+            install_context,
+            label_override=display_label,
+        )
+        if not widget:
+            continue
+        widget_map[row.key] = widget
+        left_pad = 15 + row.depth * INDENT_PER_DEPTH
+        widget.pack(fill="x", padx=(left_pad, 15), pady=3)
+
+
+def _build_extended_options_into(parent, install_context):
+    extended_frame = customtkinter.CTkFrame(parent, corner_radius=8)
+    extended_frame.pack(fill="x", pady=(10, 0))
+
+    customtkinter.CTkLabel(
+        extended_frame,
+        text="Additional Options",
+        font=("Helvetica", 12, "bold"),
+    ).pack(anchor="w", padx=15, pady=(10, 5))
+
+    config_only_var = customtkinter.BooleanVar(value=install_context.config_only)
+    customtkinter.CTkCheckBox(
+        extended_frame,
+        text="Configuration Only (skip installation, just save configuration)",
+        variable=config_only_var,
+        command=lambda: setattr(install_context, 'config_only', config_only_var.get()),
+    ).pack(anchor="w", padx=15, pady=(5, 10))
 
 
 class InstallationDialog:
