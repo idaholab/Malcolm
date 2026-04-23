@@ -92,6 +92,9 @@ class MainWindow:
         profile_display = "Malcolm" if self.selected_profile == PROFILE_MALCOLM else "Hedgehog"
         self.root.title(f"{profile_display} Installer Configuration")
         self.root.geometry("900x700")
+        # Minimum size keeps header + tab content + search panel (260) + bottom bar
+        # visible even when the user drags the window edges inward.
+        self.root.minsize(720, 600)
 
         self._build_ui()
 
@@ -115,7 +118,7 @@ class MainWindow:
         self._create_tabs()
         self._create_button_bar(self._main_frame)
         self._create_search_panel(self._main_frame)
-        self.root.bind_all("<Control-f>", lambda _e: self._on_search())
+        self.root.bind_all("<Control-f>", lambda _e: self._focus_search_entry())
 
     def display(self) -> None:
         """Make the pre-built window visible.
@@ -253,36 +256,16 @@ class MainWindow:
                 self.key_to_tab[config_key] = menu_key
 
     def _create_button_bar(self, parent):
-        """Create bottom button bar with Save, Search, Exit buttons.
+        """Create bottom bar: [Exit] [-- Search Entry --] [Save & Continue].
 
         Args:
             parent: The parent frame to attach the button bar to
         """
         button_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
-        button_frame.pack(fill="x", padx=10, pady=10)
+        # side=bottom anchors the bar to the window edge so any later bottom-packed
+        # sibling (the SearchPanel) stacks ABOVE it instead of pushing it offscreen.
+        button_frame.pack(side="bottom", fill="x", padx=10, pady=10)
         self._button_bar = button_frame
-
-        save_button = customtkinter.CTkButton(
-            button_frame,
-            text="Save & Continue",
-            command=self._on_save,
-            width=150,
-            fg_color=self.accent_colors["primary"],
-            hover_color=self.accent_colors["hover"],
-            text_color=self.accent_colors["text"],
-        )
-        save_button.pack(side="left", padx=5)
-
-        search_button = customtkinter.CTkButton(
-            button_frame,
-            text="Search",
-            command=self._on_search,
-            width=100,
-            fg_color=self.accent_colors["primary"],
-            hover_color=self.accent_colors["hover"],
-            text_color=self.accent_colors["text"],
-        )
-        search_button.pack(side="left", padx=5)
 
         exit_button = customtkinter.CTkButton(
             button_frame,
@@ -293,7 +276,30 @@ class MainWindow:
             hover_color=self.accent_colors["hover"],
             text_color=self.accent_colors["text"],
         )
-        exit_button.pack(side="right", padx=5)
+        exit_button.pack(side="left", padx=(0, 10))
+
+        save_button = customtkinter.CTkButton(
+            button_frame,
+            text="Save & Continue",
+            command=self._on_save,
+            width=150,
+            fg_color=self.accent_colors["primary"],
+            hover_color=self.accent_colors["hover"],
+            text_color=self.accent_colors["text"],
+        )
+        save_button.pack(side="right", padx=(10, 0))
+
+        self._search_entry = customtkinter.CTkEntry(
+            button_frame,
+            placeholder_text="Search settings and sections (Ctrl+F)",
+        )
+        self._search_entry.pack(side="left", fill="x", expand=True, padx=5)
+        self._search_entry.bind("<KeyRelease>", self._on_search_type)
+        self._search_entry.bind("<Down>", self._on_search_down)
+        self._search_entry.bind("<Up>", self._on_search_up)
+        self._search_entry.bind("<Return>", self._on_search_enter)
+        self._search_entry.bind("<Escape>", self._on_search_escape)
+        self._search_entry.bind("<FocusIn>", self._on_search_focus_in)
 
     def _on_save(self):
         """Handle Save & Continue button click with validation blocking.
@@ -320,7 +326,7 @@ class MainWindow:
         # Validation passed - close window and return True
         # Summary dialog is shown by install.py via show_final_configuration_summary()
         self.result = True
-        self.root.destroy()
+        self._shutdown()
 
     def _show_validation_issues_dialog(self, issues):
         """Show all validation issues in scrollable dialog with jump-to-field buttons.
@@ -578,13 +584,50 @@ class MainWindow:
             malcolm_config=self.malcolm_config,
             on_jump=self._jump_to_item,
             accent_colors=self.accent_colors,
-            pack_before=self._button_bar,
         )
 
-    def _on_search(self):
-        """Toggle the search panel. Triggered by the Search button or Ctrl+F."""
+    def _focus_search_entry(self):
+        """Focus the search entry; select existing text for easy replacement."""
+        if not hasattr(self, "_search_entry"):
+            return
+        self._search_entry.focus_set()
+        if self._search_entry.get():
+            self._search_entry.select_range(0, "end")
+            # Show results for existing term (if any) without forcing re-query
+            self._search_panel.set_term(self._search_entry.get())
+
+    def _on_search_type(self, event=None):
+        if event is not None and event.keysym in ("Down", "Up", "Return", "Escape"):
+            return
         if self._search_panel is not None:
-            self._search_panel.toggle()
+            self._search_panel.set_term(self._search_entry.get())
+
+    def _on_search_down(self, _event=None):
+        if self._search_panel is not None:
+            self._search_panel.move_selection(1)
+        return "break"
+
+    def _on_search_up(self, _event=None):
+        if self._search_panel is not None:
+            self._search_panel.move_selection(-1)
+        return "break"
+
+    def _on_search_enter(self, _event=None):
+        if self._search_panel is not None and self._search_panel.has_results():
+            self._search_panel.activate_selection()
+        return "break"
+
+    def _on_search_escape(self, _event=None):
+        if self._search_panel is not None:
+            self._search_panel.hide()
+        # Return focus to the main frame so arrow keys don't keep targeting the entry
+        if self._main_frame is not None:
+            self._main_frame.focus_set()
+        return "break"
+
+    def _on_search_focus_in(self, _event=None):
+        if self._search_panel is not None and self._search_entry.get().strip():
+            self._search_panel.set_term(self._search_entry.get())
 
     def _jump_to_item(self, key: str) -> None:
         """Switch to the tab containing the given key, scroll it into view, and pulse it.
@@ -644,7 +687,39 @@ class MainWindow:
             accent_colors=self.accent_colors,
         ):
             self.result = False
+            self._shutdown()
+
+    def _shutdown(self) -> None:
+        """Tear down the window safely for teardown -> next phase transitions.
+
+        Clicking a CTkButton schedules an ~100ms .after() click-animation callback
+        against the clicked widget. If we destroy the root synchronously inside
+        the command handler, that callback fires against dead widget IDs and
+        leaks into the next Tcl interpreter (see install.py's gather_install_options
+        creating a fresh CTk root). The cascade surfaces as bgerror and can hang
+        the whole process. To avoid it: hide immediately, then after the animation
+        window has elapsed, cancel any other pending .after() callbacks and destroy.
+        """
+        try:
+            self.root.withdraw()
+        except Exception:
+            pass
+        self.root.after(150, self._finalize_shutdown)
+
+    def _finalize_shutdown(self) -> None:
+        try:
+            pending = self.root.tk.call("after", "info") or ()
+            for after_id in pending:
+                try:
+                    self.root.after_cancel(after_id)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
             self.root.destroy()
+        except Exception:
+            pass
 
     def run(self) -> bool:
         """Run the main window event loop.

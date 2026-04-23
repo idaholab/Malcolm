@@ -3,14 +3,14 @@
 
 # Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
-"""Bottom-docked command-palette search for the GUI installer.
+"""Bottom-docked search results panel for the GUI installer.
 
-Ctrl+F opens, Esc closes, arrow keys navigate, Enter jumps to the selected item.
-Shares the same search backend (malcolm_config.search_items) as the TUI/DUI so
-results stay consistent across all three UIs.
+The entry lives in MainWindow's bottom bar; this panel renders its results.
+MainWindow drives it via set_term / move_selection / activate_selection.
+Shares the search backend (malcolm_config.search_items) with the TUI/DUI.
 """
 
-from typing import Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Callable, Dict, List, TYPE_CHECKING
 import customtkinter
 
 from scripts.installer.ui.gui.components.styles import (
@@ -26,12 +26,12 @@ if TYPE_CHECKING:
 
 PANEL_HEIGHT = 260
 ROW_CORNER_RADIUS = 4
-MENU_PREFIX = "\u25b8"  # ▸ triangle for section results
-CONFIG_PREFIX = "\u2022"  # • bullet for config item results
+MENU_PREFIX = "▸"  # ▸ triangle for section results
+CONFIG_PREFIX = "•"  # • bullet for config item results
 
 
 class SearchPanel(customtkinter.CTkFrame):
-    """Bottom-docked search overlay with live-filtered, keyboard-navigable results."""
+    """Bottom-docked results panel driven by the bottom bar's search entry."""
 
     def __init__(
         self,
@@ -39,7 +39,6 @@ class SearchPanel(customtkinter.CTkFrame):
         malcolm_config: "MalcolmConfig",
         on_jump: Callable[[str], None],
         accent_colors: Dict[str, str],
-        pack_before: Optional[customtkinter.CTkBaseClass] = None,
     ):
         super().__init__(
             parent,
@@ -51,7 +50,6 @@ class SearchPanel(customtkinter.CTkFrame):
         self._mc = malcolm_config
         self._on_jump = on_jump
         self._accent = accent_colors
-        self._pack_before = pack_before
         self._results: List[Dict] = []
         self._selected_idx: int = 0
         self._result_rows: List[customtkinter.CTkFrame] = []
@@ -60,37 +58,15 @@ class SearchPanel(customtkinter.CTkFrame):
         self._build_ui()
 
     def _build_ui(self):
-        entry_row = customtkinter.CTkFrame(self, fg_color="transparent")
-        entry_row.pack(fill="x", padx=12, pady=(10, 6))
-
-        label = customtkinter.CTkLabel(
-            entry_row,
-            text="Search",
-            font=("Helvetica", 12, "bold"),
-            anchor="w",
-        )
-        label.pack(side="left", padx=(0, 10))
-
-        self._entry = customtkinter.CTkEntry(
-            entry_row,
-            placeholder_text="Type to filter settings and sections...",
-        )
-        self._entry.pack(side="left", fill="x", expand=True)
-        self._entry.bind("<KeyRelease>", self._on_type)
-        self._entry.bind("<Down>", self._on_down)
-        self._entry.bind("<Up>", self._on_up)
-        self._entry.bind("<Return>", self._on_enter)
-        self._entry.bind("<Escape>", self._on_escape)
-
         self._results_frame = customtkinter.CTkScrollableFrame(
             self,
             fg_color="transparent",
         )
-        self._results_frame.pack(fill="both", expand=True, padx=12, pady=(0, 4))
+        self._results_frame.pack(fill="both", expand=True, padx=12, pady=(10, 4))
 
         hint = customtkinter.CTkLabel(
             self,
-            text="\u2191\u2193 navigate  \u00b7  Enter to jump  \u00b7  Esc to close",
+            text="↑↓ navigate  ·  Enter to jump  ·  Esc to close",
             font=("Helvetica", 10),
             text_color=TEXT_COLOR_MUTED,
         )
@@ -99,59 +75,50 @@ class SearchPanel(customtkinter.CTkFrame):
         self._render_placeholder("Start typing to search...")
 
     def show(self):
-        """Dock the panel above the button bar and focus the entry."""
+        """Dock the panel above the bottom bar.
+
+        Relies on the button bar having been packed with side="bottom" first.
+        Packing this panel with side="bottom" (without `before=`) places it
+        above the bar in pack order — Tk processes bottom-sided widgets in
+        pack-list order and each claims the bottom of the remaining cavity,
+        so the second bottom widget lands above the first.
+        """
         if not self.winfo_ismapped():
-            if self._pack_before is not None:
-                self.pack(side="bottom", fill="x", padx=10, pady=(0, 5), before=self._pack_before)
-            else:
-                self.pack(side="bottom", fill="x", padx=10, pady=(0, 5))
-        self._entry.focus_set()
-        if self._entry.get():
-            self._entry.select_range(0, "end")
+            self.pack(side="bottom", fill="x", padx=10, pady=(0, 5))
 
     def hide(self):
-        """Collapse the panel back down."""
         if self.winfo_ismapped():
             self.pack_forget()
 
-    def toggle(self):
-        if self.winfo_ismapped():
+    def set_term(self, term: str) -> None:
+        """Update result set for a new search term, showing/hiding as needed."""
+        term = term.strip()
+        if not term:
+            self._results = []
             self.hide()
-        else:
-            self.show()
-
-    def _on_type(self, event=None):
-        if event and event.keysym in ("Down", "Up", "Return", "Escape"):
             return
-        term = self._entry.get().strip()
-        self._results = self._mc.search_items(term) if term else []
+        self._results = self._mc.search_items(term)
         self._selected_idx = 0
+        self.show()
         self._render_results()
 
-    def _on_down(self, event=None):
-        if self._results and self._selected_idx < len(self._results) - 1:
-            self._selected_idx += 1
-            self._render_results()
-            self._scroll_selected_into_view()
-        return "break"
+    def move_selection(self, delta: int) -> None:
+        if not self._results:
+            return
+        self._selected_idx = max(0, min(len(self._results) - 1, self._selected_idx + delta))
+        self._render_results()
+        self._scroll_selected_into_view()
 
-    def _on_up(self, event=None):
-        if self._results and self._selected_idx > 0:
-            self._selected_idx -= 1
-            self._render_results()
-            self._scroll_selected_into_view()
-        return "break"
-
-    def _on_enter(self, event=None):
-        if self._results:
-            key = self._results[self._selected_idx]["key"]
-            self.hide()
-            self._on_jump(key)
-        return "break"
-
-    def _on_escape(self, event=None):
+    def activate_selection(self) -> None:
+        """Jump to the currently selected result, if any."""
+        if not self._results:
+            return
+        key = self._results[self._selected_idx]["key"]
         self.hide()
-        return "break"
+        self._on_jump(key)
+
+    def has_results(self) -> bool:
+        return bool(self._results)
 
     def _clear_result_rows(self):
         for row in self._result_rows:
@@ -170,8 +137,7 @@ class SearchPanel(customtkinter.CTkFrame):
 
     def _render_results(self):
         if not self._results:
-            term = self._entry.get().strip()
-            self._render_placeholder(f"No matches for '{term}'" if term else "Start typing to search...")
+            self._render_placeholder("No matches")
             return
 
         self._clear_result_rows()
@@ -218,7 +184,6 @@ class SearchPanel(customtkinter.CTkFrame):
             right.pack(side="right", padx=12, pady=6)
 
         if not visible and not is_menu:
-            # Visually mark hidden items so users understand why selecting won't help much
             try:
                 left.configure(text_color=dim_color)
             except (AttributeError, ValueError):
@@ -227,7 +192,7 @@ class SearchPanel(customtkinter.CTkFrame):
         def _on_click(_event, selected_idx=idx):
             self._selected_idx = selected_idx
             self._render_results()
-            self._on_enter()
+            self.activate_selection()
 
         for clickable in (row, left):
             clickable.bind("<Button-1>", _on_click)
