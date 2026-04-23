@@ -83,22 +83,17 @@ def _setup_visibility_observer(widget, key, malcolm_config):
                 except ValueError:
                     pass  # Widget doesn't support state
 
-            # Get dependency info to explain why disabled
-            dep_info = malcolm_config.get_dependency_info(key)
-            if dep_info.get("has_visibility_rule"):
-                depends_on = dep_info.get("visibility_depends_on")
-                if isinstance(depends_on, list):
-                    depends_str = ", ".join(depends_on)
-                else:
-                    depends_str = str(depends_on)
+            # Tooltip explaining the disabled state, when the store surfaces dep info.
+            get_dep_info = getattr(malcolm_config, "get_dependency_info", None)
+            if callable(get_dep_info):
+                dep_info = get_dep_info(key)
+                if dep_info.get("has_visibility_rule"):
+                    depends_on = dep_info.get("visibility_depends_on")
+                    depends_str = ", ".join(depends_on) if isinstance(depends_on, list) else str(depends_on)
+                    add_tooltip(widget, f"Disabled: depends on {depends_str}")
 
-                tooltip_text = f"Disabled: depends on {depends_str}"
-                add_tooltip(widget, tooltip_text)
-
-    # Only register observer if config object supports it (MalcolmConfig has observe, InstallContext doesn't)
     if hasattr(malcolm_config, 'observe'):
         malcolm_config.observe(key, on_visibility_change)
-        # Trigger initial evaluation
         on_visibility_change(None)
 
 

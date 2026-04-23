@@ -36,11 +36,13 @@ class BaseTab:
         malcolm_config: "MalcolmConfig",
         menu_item_key: str,
         accent_colors: Optional[Dict[str, str]] = None,
+        hide_invisible: bool = False,
     ):
         self.parent_frame = parent_frame
         self.malcolm_config = malcolm_config
         self.menu_item_key = menu_item_key
         self.accent_colors = accent_colors
+        self.hide_invisible = hide_invisible
         self.widget_map: Dict[str, customtkinter.CTkBaseClass] = {}
         self.panel_map: Dict[str, customtkinter.CTkFrame] = {}
         self.depth_map: Dict[str, int] = {}
@@ -96,6 +98,8 @@ class BaseTab:
         def render_item(key: str, item: Any, depth: int, parent_frame: customtkinter.CTkFrame):
             """Render a single item, recursively rendering children if it has any."""
             if self._should_omit_item_for_profile(key):
+                return
+            if self.hide_invisible and not self.malcolm_config.is_item_visible(key):
                 return
 
             if key in rendered_keys:
@@ -260,9 +264,11 @@ class BaseTab:
             item_by_key[key] = item
             config_item_keys.add(key)
 
-        # Add all MenuItems
-        for key, item in self.malcolm_config.get_all_menu_items().items():
-            item_by_key[key] = item
+        # Add MenuItems when the store has them (MalcolmConfig does; InstallContext does not).
+        get_menu_items = getattr(self.malcolm_config, "get_all_menu_items", None)
+        if callable(get_menu_items):
+            for key, item in get_menu_items().items():
+                item_by_key[key] = item
 
         # Build parent → children map (all items)
         all_children = {}
@@ -287,13 +293,16 @@ class BaseTab:
         config_children_map: Dict[str, List[str]] = {}
 
         def get_config_children(parent_key: str) -> List[str]:
-            """Get ConfigItem children of a key, skipping MenuItems."""
+            """Get ConfigItem children of a key, skipping MenuItems.
+
+            Structural (not visibility-filtered) so an item's CollapsibleContainer
+            wrapper stays consistent as children toggle visible/invisible.
+            """
             result = []
             for child_key in all_children.get(parent_key, []):
                 if child_key in config_item_keys:
                     result.append(child_key)
                 else:
-                    # If child is a MenuItem, get its ConfigItem children
                     result.extend(get_config_children(child_key))
             return _sorted_keys(result)
 
@@ -314,27 +323,30 @@ class BaseTab:
 
             is_menu_item = isinstance(item, MenuItem)
 
+            if self.hide_invisible and not is_menu_item and not self.malcolm_config.is_item_visible(key):
+                return
+
             if not is_menu_item:
                 result.append((key, item, depth))
 
-            # Recursively walk children in priority order
             child_depth = depth if is_menu_item else depth + 1
-
-            child_keys = all_children.get(key, [])
-            sorted_children = _sorted_keys(child_keys)
-            for child_key in sorted_children:
+            for child_key in _sorted_keys(all_children.get(key, [])):
                 walk(child_key, child_depth)
 
-        # Start from this tab's root
-        root_item = item_by_key.get(self.menu_item_key)
-        if root_item:
-            if isinstance(root_item, MenuItem):
-                child_keys = all_children.get(self.menu_item_key, [])
-                sorted_children = _sorted_keys(child_keys)
-                for child_key in sorted_children:
-                    walk(child_key, 0)
-            else:
-                walk(self.menu_item_key, 0)
+        # Start from this tab's root, or from all top-level items when no root
+        if self.menu_item_key is None:
+            top_level = [k for k, it in item_by_key.items() if not it.ui_parent]
+            for child_key in _sorted_keys(top_level):
+                walk(child_key, 0)
+        else:
+            root_item = item_by_key.get(self.menu_item_key)
+            if root_item:
+                if isinstance(root_item, MenuItem):
+                    child_keys = all_children.get(self.menu_item_key, [])
+                    for child_key in _sorted_keys(child_keys):
+                        walk(child_key, 0)
+                else:
+                    walk(self.menu_item_key, 0)
 
         return result, config_children_map
 
@@ -503,14 +515,20 @@ class BaseTab:
             return
 
         def on_mousewheel(event):
-            if event.delta:
-                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            try:
+                if event.delta:
+                    canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            except Exception:
+                pass
 
         def on_linux_scroll(event):
-            if event.num == 4:
-                canvas.yview_scroll(-1, "units")
-            elif event.num == 5:
-                canvas.yview_scroll(1, "units")
+            try:
+                if event.num == 4:
+                    canvas.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    canvas.yview_scroll(1, "units")
+            except Exception:
+                pass
 
         def bind_events(_event):
             scrollable_frame.bind_all("<MouseWheel>", on_mousewheel)
@@ -524,6 +542,7 @@ class BaseTab:
 
         scrollable_frame.bind("<Enter>", bind_events)
         scrollable_frame.bind("<Leave>", unbind_events)
+        scrollable_frame.bind("<Destroy>", unbind_events, add="+")
 
     def _update_panel_style(self, key: str, is_visible: bool) -> None:
         """Update child panel style to reflect enabled/disabled state."""
