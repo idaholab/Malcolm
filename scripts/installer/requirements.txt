@@ -9,3 +9,7 @@ colorama>=0.4.6
 distro==1.9.0
 python-dotenv>=1.2.1
 ruamel.yaml>=0.18.17
+customtkinter>=5.2
+Pillow>=10.0
+pythondialog>=3.5
+cairosvg>=2.7
