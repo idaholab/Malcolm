@@ -40,7 +40,6 @@ class GUIInstallerUI(InstallerUI):
         if self._root is None:
             self._root = customtkinter.CTk()
             self._root.withdraw()
-            # Update to ensure window is created before dialogs try to use it
             self._root.update_idletasks()
 
     def ask_yes_no(self, message: str, default: bool = True, force_interaction: bool = False) -> bool:

@@ -32,9 +32,9 @@ class DisableablePanel:
         controller_get_method,
         row=None,
         column=0,
-        indent=None,  # Changed from hardcoded 10 to None, will be determined by nesting level
-        create_panel=True,  # Whether to create a panel (can be disabled for standalone checkboxes)
-        nesting_level=0,  # Added nesting_level parameter to determine indentation
+        indent=None,
+        create_panel=True,
+        nesting_level=0,
     ):
         """
         Create a checkbox with a panel that is enabled when the checkbox is checked.
@@ -145,14 +145,12 @@ class DisableablePanel:
             panel._dp_is_nested = is_nested  # Track nesting level
             panel._dp_nesting_level = nesting_level  # Store nesting level
 
-            # Create a wrapper function to handle the checkbox state changes
-            # This avoids infinite recursion issues
+            # Wrapper indirection avoids the controller's own setter firing this callback
+            # and looping back through the checkbox command chain.
             def update_panel_state():
-                # Get the current state from the controller
                 is_enabled = controller_get_method()
                 DisableablePanel._set_panel_state(panel, contained_widgets, is_enabled)
 
-            # Update panel state initially
             update_panel_state()
 
             # Attach the panel update function to the checkbox
@@ -167,8 +165,8 @@ class DisableablePanel:
         radio_variable,
         row=None,
         column=0,
-        indent=None,  # Changed from hardcoded 10 to None
-        nesting_level=0,  # Added nesting level parameter
+        indent=None,
+        nesting_level=0,
     ):
         """
         Create a panel that is enabled when a specific radio button option is selected.

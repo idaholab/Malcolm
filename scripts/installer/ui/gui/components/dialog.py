@@ -28,25 +28,20 @@ def show_message_dialog(parent, message, title="Message", message_type="info", w
     dialog.geometry(f"{width}x{height}")
     dialog.transient(parent)
 
-    # Update to ensure window is created and viewable
     dialog.update_idletasks()
 
-    # Make the window modal (try to grab, but don't fail if parent isn't viewable)
     try:
         dialog.grab_set()
     except Exception:
-        # If grab fails (parent not viewable), dialog will still work but won't be modal
+        # Parent not viewable — dialog still works, just won't be modal
         pass
 
-    # Message
     label = customtkinter.CTkLabel(dialog, text=message, wraplength=width - 50)
     label.pack(padx=20, pady=20, fill="both", expand=True)
 
-    # OK button
     button = customtkinter.CTkButton(dialog, text="OK", command=dialog.destroy)
     button.pack(pady=(0, 20))
 
-    # Wait for the dialog to be closed
     dialog.wait_window()
 
 
@@ -90,22 +85,19 @@ def show_confirmation_dialog(
     Returns:
         bool: True if OK was pressed, False if Cancel was pressed
     """
-    # Create a variable to track the result
-    result = [False]  # Using a list for mutable state
+    result = [False]  # list wrapper so inner callbacks can mutate
 
     dialog = customtkinter.CTkToplevel(parent)
     dialog.title(title)
     dialog.geometry(f"{width}x{height}")
     dialog.transient(parent)
 
-    # Update to ensure window is created and viewable
     dialog.update_idletasks()
 
-    # Make the window modal (try to grab, but don't fail if parent isn't viewable)
     try:
         dialog.grab_set()
     except Exception:
-        # If grab fails (parent not viewable), dialog will still work but won't be modal
+        # Parent not viewable — dialog still works, just won't be modal
         pass
 
     # Message

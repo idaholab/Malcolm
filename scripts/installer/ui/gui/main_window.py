@@ -472,7 +472,6 @@ class MainWindow:
                 # Found the scrollable frame
                 canvas = parent._parent_canvas
                 try:
-                    # Update to ensure geometry is calculated
                     widget.update_idletasks()
                     canvas.update_idletasks()
 

@@ -264,7 +264,6 @@ class DialogConfigurationMenu:
                 self.mc.set_value(key, new_value)
             except ConfigValueValidationError as e:
                 InstallerDisplayMessage(str(e), uiMode=self.ui_mode)
-                # let user try again
                 continue
             except ConfigItemNotFoundError as e:
                 InstallerLogger.error(str(e))

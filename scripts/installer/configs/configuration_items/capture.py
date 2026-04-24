@@ -62,8 +62,7 @@ CONFIG_ITEM_TWEAK_IFACE = ConfigItem(
     widget_type=WidgetType.CHECKBOX,
 )
 
-# For CAPTURE_STATS, we'll use SURICATA_STATS_ENABLED since that seems to be its primary equivalent
-# This also writes to another env var SURICATA_STATS_EVE_ENABLED
+# CAPTURE_STATS maps to SURICATA_STATS_ENABLED (also writes SURICATA_STATS_EVE_ENABLED)
 CONFIG_ITEM_CAPTURE_STATS = ConfigItem(
     key=KEY_CONFIG_ITEM_CAPTURE_STATS,
     label="Gather Traffic Capture Statistics",

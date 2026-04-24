@@ -160,7 +160,6 @@ def create_config_item_widget(
                 pady=(0, 6),
             )
 
-    # Create widget and get reference to the actual input element
     input_widget = None
     if item.widget_type == WidgetType.CHECKBOX:
         input_widget = _create_checkbox(widget_frame, key, item, malcolm_config, accent_colors)
@@ -199,7 +198,6 @@ def _create_checkbox(
     var = customtkinter.BooleanVar(value=bool(item.get_value()))
     _updating = [False]  # Guard flag to prevent observer loops
 
-    # Apply accent colors if provided
     checkbox_kwargs = {"text": "", "variable": var}
     if accent_colors:
         checkbox_kwargs["fg_color"] = accent_colors.get("primary")
@@ -209,7 +207,6 @@ def _create_checkbox(
     checkbox = customtkinter.CTkCheckBox(container, **checkbox_kwargs)
     checkbox.grid(row=0, column=0, sticky="w")
 
-    # Error label below checkbox
     error_label = customtkinter.CTkLabel(
         container,
         text="",
@@ -217,7 +214,7 @@ def _create_checkbox(
         anchor="w"
     )
     error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
-    error_label.grid_remove()  # Hidden by default
+    error_label.grid_remove()
 
     def on_change():
         if _updating[0]:
@@ -266,7 +263,6 @@ def _create_entry(
     entry.grid(row=0, column=0, sticky="ew")
     container.grid_columnconfigure(0, weight=1)
 
-    # Error label below entry
     error_label = customtkinter.CTkLabel(
         container,
         text="",
@@ -274,7 +270,7 @@ def _create_entry(
         anchor="w"
     )
     error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
-    error_label.grid_remove()  # Hidden by default
+    error_label.grid_remove()
 
     def do_validation():
         """Actually perform the validation."""
@@ -287,34 +283,29 @@ def _create_entry(
         """Debounced change handler - waits for typing to pause before validating."""
         if _updating[0]:
             return
-        # Cancel any pending validation
         if _debounce_id[0]:
             try:
                 entry.after_cancel(_debounce_id[0])
             except tk.TclError:
-                pass  # Timer already fired or widget destroyed
+                pass
             except Exception as e:
                 InstallerLogger.debug(f"Could not cancel debounce timer for {key}: {e}")
-        # Schedule new validation after delay (800ms)
         _debounce_id[0] = entry.after(800, do_validation)
 
     def on_change_immediate(*args):
         """Immediate change handler for focus out and return."""
-        # Cancel any pending debounced validation
         if _debounce_id[0]:
             try:
                 entry.after_cancel(_debounce_id[0])
             except tk.TclError:
-                pass  # Timer already fired or widget destroyed
+                pass
             except Exception as e:
                 InstallerLogger.debug(f"Could not cancel debounce timer for {key}: {e}")
             _debounce_id[0] = None
         do_validation()
 
-    # Debounce validation on keystroke (wait for typing to pause)
     var.trace_add("write", on_change_debounced)
 
-    # Validate immediately on focus out and return
     entry.bind("<FocusOut>", lambda e: on_change_immediate())
     entry.bind("<Return>", lambda e: on_change_immediate())
 
@@ -543,7 +534,6 @@ def _create_radio_group(
 
         if hasattr(malcolm_config, 'observe'):
             malcolm_config.observe(key, on_visibility_change)
-            # Trigger initial evaluation
             on_visibility_change(None)
 
     container.pack(anchor="w")
@@ -571,7 +561,6 @@ def _create_number_entry(
     )
     entry.grid(row=0, column=0, sticky="w")
 
-    # Error label below entry
     error_label = customtkinter.CTkLabel(
         container,
         text="",
@@ -579,7 +568,7 @@ def _create_number_entry(
         anchor="w"
     )
     error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
-    error_label.grid_remove()  # Hidden by default
+    error_label.grid_remove()
 
     def on_change(*args):
         if _updating[0]:
@@ -602,10 +591,7 @@ def _create_number_entry(
         except ValueError:
             show_validation_error(entry, error_label, "Please enter a valid number")
 
-    # Validate on every keystroke
     var.trace_add("write", on_change)
-
-    # Also validate on focus out and return
     entry.bind("<FocusOut>", lambda e: on_change())
     entry.bind("<Return>", lambda e: on_change())
 
@@ -655,7 +641,6 @@ def _create_directory_entry(
     )
     entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
 
-    # Apply accent colors to browse button if provided
     button_kwargs = {"text": "Browse", "width": 80}
     if accent_colors:
         button_kwargs["fg_color"] = accent_colors.get("primary")
@@ -665,7 +650,6 @@ def _create_directory_entry(
     browse_button = customtkinter.CTkButton(input_frame, **button_kwargs)
     browse_button.grid(row=0, column=1, sticky="e")
 
-    # Error label below entry
     error_label = customtkinter.CTkLabel(
         container,
         text="",
@@ -673,17 +657,14 @@ def _create_directory_entry(
         anchor="w"
     )
     error_label.grid(row=1, column=0, sticky="w", padx=(5, 0))
-    error_label.grid_remove()  # Hidden by default
+    error_label.grid_remove()
 
     def on_change(*args):
         if _updating[0]:
             return
         _handle_set_value(entry, error_label, key, var.get(), malcolm_config)
 
-    # Validate on every keystroke
     var.trace_add("write", on_change)
-
-    # Also validate on focus out and return
     entry.bind("<FocusOut>", lambda e: on_change())
     entry.bind("<Return>", lambda e: on_change())
 

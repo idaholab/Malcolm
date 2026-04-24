@@ -717,8 +717,7 @@ class MalcolmConfig(ObservableStoreMixin):
             try:
                 with open(compose_file_name, 'r') as f:
                     if compose_data := yamlImported.YAML(typ='safe', pure=True).load(f):
-                        # set settings from compose file, gracefully ignoring validation errors
-                        #   (meaning we'll just end up with the defaults)
+                        # seed settings from compose file; invalid values fall through to defaults
 
                         # container runtime docker vs. podman
                         self.apply_default(

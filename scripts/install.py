@@ -404,9 +404,6 @@ def handle_config_directories_gui_mode(malcolm_config):
     root.update()
 
     try:
-        # Welcome content is now shown as the first tab in the main window
-        # (skipping the splash dialog as requested)
-
         # Show config ingestion dialog
         default_dir = get_default_config_dir()
         success, input_dir, output_dir = show_config_ingest_dialog(root, malcolm_config, default_dir)
@@ -563,9 +560,8 @@ def main():
             and sys.stdin.isatty()
             and sys.stdout.isatty()
         ):
-            # just "peek" at PROFILE process.env in the default config directory
-            #   we haven't loaded the config yet, or even imported python-dotenv,
-            #   so we're doing this the caveman way
+            # peek at PROFILE in process.env directly — config isn't loaded yet
+            # and python-dotenv hasn't been imported
             splash_profile = PROFILE_MALCOLM
             process_env_file = os.path.join(get_default_config_dir(), "process.env")
             if os.path.isfile(process_env_file):
@@ -780,12 +776,8 @@ def main():
                 os.execv(sys.executable, [sys.executable, new_installer_py, *cleaned_argv])
         return
 
-    # capture any selections for downstream logic if needed (artifact handler performs work)
-    # selections are no longer used downstream; configuration directory override is respected
     if cfg_override:
         dirs.output_dir = cfg_override
-
-    # Artifact handling delegated to decide_and_handle_artifacts above; continue setup.
 
     # handle settings file import if specified
     if parsed_args.importMalcolmConfigFile:
