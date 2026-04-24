@@ -95,11 +95,22 @@ class BaseTab:
         # Track which items we've rendered (to avoid duplicates)
         rendered_keys: Set[str] = set()
 
-        def render_item(key: str, item: Any, depth: int, parent_frame: customtkinter.CTkFrame):
-            """Render a single item, recursively rendering children if it has any."""
+        def render_item(
+            key: str,
+            item: Any,
+            depth: int,
+            parent_frame: customtkinter.CTkFrame,
+            in_container: bool = False,
+        ):
+            """Render a single item, recursively rendering children if it has any.
+
+            `in_container` is True when rendering inside a CollapsibleContainer's content frame;
+            those descendants must render even if currently invisible so the expand arrow reveals
+            them greyed-out rather than empty. Disabled styling is applied by _setup_item_visibility.
+            """
             if self._should_omit_item_for_profile(key):
                 return
-            if self.hide_invisible and not self.malcolm_config.is_item_visible(key):
+            if self.hide_invisible and not in_container and not self.malcolm_config.is_item_visible(key):
                 return
 
             if key in rendered_keys:
@@ -150,7 +161,7 @@ class BaseTab:
                 for child_key in child_keys:
                     child_item = item_by_key.get(child_key)
                     if child_item:
-                        render_item(child_key, child_item, depth + 1, content_frame)
+                        render_item(child_key, child_item, depth + 1, content_frame, in_container=True)
             else:
                 # Simple item without children - render in a panel
                 if depth > 0:
@@ -236,7 +247,12 @@ class BaseTab:
         self._collapse_state[key] = collapsed
 
     def _on_parent_value_changed(self, key: str):
-        """Handle parent value change for auto-collapse/expand."""
+        """Handle parent value change for auto-collapse/expand and re-style descendants.
+
+        Children's visibility is derived from the parent's value (via metadata like
+        `visible_when_parent_disabled`), but InstallContext doesn't broadcast visibility
+        changes on child keys — so we re-apply their enabled/disabled styling here.
+        """
         if key not in self._containers:
             return
 
@@ -244,6 +260,14 @@ class BaseTab:
         if self._collapse_state.get(key) != new_collapsed:
             self._collapse_state[key] = new_collapsed
             self._containers[key].set_collapsed(new_collapsed)
+
+        self._refresh_descendant_visibility(key)
+
+    def _refresh_descendant_visibility(self, key: str) -> None:
+        """Re-apply enabled/disabled styling to every descendant of `key`."""
+        for child_key in self._children_map.get(key, []):
+            self._update_widget_visibility(child_key)
+            self._refresh_descendant_visibility(child_key)
 
     def _get_tab_items_with_children(self) -> Tuple[List[Tuple[str, object, int]], Dict[str, List[str]]]:
         """Get all ConfigItems with depth info and a map of which items have children.

@@ -112,7 +112,7 @@ class MainWindow:
             self._main_frame,
             segmented_button_selected_color=self.accent_colors["primary"],
             segmented_button_selected_hover_color=self.accent_colors["hover"],
-            text_color=self.accent_colors["text"],
+            text_color=(self.accent_colors["text"], "#ffffff"),
         )
         self.tab_view.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -702,7 +702,7 @@ class MainWindow:
             self._main_frame,
             segmented_button_selected_color=self.accent_colors["primary"],
             segmented_button_selected_hover_color=self.accent_colors["hover"],
-            text_color=self.accent_colors["text"],
+            text_color=(self.accent_colors["text"], "#ffffff"),
         )
         self.tab_view.pack(fill="both", expand=True, padx=10, pady=10, before=self._button_bar)
 
@@ -758,20 +758,6 @@ class MainWindow:
         )
         self.tabs["__install__"] = install_tab
         self._build_install_extras(tab_frame, install_context)
-        install_context.observe(
-            "autoTweaks",
-            lambda _value: self.root.after(50, self._refresh_install_phase),
-        )
-
-    def _refresh_install_phase(self) -> None:
-        if self.phase != "install" or self.install_context is None:
-            return
-        self.load_install_phase(self.install_context)
-        try:
-            self.tab_view.set("Installation Options")
-            self.root.update_idletasks()
-        except Exception:
-            pass
 
     def _build_install_extras(self, parent, install_context: "InstallContext") -> None:
         """Append the small 'Additional Options' footer under the install tab."""
