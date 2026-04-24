@@ -232,7 +232,7 @@ class ConfigIngestDialog:
             if not is_valid:
                 show_message_dialog(
                     dialog,
-                    f"Invalid Malcolm tarball:\\n{error_msg}",
+                    f"Invalid Malcolm tarball:\n{error_msg}",
                     title="Invalid Tarball",
                     message_type="error",
                 )
@@ -241,7 +241,7 @@ class ConfigIngestDialog:
             # Ask user where to extract
             extract_confirmed = show_confirmation_dialog(
                 dialog,
-                f"Found valid Malcolm tarball:\\n{path}\\n\\nExtract to default directory?",
+                f"Found valid Malcolm tarball:\n{path}\n\nExtract to default directory?",
                 title="Extract Tarball",
                 ok_text="Yes, Extract",
                 cancel_text="Cancel"
@@ -257,7 +257,7 @@ class ConfigIngestDialog:
             if not success:
                 show_message_dialog(
                     dialog,
-                    f"Failed to extract tarball to:\\n{extract_dir}",
+                    f"Failed to extract tarball to:\n{extract_dir}",
                     title="Extraction Failed",
                     message_type="error",
                 )
@@ -274,7 +274,7 @@ class ConfigIngestDialog:
         else:
             show_message_dialog(
                 dialog,
-                f"Path is neither a file nor directory:\\n{path}",
+                f"Path is neither a file nor directory:\n{path}",
                 title="Invalid Path",
                 message_type="error",
             )
