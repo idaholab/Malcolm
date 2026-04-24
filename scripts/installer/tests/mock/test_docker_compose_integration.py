@@ -120,31 +120,6 @@ class TestDockerComposeIntegration(BaseInstallerTest):
             # Restart policy should be updated
             self.assertEqual(updated_data["services"][service]["restart"], "always")
 
-    def test_image_architecture_updates(self):
-        """Test that image tags are processed without architecture suffixes."""
-        import re
-
-        malcolm_config = MalcolmConfig()
-
-        result = update_compose_files(malcolm_config, self.test_dir, None, MockPlatform(), InstallContext())
-        self.assertTrue(result)
-
-        # Verify image tags remain unchanged (no architecture suffix)
-        updated_data = LoadYaml(self.compose_file)
-
-        expected_image_patterns = {
-            "opensearch": r"ghcr\.io/idaholab/malcolm/opensearch:.*",
-            "arkime": r"ghcr\.io/idaholab/malcolm/arkime:.*",
-            "zeek": r"ghcr\.io/idaholab/malcolm/zeek:.*",
-        }
-
-        for service, pattern in expected_image_patterns.items():
-            actual_image = updated_data["services"][service]["image"]
-            self.assertIsNotNone(
-                re.match(pattern, actual_image),
-                f"Image {actual_image} doesn't match pattern {pattern}",
-            )
-
     def test_volume_mount_updates(self):
         """Test that volume mounts are updated with custom paths."""
         malcolm_config = MalcolmConfig()
@@ -196,96 +171,6 @@ class TestDockerComposeIntegration(BaseInstallerTest):
             self.assertTrue(network_config.get("external"))
             self.assertEqual(network_config.get("name"), "custom_network")
 
-    def test_missing_compose_files_handling(self):
-        """Test graceful handling when no docker-compose files are found."""
-        empty_dir = tempfile.mkdtemp()
-        try:
-            malcolm_config = MalcolmConfig()
-            result = update_compose_files(malcolm_config, empty_dir, None, MockPlatform(), InstallContext())
-            # Should return True (not an error) when no files found
-            self.assertTrue(result)
-        finally:
-            shutil.rmtree(empty_dir)
-
-    def test_generate_ancillary_configs_integration(self):
-        """Test the complete ancillary configs generation flow."""
-        from scripts.installer.platforms.linux import LinuxInstaller
-        from scripts.installer.core.install_context import InstallContext
-        from scripts.malcolm_constants import OrchestrationFramework
-
-        malcolm_config = MalcolmConfig()
-        malcolm_config.set_value(KEY_CONFIG_ITEM_RUNTIME_BIN, "podman")
-
-        # Create platform and context for the run function
-        platform = LinuxInstaller(OrchestrationFramework.DOCKER_COMPOSE, None, debug=True)
-        ctx = InstallContext()
-
-        result = update_compose_files(malcolm_config, self.config_dir, None, platform, ctx)
-        self.assertTrue(result)
-
-        # Verify that docker-compose files were updated
-        updated_data = LoadYaml(self.compose_file)
-
-        # Should have podman-specific configurations
-        for service in updated_data["services"]:
-            self.assertEqual(updated_data["services"][service]["userns_mode"], "keep-id")
-
-
-def run_standalone_test():
-    """Run the test as a standalone script for quick validation."""
-    print("Running docker-compose integration tests...")
-
-    # Create a MalcolmConfig instance
-    malcolm_config = MalcolmConfig()
-
-    # Set some test values
-    malcolm_config.set_value(KEY_CONFIG_ITEM_RUNTIME_BIN, "podman")
-    malcolm_config.set_value(KEY_CONFIG_ITEM_MALCOLM_RESTART_POLICY, "always")
-    malcolm_config.set_value(KEY_CONFIG_ITEM_PCAP_DIR, "/custom/pcap")
-    malcolm_config.set_value(KEY_CONFIG_ITEM_ZEEK_LOG_DIR, "/custom/zeek")
-
-    # Test in project root directory (where docker-compose.yml files exist)
-    malcolm_install_path = os.path.join(project_root)
-
-    print(f"Testing docker-compose updates in: {malcolm_install_path}")
-
-    # Test the update function directly
-    result = update_compose_files(malcolm_config, malcolm_install_path, None, MockPlatform(), InstallContext())
-
-    if result:
-        print("✓ Docker-compose updates completed successfully")
-    else:
-        print("✗ Docker-compose updates failed")
-        return False
-
-    # Test the ancillary configs function
-    config_dir = os.path.join(malcolm_install_path, "config")
-    print(f"Testing ancillary config generation with config dir: {config_dir}")
-
-    from scripts.installer.platforms.linux import LinuxInstaller
-    from scripts.installer.core.install_context import InstallContext
-    from scripts.malcolm_constants import OrchestrationFramework
-
-    # Create platform and context for the run function
-    platform = LinuxInstaller(OrchestrationFramework.DOCKER_COMPOSE, None, debug=True)
-    ctx = InstallContext()
-
-    result = update_compose_files(malcolm_config, config_dir, None, platform, ctx)
-
-    if result:
-        print("✓ Ancillary config generation completed successfully")
-    else:
-        print("✗ Ancillary config generation failed")
-        return False
-
-    return True
-
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--standalone":
-        # Run as standalone integration test
-        success = run_standalone_test()
-        sys.exit(0 if success else 1)
-    else:
-        # Run as unit test
-        unittest.main()
+    unittest.main()

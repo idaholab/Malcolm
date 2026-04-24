@@ -562,7 +562,6 @@ class LinuxInstaller(BaseInstaller):
 
         return linux_tweaks.apply_all(malcolm_config, config_dir, self, ctx)
 
-    # new unified orchestration entry point
     def install(
         self,
         malcolm_config: "MalcolmConfig",

@@ -89,6 +89,7 @@ CONFIG_ITEM_TRAEFIK_HOST = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Request domain (host header value) for Malcolm interface Traefik router (e.g., malcolm.example.org)",
     widget_type=WidgetType.TEXT,
+    sort_priority=10,
 )
 
 CONFIG_ITEM_TRAEFIK_OPENSEARCH_HOST = ConfigItem(
@@ -98,6 +99,7 @@ CONFIG_ITEM_TRAEFIK_OPENSEARCH_HOST = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Request domain (host header value) for OpenSearch Traefik router (e.g., opensearch.malcolm.example.org)",
     widget_type=WidgetType.TEXT,
+    sort_priority=20,
 )
 
 CONFIG_ITEM_TRAEFIK_ENTRYPOINT = ConfigItem(
@@ -107,6 +109,7 @@ CONFIG_ITEM_TRAEFIK_ENTRYPOINT = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Traefik router entrypoint (e.g., websecure)",
     widget_type=WidgetType.TEXT,
+    sort_priority=30,
 )
 
 CONFIG_ITEM_TRAEFIK_RESOLVER = ConfigItem(
@@ -116,6 +119,7 @@ CONFIG_ITEM_TRAEFIK_RESOLVER = ConfigItem(
     validator=lambda x: isinstance(x, str),
     question="Traefik router resolver (e.g., myresolver)",
     widget_type=WidgetType.TEXT,
+    sort_priority=40,
 )
 
 CONFIG_ITEM_CONTAINER_NETWORK_NAME = ConfigItem(

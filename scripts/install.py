@@ -74,7 +74,7 @@ from scripts.installer.args.presentation_args import add_presentation_args
 from scripts.installer.configs.constants.installation_item_keys import *
 from scripts.installer.configs.constants.configuration_item_keys import *
 from scripts.installer.configs.constants.enums import InstallerResult, ControlFlow, ContainerRuntime
-from scripts.installer.configs.constants.constants import MAIN_MENU_KEYS
+from scripts.installer.configs.constants.constants import MAIN_MENU_ITEM_KEYS
 
 from scripts.installer.core.malcolm_config import MalcolmConfig
 from scripts.installer.core.install_context import InstallContext
@@ -134,7 +134,8 @@ def create_ui_implementation(presentation_mode: PresentationMode, ui_mode_flag: 
     elif presentation_mode == PresentationMode.MODE_DUI:
         return DialogInstallerUI(UserInterfaceMode.InteractionDialog)
     elif presentation_mode == PresentationMode.MODE_GUI:
-        raise NotImplementedError("GUI is not implemented yet")
+        from scripts.installer.ui.gui.gui_installer_ui import GUIInstallerUI
+        return GUIInstallerUI()
     elif presentation_mode == PresentationMode.MODE_SILENT:
         return None
     else:
@@ -375,17 +376,47 @@ def handle_config_directories_gui_mode(malcolm_config):
     Returns:
         tuple: (success, config_dir_input, config_dir_output) or (False, None, None)
     """
-    # TODO: This will be implemented when GUI is added
-    # For now, this is a placeholder that shows the intended interface
-    raise NotImplementedError("GUI config directory handling not yet implemented")
+    import customtkinter
+    import signal
+    from scripts.installer.ui.gui.dialogs.config_ingest_dialog import show_config_ingest_dialog
 
-    # Future GUI implementation would:
-    # 1. Show directory picker for input dir (with .env.example files)
-    # 2. Validate input dir has required .env.example files
-    # 3. Show directory picker for output dir
-    # 4. Ask about creating output dir if it doesn't exist
-    # 5. Ask about loading existing .env files if they exist in input dir
-    # 6. Return (True, input_dir, output_dir) on success
+    # Set customtkinter appearance
+    customtkinter.set_appearance_mode("system")
+    customtkinter.set_default_color_theme("blue")
+
+    # Create temporary root window for the dialogs
+    root = customtkinter.CTk()
+    root.withdraw()  # Hide the main root window
+
+    # Handle Ctrl+C gracefully
+    def signal_handler(sig, frame):
+        InstallerLogger.info("Installation cancelled by user (Ctrl+C)")
+        try:
+            root.quit()
+            root.destroy()
+        except:
+            pass
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Force update to ensure window is created
+    root.update()
+
+    try:
+        # Show config ingestion dialog
+        default_dir = get_default_config_dir()
+        success, input_dir, output_dir = show_config_ingest_dialog(root, malcolm_config, default_dir)
+
+        return (success, input_dir, output_dir)
+
+    finally:
+        # Clean up temporary root window
+        try:
+            root.quit()  # Stop the mainloop if running
+        except:
+            pass
+        root.destroy()
 
 
 def handle_config_export(parsed_args, malcolm_config, install_context):
@@ -427,13 +458,29 @@ def handle_config_export(parsed_args, malcolm_config, install_context):
 def determine_presentation_mode(parsed_args: argparse.Namespace) -> PresentationMode:
     """Determine which interface mode to use based on args and environment."""
 
-    # def check_for_gui_environment():
-    #     if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
-    #         try:
-    #             import customtkinter
-    #         except ImportError:
-    #             pass  # GUI not available
-    #     return
+    def check_for_gui_environment() -> bool:
+        if sys.platform.startswith("linux"):
+            return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+        return True
+
+    def _ensure_venv_site_packages():
+        """Add the local .venv site-packages to sys.path if running under sudo."""
+        import glob
+
+        repo_root = os.path.realpath(os.path.join(SCRIPT_PATH, ".."))
+        pattern = os.path.join(repo_root, ".venv", "lib", "python*", "site-packages")
+        for sp in glob.glob(pattern):
+            if sp not in sys.path:
+                sys.path.insert(0, sp)
+
+    def check_for_gui_library(explicit=False):
+        if not explicit and not check_for_gui_environment():
+            return None
+        if explicit:
+            _ensure_venv_site_packages()
+        if not DoDynamicImport("customtkinter", "customtkinter"):
+            return None
+        return PresentationMode.MODE_GUI
 
     def check_for_python_dialog():
         if not DoDynamicImport("dialog", "pythondialog"):
@@ -455,13 +502,22 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
         return PresentationMode.MODE_SILENT
     if parsed_args.tui:
         return PresentationMode.MODE_TUI
+    gui_mode = check_for_gui_library()
     dui_mode = check_for_python_dialog()
-    if parsed_args.dui and dui_mode:
-        return dui_mode
+    if parsed_args.dui:
+        if dui_mode:
+            return dui_mode
+        raise RuntimeError("DUI mode was requested but python-dialog is not available")
     if parsed_args.gui:
-        raise NotImplementedError("GUI mode is not yet supported")
+        # User explicitly asked for GUI - skip DISPLAY check, just try to import
+        gui_mode_explicit = check_for_gui_library(explicit=True)
+        if gui_mode_explicit:
+            return gui_mode_explicit
+        raise RuntimeError("GUI mode was requested but customtkinter is not available")
 
-    # if nothing was explicitly requested attempt python dialogs else default to TUI
+    # if nothing was explicitly requested attempt GUI, then DUI, else default to TUI
+    if gui_mode:
+        return gui_mode
     if dui_mode:
         return dui_mode
 
@@ -482,6 +538,8 @@ def main():
         parsed_args = parser.parse_args()
         if os.path.islink(os.path.join(SCRIPT_PATH, SCRIPT_NAME)) and SCRIPT_NAME.startswith('configure'):
             parsed_args.configOnly = True
+        if getattr(parsed_args, "gui", False):
+            parsed_args.skipSplash = True
     except Exception as e:
         InstallerLogger.error(f"Failed to parse arguments: {e}")
         sys.exit(1)
@@ -502,9 +560,8 @@ def main():
             and sys.stdin.isatty()
             and sys.stdout.isatty()
         ):
-            # just "peek" at PROFILE process.env in the default config directory
-            #   we haven't loaded the config yet, or even imported python-dotenv,
-            #   so we're doing this the caveman way
+            # peek at PROFILE in process.env directly — config isn't loaded yet
+            # and python-dotenv hasn't been imported
             splash_profile = PROFILE_MALCOLM
             process_env_file = os.path.join(get_default_config_dir(), "process.env")
             if os.path.isfile(process_env_file):
@@ -719,12 +776,8 @@ def main():
                 os.execv(sys.executable, [sys.executable, new_installer_py, *cleaned_argv])
         return
 
-    # capture any selections for downstream logic if needed (artifact handler performs work)
-    # selections are no longer used downstream; configuration directory override is respected
     if cfg_override:
         dirs.output_dir = cfg_override
-
-    # Artifact handling delegated to decide_and_handle_artifacts above; continue setup.
 
     # handle settings file import if specified
     if parsed_args.importMalcolmConfigFile:
@@ -769,17 +822,34 @@ def main():
 
     # Handle config directory setup based on presentation mode
     if presentation_mode == PresentationMode.MODE_GUI:
-        # GUI mode: config directory handling will be done during GUI flow
-        try:
+        # GUI mode: optionally skip the ingest dialog when CLI flags are explicit
+        skip_config_ingest = (
+            parsed_args.use_defaults
+            or (parsed_args.loadExistingEnv is not None)
+            or (parsed_args.importMalcolmConfigFile is not None)
+        )
+        if skip_config_ingest:
+            if not handle_config_directories_tui_mode(
+                malcolm_config,
+                ui_impl,
+                parsed_args.non_interactive,
+                parsed_args.use_defaults,
+                parsed_args.loadExistingEnv,
+                parsed_args.malcolmOrchestrationFile,
+                parsed_args.importMalcolmConfigFile is not None,
+                dirs,
+                no_write=control_flow.is_dry_run(),
+            ):
+                InstallerLogger.error("Failed to setup configuration directories.")
+                sys.exit(1)
+        else:
+            # GUI mode: config directory handling will be done during GUI flow
             success, input_dir, output_dir = handle_config_directories_gui_mode(malcolm_config)
             if not success:
                 InstallerLogger.error("Config directory setup cancelled by user.")
                 sys.exit(1)
             dirs.input_dir = input_dir
             dirs.output_dir = output_dir
-        except NotImplementedError:
-            InstallerLogger.error("GUI mode is not yet implemented.")
-            sys.exit(1)
     else:
         # TUI/DUI/Silent modes: use traditional flow
         if not handle_config_directories_tui_mode(
@@ -798,12 +868,12 @@ def main():
 
     # Configuration gathering user input (conditional on presentation mode)
     config_success = True
-    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI]:
+    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI, PresentationMode.MODE_GUI]:
         # Interactive mode: Run configuration menu
         config_success = ui_impl.run_configuration_menu(
             malcolm_config,
             install_context,
-            main_menu_keys=MAIN_MENU_KEYS,
+            main_menu_keys=MAIN_MENU_ITEM_KEYS,
             debug_mode=parsed_args.debug,
         )
 
@@ -837,7 +907,7 @@ def main():
             config_success = ui_impl.run_configuration_menu(
                 malcolm_config,
                 install_context,
-                main_menu_keys=MAIN_MENU_KEYS,
+                main_menu_keys=MAIN_MENU_ITEM_KEYS,
                 debug_mode=parsed_args.debug,
             )
             if not config_success:
@@ -864,9 +934,6 @@ def main():
         if install_context is None:
             InstallerLogger.info("Installation cancelled by user.") # fmt: skip
             return
-    elif presentation_mode == PresentationMode.MODE_GUI:
-        InstallerLogger.error("GUI mode is not yet implemented.") # fmt: skip
-        return
     else:
         # Silent/non-interactive: enforce validation before proceeding
         issues = validate_required(malcolm_config)
@@ -880,7 +947,7 @@ def main():
         exported_config_file = handle_config_export(parsed_args, malcolm_config, install_context)
 
     # Final summary and confirmation (interactive modes only)
-    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI]:
+    if presentation_mode in [PresentationMode.MODE_TUI, PresentationMode.MODE_DUI, PresentationMode.MODE_GUI]:
         try:
             proceed = ui_impl.show_final_configuration_summary(
                 malcolm_config,

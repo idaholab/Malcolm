@@ -25,25 +25,6 @@ from scripts.malcolm_constants import OrchestrationFramework
 from scripts.installer.configs.constants.enums import InstallerResult
 
 
-def _ask_yes_no(ui_impl, question: str, default: bool) -> bool:
-    try:
-        if ui_impl is None:
-            return default
-        return bool(ui_impl.ask_yes_no(question, default=default))
-    except Exception:
-        return default
-
-
-def _ask_string(ui_impl, prompt: str, default: str) -> str:
-    try:
-        if ui_impl is None:
-            return default
-        value = ui_impl.ask_string(prompt, default)
-        return value or default
-    except Exception:
-        return default
-
-
 def _orchestration_mode(malcolm_config):
     try:
         return malcolm_config.get_value(KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE)
@@ -188,23 +169,22 @@ def _maybe_offer_complementary_artifacts(
             # Offer tarball; if accepted, ensure we have an install path
             if parsed_args.non_interactive:
                 mfile = det_m[0]
-            else:
-                if _ask_yes_no(
-                    ui_impl,
-                    f"Found Malcolm tarball: {os.path.basename(det_m[0])}. Use this file?",
-                    default=True,
-                ):
-                    mfile = det_m[0]
-                    if not parsed_args.non_interactive:
-                        install_path = _ask_string(
-                            ui_impl,
+            elif ui_impl.ask_yes_no(
+                f"Found Malcolm tarball: {os.path.basename(det_m[0])}. Use this file?",
+                default=True,
+            ):
+                mfile = det_m[0]
+                if not parsed_args.non_interactive:
+                    install_path = (
+                        ui_impl.ask_string(
                             f"Enter installation path for Malcolm [{install_path}]",
                             install_path,
                         )
+                        or install_path
+                    )
         if (mfile and not ifile) and det_i:
             # Offer image file after path has been chosen
-            if not parsed_args.non_interactive and _ask_yes_no(
-                ui_impl,
+            if not parsed_args.non_interactive and ui_impl.ask_yes_no(
                 f"Found container images file: {os.path.basename(det_i[0])}. Use this file?",
                 default=True,
             ):
@@ -226,10 +206,12 @@ def _handle_cli_artifacts(
     # Front-load install path prompt first when a tarball is involved.
     install_path = _default_install_path(orig_path)
     if mfile and not parsed_args.non_interactive:
-        install_path = _ask_string(
-            ui_impl,
-            f"Enter installation path for Malcolm [{install_path}]",
-            install_path,
+        install_path = (
+            ui_impl.ask_string(
+                f"Enter installation path for Malcolm [{install_path}]",
+                install_path,
+            )
+            or install_path
         )
 
     mfile, ifile, install_path = _maybe_offer_complementary_artifacts(mfile, ifile, parsed_args, ui_impl, install_path)
@@ -257,26 +239,26 @@ def _handle_detected_artifacts(
 
     # Offer tarball first; if accepted, offer images once; then fast-path
     if mal_files:
-        if parsed_args.non_interactive or _ask_yes_no(
-            ui_impl,
+        if parsed_args.non_interactive or ui_impl.ask_yes_no(
             f"Found Malcolm tarball: {os.path.basename(mal_files[0])}. Use this file?",
             default=True,
         ):
             mfile = mal_files[0]
             install_path = _default_install_path(orig_path)
             if not parsed_args.non_interactive:
-                install_path = _ask_string(
-                    ui_impl,
-                    f"Enter installation path for Malcolm [{install_path}]",
-                    install_path,
+                install_path = (
+                    ui_impl.ask_string(
+                        f"Enter installation path for Malcolm [{install_path}]",
+                        install_path,
+                    )
+                    or install_path
                 )
 
             ifile = None
             if img_files and parsed_args.non_interactive:
                 ifile = img_files[0]
             elif img_files and not parsed_args.non_interactive:
-                if _ask_yes_no(
-                    ui_impl,
+                if ui_impl.ask_yes_no(
                     f"Found container images file: {os.path.basename(img_files[0])}. Use this file?",
                     default=True,
                 ):
@@ -292,8 +274,7 @@ def _handle_detected_artifacts(
     # If user declined tarball (or none found) but an images archive is present,
     # offer to load images independently.
     if img_files:
-        if parsed_args.non_interactive or _ask_yes_no(
-            ui_impl,
+        if parsed_args.non_interactive or ui_impl.ask_yes_no(
             f"Found container images file: {os.path.basename(img_files[0])}. Use this file?",
             default=True,
         ):

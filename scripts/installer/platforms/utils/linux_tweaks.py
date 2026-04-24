@@ -7,32 +7,86 @@ This module provides Linux-specific tweak implementations and a single
 apply_all() entry point used by LinuxInstaller.
 """
 
-from typing import Any
+import os
+import pathlib
+import re
+import tempfile
+from typing import Optional, Sequence
 
 from scripts.installer.configs.constants.enums import InstallerResult
-from scripts.installer.utils.tweak_utils import should_apply_tweak
 from scripts.malcolm_utils import file_contents, which
 from scripts.malcolm_common import SYSTEM_INFO
 
 from scripts.installer.utils import InstallerLogger as logger
 
 
-def _normalize_status(result: Any) -> InstallerResult:
-    status = result
-    if isinstance(result, tuple):
-        status = result[0]
-    if isinstance(status, bool):
-        return InstallerResult.SUCCESS if status else InstallerResult.FAILURE
-    if isinstance(status, InstallerResult):
-        return status
-    return InstallerResult.SUCCESS
+def _should_apply_tweak(ctx, tweak_id: str) -> bool:
+    """Apply when auto_tweaks is on or the tweak is explicitly selected in ctx."""
+    if ctx.auto_tweaks:
+        return True
+    try:
+        return bool(ctx.get_item_value(tweak_id))
+    except Exception:
+        return False
+
+
+def _read_existing_lines(path: str) -> list:
+    """Read `path` and return stripped non-empty lines, or [] if missing/unreadable."""
+    try:
+        if os.path.exists(path) and (existing := file_contents(path)):
+            if not isinstance(existing, str):
+                return []
+            return [ln.strip() for ln in existing.splitlines() if ln.strip()]
+    except (PermissionError, OSError):
+        logger.warning(f"Cannot read {path}, assuming it needs to be written")
+    return []
+
+
+def _write_managed_file(
+    path: str,
+    desired_lines: Sequence[str],
+    platform,
+    *,
+    parent_dir: Optional[str] = None,
+) -> tuple[bool, str]:
+    """Atomically write `desired_lines` to `path` via tempfile + privileged cp.
+
+    Returns (wrote_ok, message). Ensures parent_dir exists (if provided), skips
+    when content already matches, and chmods 0o644 after copy.
+    """
+    if parent_dir:
+        try:
+            pathlib.Path(parent_dir).mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            return False, f"No permission to create {parent_dir}"
+
+    if _read_existing_lines(path) == [ln.strip() for ln in desired_lines if ln.strip()]:
+        return True, f"Already configured: {path}"
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+            tmp.writelines(f"{line}\n" for line in desired_lines)
+            tmp_path = tmp.name
+        err, out = platform.run_process(["cp", tmp_path, path])
+        if err != 0:
+            return False, f"Failed to write {path}: {' '.join(out)}"
+        if os.path.exists(path):
+            try:
+                os.chmod(path, 0o644)
+            except (PermissionError, OSError) as e:
+                logger.warning(f"Could not chmod {path}: {e}")
+        return True, f"Wrote {path}"
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError as e:
+                logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
 
 
 def apply_sysctl(malcolm_config, config_dir: str, platform, ctx) -> tuple[InstallerResult, str]:
     """Apply sysctl tweaks"""
-    import os
-    import tempfile
-
     SYSCTL_SETTINGS = [
         ("fs.file-max", "2097152"),
         ("fs.inotify.max_user_watches", "131072"),
@@ -47,51 +101,49 @@ def apply_sysctl(malcolm_config, config_dir: str, platform, ctx) -> tuple[Instal
         ("net.ipv4.tcp_retries2", "5"),
     ]
 
+    def _sysctl_toggle_id(setting_name: str) -> str:
+        return f"sysctl_{setting_name.split('.')[-1].replace('-', '_')}"
+
     def _write_to_sysctl_conf(setting_name: str, setting_value: str) -> bool:
         path = '/etc/sysctl.d/99-sysctl-performance.conf' if os.path.isdir('/etc/sysctl.d') else '/etc/sysctl.conf'
         prefix = f"{setting_name}="
-        err = 1
+        desired_line = f"{prefix}{setting_value}"
         try:
-            if os.path.exists(path) and (existing_contents := file_contents(path)):
-                existing_lines = [
-                    ln.strip() for ln in (existing_contents.splitlines() if isinstance(existing_contents, str) else [])
-                ]
-            else:
-                existing_lines = []
-            desired_line = f"{prefix}{setting_value}"
+            existing_lines = _read_existing_lines(path)
             if desired_line in existing_lines:
                 return True
             filtered = [ln for ln in existing_lines if not ln.startswith(prefix)]
             filtered.append(desired_line)
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
-                tmp.writelines(f'{s}\n' for s in filtered)
-                tmp_path = tmp.name
-            err, out = platform.run_process(["cp", tmp_path, path])
-            if err == 0 and os.path.exists(path):
-                try:
-                    os.chmod(path, 0o644)
-                except (PermissionError, OSError) as e:
-                    logger.warning(f"Could not chmod {path}: {e}")
+            tmp_path = None
             try:
-                os.unlink(tmp_path)
-            except OSError as e:
-                logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
-            return err == 0
+                with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
+                    tmp.writelines(f'{s}\n' for s in filtered)
+                    tmp_path = tmp.name
+                err, out = platform.run_process(["cp", tmp_path, path])
+                if err == 0 and os.path.exists(path):
+                    try:
+                        os.chmod(path, 0o644)
+                    except (PermissionError, OSError) as e:
+                        logger.warning(f"Could not chmod {path}: {e}")
+                return err == 0
+            finally:
+                if tmp_path:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError as e:
+                        logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
         except Exception as e:
             logger.error(f"Error applying sysctl settings: {e}")
             return False
 
-    # Allow either granular sysctl_* toggles or a coarse "sysctl" group toggle
-    group_selected = should_apply_tweak(ctx, "sysctl")
-    any_selected = group_selected or any(
-        should_apply_tweak(ctx, f"sysctl_{name.split('.')[-1].replace('-', '_')}") for name, _ in SYSCTL_SETTINGS
-    )
+    group_selected = _should_apply_tweak(ctx, "sysctl")
+    any_selected = group_selected or any(_should_apply_tweak(ctx, _sysctl_toggle_id(name)) for name, _ in SYSCTL_SETTINGS)
     if not any_selected:
         return InstallerResult.SKIPPED, "No sysctl tweaks selected"
 
     successes = 0
     for setting_name, setting_value in SYSCTL_SETTINGS:
-        if not (group_selected or should_apply_tweak(ctx, f"sysctl_{setting_name.split('.')[-1].replace('-', '_')}")):
+        if not (group_selected or _should_apply_tweak(ctx, _sysctl_toggle_id(setting_name))):
             successes += 1
             continue
         if platform.is_dry_run():
@@ -114,15 +166,11 @@ def apply_sysctl(malcolm_config, config_dir: str, platform, ctx) -> tuple[Instal
 
 
 def apply_security_limits(malcolm_config, config_dir: str, platform, ctx) -> tuple[InstallerResult, str]:
-    if not should_apply_tweak(ctx, "security_limits"):
+    if not _should_apply_tweak(ctx, "security_limits"):
         return InstallerResult.SKIPPED, "Security limits not selected"
-    import os
-    import tempfile
-    import pathlib
 
-    SECURITY_LIMITS_DIR = "/etc/security/limits.d"
-    MALCOLM_LIMITS_FILE = "99-malcolm.conf"
-    limits_file = os.path.join(SECURITY_LIMITS_DIR, MALCOLM_LIMITS_FILE)
+    limits_dir = "/etc/security/limits.d"
+    limits_file = os.path.join(limits_dir, "99-malcolm.conf")
     desired_content = [
         "# Malcolm file and memory limits",
         "* soft nofile 65535",
@@ -132,130 +180,58 @@ def apply_security_limits(malcolm_config, config_dir: str, platform, ctx) -> tup
         "* soft nproc 262144",
         "* hard nproc 524288",
     ]
+
+    if platform.is_dry_run():
+        logger.info(f"Dry run: would write {limits_file} with security limits")
+        return InstallerResult.SKIPPED, "Security limits skipped (dry run)"
+
     try:
-        if platform.is_dry_run():
-            logger.info(f"Dry run: would write {limits_file} with security limits")
-            return InstallerResult.SKIPPED, "Security limits skipped (dry run)"
-        try:
-            pathlib.Path(SECURITY_LIMITS_DIR).mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            logger.warning(f"No permission to create {SECURITY_LIMITS_DIR}, skipping security limits")
-            return InstallerResult.SKIPPED, "Security limits skipped (no permissions)"
-        try:
-            if os.path.exists(limits_file) and (existing_contents := file_contents(limits_file)):
-                existing_lines = [
-                    ln.strip()
-                    for ln in (existing_contents.splitlines() if isinstance(existing_contents, str) else [])
-                    if ln.strip()
-                ]
-            else:
-                existing_lines = []
-        except (PermissionError, OSError):
-            logger.warning(f"Cannot read {limits_file}, assuming it needs to be written")
-            existing_lines = []
-        if existing_lines == desired_content:
-            logger.info(f"Security limits already configured in {limits_file}")
-            return InstallerResult.SUCCESS, "Already configured"
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
-            tmp.writelines(f'{s}\n' for s in desired_content)
-            tmp_path = tmp.name
-        err, out = platform.run_process(["cp", tmp_path, limits_file])
-        if err == 0:
-            if os.path.exists(limits_file):
-                try:
-                    os.chmod(limits_file, 0o644)
-                except (PermissionError, OSError) as e:
-                    logger.warning(f"Could not chmod {limits_file}: {e}")
-            try:
-                os.unlink(tmp_path)
-            except OSError as e:
-                logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
-            logger.info(f"Applied security limits to {limits_file}")
-            return InstallerResult.SUCCESS, "Security limits applied"
-        try:
-            os.unlink(tmp_path)
-        except OSError as e:
-            logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
-        logger.error(f"Failed to apply security limits: {' '.join(out)}")
-        return InstallerResult.FAILURE, "Security limits failed"
+        ok, msg = _write_managed_file(limits_file, desired_content, platform, parent_dir=limits_dir)
     except Exception as e:
         logger.error(f"Error applying security limits: {e}")
         return InstallerResult.FAILURE, "Security limits exception"
+    if ok:
+        logger.info(msg)
+        return InstallerResult.SUCCESS, "Security limits applied"
+    if "No permission" in msg:
+        logger.warning(msg)
+        return InstallerResult.SKIPPED, "Security limits skipped (no permissions)"
+    logger.error(msg)
+    return InstallerResult.FAILURE, "Security limits failed"
 
 
-def apply_systemd_limits(
-    malcolm_config,
-    config_dir: str,
-    platform,
-    ctx,
-) -> tuple[InstallerResult, str]:
-    if not should_apply_tweak(ctx, "systemd_limits"):
+def apply_systemd_limits(malcolm_config, config_dir: str, platform, ctx) -> tuple[InstallerResult, str]:
+    if not _should_apply_tweak(ctx, "systemd_limits"):
         return InstallerResult.SKIPPED, "Systemd limits not selected"
-    import os
-    import tempfile
-    import pathlib
-
-    SYSTEMD_LIMITS_DIR = "/etc/systemd/system.conf.d"
-    MALCOLM_SYSTEMD_FILE = "99-malcolm.conf"
 
     if SYSTEM_INFO["distro"] not in ["centos"] and SYSTEM_INFO["codename"] not in ["core"]:
         logger.info(f"Skipping systemd limits (not applicable for {SYSTEM_INFO['distro']} {SYSTEM_INFO['distro']})")
         return InstallerResult.SKIPPED, "Not applicable"
-    limits_file = os.path.join(SYSTEMD_LIMITS_DIR, MALCOLM_SYSTEMD_FILE)
+
+    systemd_dir = "/etc/systemd/system.conf.d"
+    limits_file = os.path.join(systemd_dir, "99-malcolm.conf")
     desired_content = [
         "[Manager]" "DefaultLimitNOFILE=65535:65535",
         "DefaultLimitMEMLOCK=infinity",
     ]
-    try:
-        if platform.is_dry_run():
-            logger.info(f"Dry run: would write {limits_file} with systemd limits")
-            return InstallerResult.SKIPPED, "Systemd limits skipped (dry run)"
 
-        try:
-            if os.path.exists(limits_file) and (existing_contents := file_contents(limits_file)):
-                existing_lines = [
-                    ln.strip()
-                    for ln in (existing_contents.splitlines() if isinstance(existing_contents, str) else [])
-                    if ln.strip()
-                ]
-            else:
-                existing_lines = []
-        except (PermissionError, OSError):
-            logger.warning(f"Cannot read {limits_file}, assuming it needs to be written")
-            existing_lines = []
-        if existing_lines == desired_content:
-            logger.info(f"Systemd limits already configured in {limits_file}")
-            return InstallerResult.SUCCESS, "Already configured"
-        try:
-            pathlib.Path(SYSTEMD_LIMITS_DIR).mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            logger.warning(f"No permission to create {SYSTEMD_LIMITS_DIR}, skipping systemd limits")
-            return InstallerResult.SKIPPED, "Systemd limits skipped (no permissions)"
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
-            tmp.writelines(f'{s}\n' for s in desired_content)
-            tmp_path = tmp.name
-        err, out = platform.run_process(["cp", tmp_path, limits_file])
-        if err == 0:
-            if os.path.exists(limits_file):
-                try:
-                    os.chmod(limits_file, 0o644)
-                except (PermissionError, OSError) as e:
-                    logger.warning(f"Could not chmod {limits_file}: {e}")
-            try:
-                os.unlink(tmp_path)
-            except OSError as e:
-                logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
-            logger.info(f"Applied systemd limits to {limits_file}")
-            return InstallerResult.SUCCESS, "Systemd limits applied"
-        try:
-            os.unlink(tmp_path)
-        except OSError as e:
-            logger.warning(f"Failed to cleanup temp file {tmp_path}: {e}")
-        logger.error(f"Failed to apply systemd limits: {' '.join(out)}")
-        return InstallerResult.FAILURE, "Systemd limits failed"
+    if platform.is_dry_run():
+        logger.info(f"Dry run: would write {limits_file} with systemd limits")
+        return InstallerResult.SKIPPED, "Systemd limits skipped (dry run)"
+
+    try:
+        ok, msg = _write_managed_file(limits_file, desired_content, platform, parent_dir=systemd_dir)
     except Exception as e:
         logger.error(f"Error applying systemd limits: {e}")
         return InstallerResult.FAILURE, "Systemd limits exception"
+    if ok:
+        logger.info(msg)
+        return InstallerResult.SUCCESS, "Systemd limits applied"
+    if "No permission" in msg:
+        logger.warning(msg)
+        return InstallerResult.SKIPPED, "Systemd limits skipped (no permissions)"
+    logger.error(msg)
+    return InstallerResult.FAILURE, "Systemd limits failed"
 
 
 def apply_grub_cgroup(
@@ -267,11 +243,9 @@ def apply_grub_cgroup(
     params=None,
     backup=True,
 ) -> tuple[InstallerResult, str]:
-    if not should_apply_tweak(ctx, "grub_cgroup"):
+    if not _should_apply_tweak(ctx, "grub_cgroup"):
         logger.info("cgroup kernel parameters tweak not selected, skipping.")
         return InstallerResult.SKIPPED, "cgroup kernel parameters not selected"
-    import os
-    import re
 
     if params is None:
         params = [

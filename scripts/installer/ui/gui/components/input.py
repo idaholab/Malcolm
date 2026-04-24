@@ -9,8 +9,8 @@ Provides standard input field components with consistent styling.
 """
 
 import customtkinter
-from components.styles import PADDING_SMALL
-from .font_manager import FontManager
+from scripts.installer.ui.gui.components.styles import PADDING_SMALL
+from scripts.installer.ui.gui.components.font_manager import FontManager
 
 
 class Input:

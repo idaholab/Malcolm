@@ -17,7 +17,7 @@ from scripts.malcolm_common import (
     DialogCanceledException,
 )
 from scripts.installer.utils.logger_utils import InstallerLogger
-from scripts.installer.configs.constants.constants import MAIN_MENU_KEYS
+from scripts.installer.configs.constants.constants import MAIN_MENU_ITEM_KEYS
 from scripts.installer.ui.shared.menu_builder import ValueFormatter
 from scripts.installer.ui.shared.store_view_model import build_rows_from_items, build_child_map
 from scripts.installer.ui.shared.search_utils import format_search_results_text
@@ -46,10 +46,16 @@ class DialogConfigurationMenu:
     ) -> None:
         self.mc = malcolm_config
         self.ctx = install_context
-        self.main_menu_keys = main_menu_keys or MAIN_MENU_KEYS
+        self.main_menu_keys = main_menu_keys or MAIN_MENU_ITEM_KEYS
         self.debug_mode = debug_mode
         self.ui_mode = ui_mode
-        self.child_map: Dict[str, List[str]] = build_child_map(self.mc.get_all_config_items().items())
+        # Build child map from both ConfigItems and MenuItems
+        all_config_items = list(self.mc.get_all_config_items().items())
+        all_menu_items = list(self.mc.get_visible_menu_items().items())
+        combined_items = all_config_items + all_menu_items
+        self.child_map: Dict[str, List[str]] = build_child_map(combined_items)
+        # Track selected tag at each menu level for position restoration
+        self.nav_stack: Dict[Optional[str], str] = {}
 
     def run(self) -> bool:
         try:
@@ -59,45 +65,87 @@ class DialogConfigurationMenu:
 
     def _ordered_visible_children(self, parent_key: Optional[str]) -> List[str]:
         """Return visible children in a stable, view-model-driven order."""
-        all_items = self.mc.get_all_config_items().items()
+        # Get direct children from child_map
         if parent_key is None:
-            rows = build_rows_from_items(all_items, self.mc, roots=self.main_menu_keys)
-            return [r.key for r in rows if r.visible and r.depth == 0]
-        # For a specific parent, order direct children under that parent
-        rows = build_rows_from_items(all_items, self.mc, roots=[parent_key])
-        ordered = []
-        for r in rows:
-            if not r.visible:
+            # Top level: show main menu items
+            candidate_keys = self.main_menu_keys
+        else:
+            # Get direct children of the parent from child_map
+            candidate_keys = self.child_map.get(parent_key, [])
+        
+        # Filter for visible items and build sortable list
+        visible_items: List[Tuple[int, str, str]] = []  # (priority, label_lower, key)
+        
+        for key in candidate_keys:
+            # Check if it's a ConfigItem or MenuItem
+            item = self.mc.get_item(key)
+            menu_item = self.mc.get_menu_item(key) if not item else None
+            
+            if not item and not menu_item:
                 continue
-            item = self.mc.get_item(r.key)
-            if item and item.ui_parent == parent_key:
-                ordered.append(r.key)
-        return ordered
+            
+            # Check visibility
+            if menu_item:
+                if not self.mc.is_menu_item_visible(key):
+                    continue
+                target_item = menu_item
+            else:
+                if not self.mc.is_item_visible(key):
+                    continue
+                target_item = item
+            
+            # Verify parent relationship
+            if target_item.ui_parent != parent_key:
+                continue
+            
+            # Get sort priority and label for sorting
+            priority = getattr(target_item, 'sort_priority', None)
+            priority_value = priority if priority is not None else 999999
+            label_lower = (target_item.label or key).lower()
+            
+            visible_items.append((priority_value, label_lower, key))
+        
+        # Sort by priority first, then alphabetically by label
+        visible_items.sort()
+        
+        # Return just the keys in sorted order
+        return [key for _, _, key in visible_items]
 
     def _make_choice_list(
-        self, keys: List[str], include_actions: bool, parent_key: Optional[str] = None
+        self, keys: List[str], include_actions: bool, parent_key: Optional[str] = None, selected_tag: Optional[str] = None
     ) -> Tuple[List[Tuple[str, str, bool]], Dict[str, str]]:
         choices: List[Tuple[str, str, bool]] = []
         tag_map: Dict[str, str] = {}
+        has_default_selection = False
+        
         for key in keys:
+            # Check if it's a MenuItem or ConfigItem
             item = self.mc.get_item(key)
-            if not item:
+            menu_item = self.mc.get_menu_item(key) if not item else None
+            
+            if not item and not menu_item:
                 continue
-            value_display = ValueFormatter.format_config_value(item.label, item.get_value())
-            desc = value_display if isinstance(value_display, str) else str(value_display)
-            tag = item.label or key
-            # map displayed tag back to real key
-            tag_map[tag] = f"KEY:{key}"
-            choices.append((tag, desc, False))
-
-            # if this item has visible children, offer a separate entry to navigate
-            # into its submenu without conflating it with the parent value editor
-            visible_children = [c for c in self.child_map.get(key, []) if self.mc.is_item_visible(c)]
-            if visible_children:
-                # visually indent group navigation entries to indicate dependency
-                nav_tag = " ↳ " + re.sub(r'^(?:Enable |Use )| Mode$', '', item.label) + " Settings"
-                tag_map[nav_tag] = f"GROUP:{key}"
-                choices.append((nav_tag, "", False))
+            
+            if menu_item:
+                label = menu_item.label or key
+                if not label.endswith(" Settings"):
+                    label = f"{label} Settings"
+                tag = label
+                is_selected = (selected_tag is not None and tag == selected_tag and not has_default_selection)
+                if is_selected:
+                    has_default_selection = True
+                tag_map[tag] = f"GROUP:{key}"
+                choices.append((tag, "", is_selected))
+            else:
+                # ConfigItem - display with value
+                value_display = ValueFormatter.format_config_value(item.label, item.get_value())
+                desc = value_display if isinstance(value_display, str) else str(value_display)
+                tag = item.label or key
+                is_selected = (selected_tag is not None and tag == selected_tag and not has_default_selection)
+                if is_selected:
+                    has_default_selection = True
+                tag_map[tag] = f"KEY:{key}"
+                choices.append((tag, desc, is_selected))
 
         if include_actions:
             # add a non-selectable-looking separator label before actions
@@ -121,15 +169,24 @@ class DialogConfigurationMenu:
 
     def _navigate(self, parent_key: Optional[str]) -> bool:
         while True:
+            saved_tag = self.nav_stack.get(parent_key)
+
             keys = self._ordered_visible_children(parent_key)
             include_actions = parent_key is None
-            choices, tag_map = self._make_choice_list(keys, include_actions, parent_key)
+            choices, tag_map = self._make_choice_list(keys, include_actions, parent_key, selected_tag=saved_tag)
 
             if not choices:
                 return True if parent_key is None else True
 
             try:
-                label = "Malcolm Configuration" if parent_key is None else self.mc.get_item(parent_key).label
+                if parent_key is None:
+                    label = "Malcolm Configuration"
+                else:
+                    parent_item = self.mc.get_item(parent_key)
+                    parent_menu = self.mc.get_menu_item(parent_key) if not parent_item else None
+                    label = (parent_item.label if parent_item else parent_menu.label if parent_menu else parent_key)
+                    if parent_menu and not label.endswith(" Settings"):
+                        label = f"{label} Settings"
                 prompt = re.sub(r'^(?:Enable |Use )| Mode$', '', label) + ": select an item to configure"
                 result = InstallerChooseOne(
                     prompt,
@@ -142,7 +199,9 @@ class DialogConfigurationMenu:
             except DialogCanceledException:
                 return False
 
+            selected_tag = result
             mapped = tag_map.get(result, "")
+            
             if mapped == "SEP":
                 continue
             if mapped == "ACTION:exit":
@@ -153,19 +212,32 @@ class DialogConfigurationMenu:
                 self._handle_search()
                 continue
 
-            # selected a key
             if mapped.startswith("KEY:"):
                 key = mapped.split(":", 1)[1]
+                self.nav_stack[parent_key] = selected_tag
+                self._prompt_for_item_value(key)
+                continue
             elif mapped.startswith("GROUP:"):
                 grp_key = mapped.split(":", 1)[1]
+                self.nav_stack[parent_key] = selected_tag
+                menu_item = self.mc.get_menu_item(grp_key)
+                if menu_item:
+                    if not self._navigate(grp_key):
+                        return False
+                    continue
                 if not self._navigate(grp_key):
                     return False
                 continue
             else:
-                # fallback – shouldn't happen
+                menu_item = self.mc.get_menu_item(result)
+                if menu_item:
+                    self.nav_stack[parent_key] = selected_tag
+                    if not self._navigate(result):
+                        return False
+                    continue
+                self.nav_stack[parent_key] = selected_tag
                 key = result
-            # editing a key always prompts for value; navigation occurs via GROUP entries
-            self._prompt_for_item_value(key)
+                self._prompt_for_item_value(key)
             continue
 
     def _prompt_for_item_value(self, key: str) -> None:
@@ -178,6 +250,7 @@ class DialogConfigurationMenu:
                 new_value = prompt_config_item_value(
                     ui_mode=self.ui_mode,
                     config_item=item,
+                    malcolm_config=self.mc,
                     back_label=BACK_LABEL,
                     show_preamble=True,
                 )
@@ -191,7 +264,6 @@ class DialogConfigurationMenu:
                 self.mc.set_value(key, new_value)
             except ConfigValueValidationError as e:
                 InstallerDisplayMessage(str(e), uiMode=self.ui_mode)
-                # let user try again
                 continue
             except ConfigItemNotFoundError as e:
                 InstallerLogger.error(str(e))

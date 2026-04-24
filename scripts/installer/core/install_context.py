@@ -89,6 +89,7 @@ class InstallContext:
         """Register Linux tweak items from the Tweak Registry as first-class items."""
         from scripts.installer.core.tweak_registry import get_linux_tweak_definitions
         from scripts.installer.core.config_item import ConfigItem
+        from scripts.malcolm_constants import WidgetType
 
         tweak_defs = get_linux_tweak_definitions()
         sysctl_children_ids: list[str] = []
@@ -102,6 +103,7 @@ class InstallContext:
                 label=label,
                 default_value=False,
                 choices=[True, False],
+                widget_type=WidgetType.CHECKBOX,
             )
             # parent relationships
             ui_parent = tweak_def.get("ui_parent")
@@ -170,6 +172,7 @@ class InstallContext:
                     if it and not it.is_modified:
                         it.set_value(True)
 
+            self._notify_observers(key, value)
             return True
         return False
 
@@ -190,6 +193,26 @@ class InstallContext:
         if item is None:
             return False
         return install_item_is_visible(self, key, item)
+
+    def observe(self, key: str, callback) -> None:
+        """Register `callback(value)` to fire when `key`'s value changes."""
+        if not hasattr(self, "_observers"):
+            self._observers: Dict[str, list] = {}
+        self._observers.setdefault(key, []).append(callback)
+
+    def get_all_config_items(self, modified_only: bool = False):
+        if modified_only:
+            return {k: v for k, v in self.items.items() if getattr(v, "is_modified", False)}
+        return self.items
+
+    def _notify_observers(self, key: str, value: Any) -> None:
+        if not hasattr(self, "_observers"):
+            return
+        for cb in self._observers.get(key, ()):
+            try:
+                cb(value)
+            except Exception:
+                pass
 
     @property
     def auto_tweaks(self) -> bool:

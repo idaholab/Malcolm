@@ -21,8 +21,12 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_NETBOX_SITE_NAME,
     KEY_CONFIG_ITEM_NETBOX_URL,
 )
+from scripts.installer.configs.constants.profile_scope_keys import (
+    META_ALLOWED_PROFILES,
+    META_CHOICE_ALLOWED_PROFILES,
+)
 from scripts.malcolm_common import ValidNetBoxSubnetFilter
-from scripts.malcolm_constants import WidgetType
+from scripts.malcolm_constants import WidgetType, PROFILE_MALCOLM
 
 CONFIG_ITEM_NETBOX_MODE = ConfigItem(
     key=KEY_CONFIG_ITEM_NETBOX_MODE,
@@ -32,6 +36,11 @@ CONFIG_ITEM_NETBOX_MODE = ConfigItem(
     validator=lambda x: isinstance(x, str) and x in [v.value for v in NetboxMode],
     question="Select NetBox mode",
     widget_type=WidgetType.SELECT,
+    metadata={
+        META_CHOICE_ALLOWED_PROFILES: {
+            NetboxMode.LOCAL.value: [PROFILE_MALCOLM],
+        },
+    },
 )
 
 CONFIG_ITEM_NETBOX_URL = ConfigItem(
@@ -50,6 +59,9 @@ CONFIG_ITEM_NETBOX_LOGSTASH_ENRICH = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Enrich network traffic using NetBox?",
     widget_type=WidgetType.CHECKBOX,
+    metadata={
+        META_ALLOWED_PROFILES: [PROFILE_MALCOLM],
+    },
 )
 
 CONFIG_ITEM_NETBOX_AUTO_POPULATE = ConfigItem(
@@ -59,6 +71,9 @@ CONFIG_ITEM_NETBOX_AUTO_POPULATE = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Automatically populate NetBox inventory based on observed network traffic?",
     widget_type=WidgetType.CHECKBOX,
+    metadata={
+        META_ALLOWED_PROFILES: [PROFILE_MALCOLM],
+    },
 )
 
 CONFIG_ITEM_NETBOX_LOGSTASH_AUTO_CREATE_PREFIX = ConfigItem(
@@ -68,6 +83,9 @@ CONFIG_ITEM_NETBOX_LOGSTASH_AUTO_CREATE_PREFIX = ConfigItem(
     validator=lambda x: isinstance(x, bool),
     question="Automatically create missing NetBox subnet prefixes based on observed network traffic?",
     widget_type=WidgetType.CHECKBOX,
+    metadata={
+        META_ALLOWED_PROFILES: [PROFILE_MALCOLM],
+    },
 )
 
 CONFIG_ITEM_NETBOX_AUTO_POPULATE_SUBNET_FILTER = ConfigItem(
@@ -75,8 +93,11 @@ CONFIG_ITEM_NETBOX_AUTO_POPULATE_SUBNET_FILTER = ConfigItem(
     label="NetBox IP Autopopulation Filter",
     default_value="",
     validator=lambda x: isinstance(x, str) and ValidNetBoxSubnetFilter(x),
-    question='Comma-separated list of private CIDR subnets to control NetBox IP autopopulation',
+    question='CIDR subnets for NetBox IP autopopulation (e.g., 192.168.0.0/16,10.0.0.0/8 or site:192.168.0.0/16)',
     widget_type=WidgetType.TEXT,
+    metadata={
+        META_ALLOWED_PROFILES: [PROFILE_MALCOLM],
+    },
 )
 
 # Default value handled in MalcolmConfig based on AUTO_POPULATE/AUTO_CREATE_PREFIX and PCAP_NODE_NAME

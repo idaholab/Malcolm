@@ -9,7 +9,7 @@ Manages font creation and caching for consistent font usage across the applicati
 """
 
 import customtkinter
-from components.styles import (
+from scripts.installer.ui.gui.components.styles import (
     FONT_FAMILY,
     FONT_TITLE,
     FONT_SECTION,

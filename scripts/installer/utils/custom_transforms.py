@@ -65,20 +65,22 @@ def _db_label_from_env(value: str) -> str:
     return value
 
 
-def custom_transform_arkime_rotated_pcap(autoArkime: bool, liveArkime: bool) -> str:
-    return true_or_false_no_quotes(autoArkime and (not liveArkime))
+def _rotated_pcap_forward(auto_flag: bool, live_flag: bool) -> str:
+    """Forward transform shared by {arkime,suricata,zeek}-rotated-pcap env vars."""
+    return true_or_false_no_quotes(auto_flag and (not live_flag))
 
 
-def custom_reverse_transform_arkime_rotated_pcap(value: str):
-    """Return tuple (autoArkime, liveArkime) with only live derived.
+def _rotated_pcap_reverse(value: str):
+    """Reverse transform shared by {arkime,suricata,zeek}-rotated-pcap env vars.
 
-    Align Arkime behavior with Zeek/Suricata rotated-PCAP reverse transforms:
-    do not clobber the user's autoArkime setting. Only derive liveArkime
-    as the inverse of the rotated flag.
+    Returns ("", live_flag). The empty first element tells the loader to skip
+    the auto_flag so we don't clobber the user's configured value.
     """
-    rotated = _env_str_to_bool(value)
-    live_arkime = not rotated
-    return ("", live_arkime)
+    return ("", not _env_str_to_bool(value))
+
+
+custom_transform_arkime_rotated_pcap = _rotated_pcap_forward
+custom_reverse_transform_arkime_rotated_pcap = _rotated_pcap_reverse
 
 
 def custom_transform_suricata_disable_ics_all(malcolmIcs: bool) -> str:
@@ -89,14 +91,8 @@ def custom_reverse_transform_suricata_disable_ics_all(value: str) -> bool:
     return _env_str_to_bool(value)
 
 
-def custom_transform_suricata_rotated_pcap(autoSuricata: bool, liveSuricata: bool) -> str:
-    return true_or_false_no_quotes(autoSuricata and (not liveSuricata))
-
-
-def custom_reverse_transform_suricata_rotated_pcap(value: str):
-    rotated = _env_str_to_bool(value)
-    live_suricata = not rotated
-    return ("", live_suricata)
+custom_transform_suricata_rotated_pcap = _rotated_pcap_forward
+custom_reverse_transform_suricata_rotated_pcap = _rotated_pcap_reverse
 
 
 def custom_transform_pipeline_enabled(value: bool) -> str:
@@ -126,21 +122,8 @@ def custom_reverse_transform_zeek_disable_stats(value: str) -> bool:
     return not _env_str_to_bool(value)
 
 
-def custom_transform_zeek_rotated_pcap(autoZeek: bool, liveZeek: bool) -> str:
-    return true_or_false_no_quotes(autoZeek and (not liveZeek))
-
-
-def custom_reverse_transform_zeek_rotated_pcap(value: str):
-    """Return tuple (autoZeek, liveZeek).
-
-    We do **not** attempt to infer autoZeek from this flag to avoid clobbering
-    the user's configured value.  Instead we return an empty string for the
-    first position so that the loader skips setting it.  The second tuple
-    element sets liveZeek based on the negation of the rotated-pcap flag.
-    """
-    rotated = _env_str_to_bool(value)
-    live_zeek = not rotated
-    return ("", live_zeek)
+custom_transform_zeek_rotated_pcap = _rotated_pcap_forward
+custom_reverse_transform_zeek_rotated_pcap = _rotated_pcap_reverse
 
 
 def custom_transform_pcap_pipeline_polling(orch_mode) -> str:
@@ -286,40 +269,34 @@ def custom_reverse_transform_container_runtime_key(value: str):
     return result
 
 
-def custom_transform_zeek_disable_ics_all(malcolmIcs: bool) -> str:
-    return "" if malcolmIcs else true_or_false_no_quotes(not malcolmIcs)
+def _enabled_to_disable_flag_forward(feature_enabled: bool) -> str:
+    """Forward transform for ZEEK_DISABLE_* env vars.
+
+    Write empty when the feature is enabled (absence means not-disabled); write
+    "true" when disabled.
+    """
+    return "" if feature_enabled else true_or_false_no_quotes(True)
 
 
-def custom_reverse_transform_zeek_disable_ics_all(value: str) -> bool:
-    # Empty string means the disable flag is not set, so ICS analysis remains enabled (True)
+def _disable_flag_to_enabled_reverse(value: str) -> bool:
+    """Reverse transform for ZEEK_DISABLE_* env vars.
+
+    Empty env value means the feature is enabled; otherwise enabled == not(true).
+    """
     return True if value == "" else not (value.lower() == "true")
 
 
-def custom_transform_zeek_disable_intel_live(zeekIntelLive: bool) -> str:
-    return "" if zeekIntelLive else true_or_false_no_quotes(not zeekIntelLive)
+custom_transform_zeek_disable_ics_all = _enabled_to_disable_flag_forward
+custom_reverse_transform_zeek_disable_ics_all = _disable_flag_to_enabled_reverse
 
+custom_transform_zeek_disable_intel_live = _enabled_to_disable_flag_forward
+custom_reverse_transform_zeek_disable_intel_live = _disable_flag_to_enabled_reverse
 
-def custom_reverse_transform_zeek_disable_intel_live(value: str) -> bool:
-    # Empty string means the disable flag is not set, so zeek live intel remains enabled (True)
-    return True if value == "" else not (value.lower() == "true")
+custom_transform_zeek_disable_intel_offline = _enabled_to_disable_flag_forward
+custom_reverse_transform_zeek_disable_intel_offline = _disable_flag_to_enabled_reverse
 
-
-def custom_transform_zeek_disable_intel_offline(zeekIntelOffline: bool) -> str:
-    return "" if zeekIntelOffline else true_or_false_no_quotes(not zeekIntelOffline)
-
-
-def custom_reverse_transform_zeek_disable_intel_offline(value: str) -> bool:
-    # Empty string means the disable flag is not set, so zeek offline intel remains enabled (True)
-    return True if value == "" else not (value.lower() == "true")
-
-
-def custom_transform_zeek_disable_best_guess_ics(zeekICSBestGuess: bool) -> str:
-    return "" if zeekICSBestGuess else true_or_false_no_quotes(not zeekICSBestGuess)
-
-
-def custom_reverse_transform_zeek_disable_best_guess_ics(value: str) -> bool:
-    # Empty string means the disable flag is not set, so best-guess ICS analysis remains enabled (True)
-    return True if value == "" else not (value.lower() == "true")
+custom_transform_zeek_disable_best_guess_ics = _enabled_to_disable_flag_forward
+custom_reverse_transform_zeek_disable_best_guess_ics = _disable_flag_to_enabled_reverse
 
 
 def custom_transform_netbox_auto_populate_subnet_filter(value: str) -> str:

@@ -8,6 +8,8 @@
 from typing import Optional, Any
 from scripts.installer.core.config_item import ConfigItem
 from scripts.installer.ui.shared.menu_builder import ValueFormatter
+from scripts.installer.configs.constants.configuration_item_keys import KEY_CONFIG_ITEM_MALCOLM_PROFILE
+from scripts.installer.core.profile_scope import filter_choices_for_profile
 
 from scripts.malcolm_common import (
     InstallerAskForString,
@@ -33,6 +35,7 @@ def prompt_config_item_value(
     *,
     ui_mode,
     config_item: ConfigItem,
+    malcolm_config=None,
     back_label: Optional[str] = None,
     show_preamble: bool = True,
 ) -> Optional[Any]:
@@ -63,6 +66,11 @@ def prompt_config_item_value(
 
     # 1) Choices (single-select)
     choices = config_item.choices
+    if choices and malcolm_config is not None:
+        selected_profile = malcolm_config.get_value(KEY_CONFIG_ITEM_MALCOLM_PROFILE)
+        filtered = filter_choices_for_profile(list(choices), config_item, selected_profile)
+        if filtered:
+            choices = filtered
     if choices:
         display_choices = []
         tag_to_value = {}

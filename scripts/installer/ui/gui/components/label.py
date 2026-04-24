@@ -9,8 +9,8 @@ Provides standard label components with consistent styling.
 """
 
 import customtkinter
-from components.styles import *
-from .font_manager import FontManager
+from scripts.installer.ui.gui.components.styles import *
+from scripts.installer.ui.gui.components.font_manager import FontManager
 
 
 class Label:
@@ -107,7 +107,7 @@ class Label:
             parent,
             text=text,
             font=FontManager.normal_font(),
-            text_color=("red", "red"),
+            text_color=ERROR_TEXT_COLOR,
             justify="left",
         )
 
@@ -140,7 +140,7 @@ class Label:
             parent,
             text=text,
             font=FontManager.normal_font(),
-            text_color=("green", "green"),
+            text_color=COLOR_SUCCESS,
             justify="left",
         )
 

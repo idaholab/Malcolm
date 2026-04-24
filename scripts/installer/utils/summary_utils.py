@@ -6,26 +6,64 @@
 
 """Build and format configuration summaries for UI display."""
 
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from enum import Enum
 
 
-def _normalize_display_string(value: str) -> str:
-    """Normalize common enum-like strings for consistent UI display.
+_DISPLAY_STRING_MAPPING = {
+    "yes": "Yes",
+    "no": "No",
+    "always": "Always",
+    "unless-stopped": "Unless stopped",
+    "customize": "Customize",
+    "disabled": "Disabled",
+    "enabled": "Enabled",
+    "local": "Local",
+    "remote": "Remote",
+}
 
-    Standardizes values like yes/no and restart policies to Title case so that
-    booleans (rendered as Yes/No) match enum strings (e.g., "no").
-    """
+
+def normalize_display_string(value: Any) -> str:
+    """Title-case common enum-like strings (yes/no, restart policies, etc.) for UI display."""
     if value is None:
         return "Not set"
-    lower = str(value).strip().lower()
-    mapping = {
-        "yes": "Yes",
-        "no": "No",
-        "always": "Always",
-        "unless-stopped": "Unless stopped",
-    }
-    return mapping.get(lower, value)
+    return _DISPLAY_STRING_MAPPING.get(str(value).strip().lower(), value)
+
+
+def format_scalar(value: Any, *, empty_label: str) -> str:
+    """Format primitive, enum, and scalar values consistently for display.
+
+    - bool -> Yes/No
+    - Enum -> enum .value (or prettified .name fallback)
+    - None/empty -> empty_label
+    - other -> normalized string
+    """
+    try:
+        from scripts.installer.core.transform_registry import apply_outbound
+
+        value = apply_outbound("", value)
+    except Exception:
+        pass
+
+    if value is None or value == "":
+        return empty_label
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, Enum):
+        try:
+            enum_value = value.value
+            if isinstance(enum_value, str):
+                return normalize_display_string(enum_value)
+        except Exception:
+            pass
+        try:
+            name = getattr(value, "name", str(value))
+            if isinstance(name, str) and name:
+                return normalize_display_string(name.replace("_", " ").strip().title())
+        except Exception:
+            pass
+        return normalize_display_string(str(value))
+    return normalize_display_string(str(value))
 
 
 def _get_restart_policy_display(malcolm_config) -> str:
@@ -41,14 +79,12 @@ def _get_restart_policy_display(malcolm_config) -> str:
         KEY_CONFIG_ITEM_MALCOLM_RESTART_POLICY,
     )
 
-    # If auto-restart is enabled, use the configured policy or default to "unless-stopped"
     if restart_policy := malcolm_config.get_value(KEY_CONFIG_ITEM_MALCOLM_RESTART_POLICY):
-        # Handle enum values explicitly
         if isinstance(restart_policy, Enum):
-            return _normalize_display_string(restart_policy.value)
-        return _normalize_display_string(str(restart_policy))
+            return normalize_display_string(restart_policy.value)
+        return normalize_display_string(str(restart_policy))
 
-    return _normalize_display_string("unless-stopped")  # Default when auto-restart is enabled
+    return normalize_display_string("unless-stopped")
 
 
 def build_configuration_summary_items(malcolm_config, config_dir: str) -> List[Tuple[str, str]]:
@@ -140,32 +176,8 @@ def build_configuration_summary_items(malcolm_config, config_dir: str) -> List[T
     return summary_items
 
 
-def format_summary_value(label: str, value) -> str:
-    """Format a configuration value for display, handling passwords and None values.
-
-    Args:
-        label: The configuration item label
-        value: The configuration value to format
-
-    Returns:
-        Formatted string suitable for display
-    """
+def format_summary_value(label: str, value: Any) -> str:
+    """Format a configuration value for summary display, masking password/API-key fields."""
     if value and (("password" in label.lower()) or ("api key" in label.lower())):
         return "********"
-    # Use centralized outbound formatting, then apply simple scalar normalization
-    try:
-        from scripts.installer.core.transform_registry import apply_outbound
-
-        value = apply_outbound("", value)
-    except Exception:
-        pass
-    if isinstance(value, bool):
-        return "Yes" if value else "No"
-    if isinstance(value, Enum):
-        try:
-            return _normalize_display_string(value.value)
-        except Exception:
-            return _normalize_display_string(str(value))
-    if value is None or value == "":
-        return "Not set"
-    return _normalize_display_string(str(value))
+    return format_scalar(value, empty_label="Not set")
