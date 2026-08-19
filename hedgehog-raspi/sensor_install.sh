@@ -71,6 +71,10 @@ build_htpdate() {
 }
 
 clean_up() {
+    set +e
+
+    # Do not remain inside WORK_DIR while deleting it.
+    cd /
 
     # Remove network interface files left by installation
     rm -f /etc/network/interfaces.d/*
@@ -84,9 +88,9 @@ clean_up() {
     rm -rf $WORK_DIR \
            $SHARED_DIR \
            $MALCOLM_SRC \
-		   /opt/deps \
-		   /opt/hooks \
-		   /opt/patches \
+           /opt/deps \
+           /opt/hooks \
+           /opt/patches \
            /opt/requirements.txt \
            /root/.bash_history \
            /root/.wget-hsts \
@@ -94,9 +98,11 @@ clean_up() {
            /root/.local/share/gem \
            /root/.npm \
            "${DEBS_DIR}" \
-		   /tmp/*
+           /tmp/*
     find /var/log/ -type f -print0 2>/dev/null | \
         xargs -0 -r -I XXX bash -c "file 'XXX' | grep -q text && > 'XXX'"
+
+    set -e
 
     # Remove unnecessary build components
     apt-get remove $BUILD_DEPS -y
@@ -137,6 +143,7 @@ install_deps() {
         sed -i '$a\' "$file"
         deps+="$(tr '\n' ' ' < "$file")"
     done
+    deps+=' fake-hwclock'
 
     # Remove packages not relevant to Raspberry Pi images.
     # rar is excluded because Debian does not provide an ARM package.
@@ -299,6 +306,15 @@ install_hooks() {
 ################################
 ########## Main ################
 ################################
+
+# Mount virtual filesystems for the sensor installation phase. These are
+# intentionally separate from the temporary mounts around vmdb2's initial
+# apt step in raspi_master.yaml.
+mount -t proc /proc /proc
+mount -t devtmpfs /dev /dev
+mount -t devpts /dev/pts /dev/pts
+mount -t sysfs /sys /sys
+mount -t tmpfs /run /run
 
 [[ -f "$SHARED_DIR/environment.chroot" ]] && \
   . "$SHARED_DIR/environment.chroot"
