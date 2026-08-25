@@ -2987,7 +2987,7 @@ def authSetup():
                                 labels=['Malcolm Server IP', 'Single-use Code Phrase'],
                                 defaultBehavior=defaultBehavior,
                             )
-                            if (len(values) == 2) and (len(values[0]) >= 3) and (len(values[1]) >= 16):
+                            if (len(values) == 2) and (len(values[0]) >= 3) and (len(values[1]) >= 11):
                                 tx_ip = values[0]
                                 rx_token = values[1]
                                 break

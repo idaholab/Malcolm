@@ -34,7 +34,7 @@ MALCOLM_SRC='/opt/Malcolm'
 WORK_DIR="$(mktemp -d -p "$HOME" -t hedgehog-XXXXXX)"
 
 # Build time dependencies for htpdate
-BUILD_DEPS='build-essential libssl-dev checkinstall'
+BUILD_DEPS='build-essential libssl-dev checkinstall bsdextrautils'
 
 ################################
 ######### Functions ############
@@ -58,14 +58,24 @@ build_htpdate() {
 
     make https
 
-    checkinstall -y -D --nodoc --strip=yes --stripso=yes --install=no --fstrans=no \
-    --pkgname=htpdate --pkgversion=$htpdate_vers --pkgarch="$ARCH" --pkgsource="$htpdate_url" \
-    --pkgrelease="$htpdate_release" --pakdir "$DEBS_DIR"
-
-    # htpdate is installed outside of dpkg with checkinstall
-    make uninstall
+    checkinstall \
+      -y -D \
+      --nodoc \
+      --strip=yes \
+      --stripso=yes \
+      --install=no \
+      --fstrans=yes \
+      --exclude=/usr/bin/install,/bin/install \
+      --pkgname=htpdate \
+      --pkgversion=$htpdate_vers \
+      --pkgarch="$ARCH" \
+      --pkgsource="$htpdate_url" \
+      --pkgrelease="$htpdate_release" \
+      --pakdir "$DEBS_DIR"
 
     cd "${WORK_DIR}"
+
+    dpkg-deb -c "${DEBS_DIR}/htpdate_${htpdate_vers}-${htpdate_release}_${ARCH}.deb"
 
     dpkg -i "${DEBS_DIR}/htpdate_${htpdate_vers}-${htpdate_release}_${ARCH}.deb"
 }
