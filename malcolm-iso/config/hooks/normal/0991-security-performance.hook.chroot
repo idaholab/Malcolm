@@ -178,14 +178,6 @@ usermod -d /var/lib/ntpsec ntpsec
 systemctl disable fluent-bit || true
 rm -f /etc/fluent-bit/fluent-bit.conf
 
-# add fluentbit logfmt parser
-cat << 'EOF' >> /etc/fluent-bit/parsers.conf
-
-[PARSER]
-    Name logfmt
-    Format logfmt
-EOF
-
 # remove identifying operating system information from /etc/issue*
 truncate -s 0 /etc/motd
 sed -i "s/Debian/Hedgehog/g" /etc/issue
