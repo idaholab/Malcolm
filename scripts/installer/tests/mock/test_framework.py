@@ -11,7 +11,6 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
-from enum import Enum
 
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
@@ -25,19 +24,6 @@ from scripts.installer.configs.constants.installation_item_keys import (
     KEY_INSTALLATION_ITEM_DOCKER_INSTALL_METHOD,
     KEY_INSTALLATION_ITEM_DOCKER_EXTRA_USERS,
 )
-
-
-class TestPhase(Enum):
-    """Test phases for jumping to specific points in the installer."""
-
-    CONFIGURATION_PHASE = "config"
-    INSTALLATION_PHASE = "install"
-    DOCKER_INSTALL = "docker_install"
-    DOCKER_COMPOSE_INSTALL = "docker_compose_install"
-    SYSTEM_TWEAKS = "tweaks"
-    DOCKER_OPS = "docker_ops"
-    FILESYSTEM_PREP = "filesystem"
-    ANCILLARY_CONFIG = "ancillary"
 
 
 class MockUI:
@@ -341,38 +327,3 @@ class BaseInstallerTest(unittest.TestCase):
             isfile=self.mock_filesystem.exists,
             isdir=lambda path: path in self.mock_filesystem.directories,
         )
-
-
-def create_test_flags():
-    """Create test flags for jumping to specific installer phases."""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Test specific installer phases")
-    parser.add_argument(
-        "--test-phase",
-        choices=[p.value for p in TestPhase],
-        help="Jump to specific installer phase for testing",
-    )
-    parser.add_argument(
-        "--mock-docker-installed",
-        action="store_true",
-        help="Mock Docker as already installed",
-    )
-    parser.add_argument(
-        "--mock-docker-compose-installed",
-        action="store_true",
-        help="Mock Docker Compose as already installed",
-    )
-    parser.add_argument(
-        "--mock-system-tweaks-applied",
-        action="store_true",
-        help="Mock system tweaks as already applied",
-    )
-    parser.add_argument(
-        "--fail-docker-install",
-        action="store_true",
-        help="Force Docker installation to fail",
-    )
-    parser.add_argument("--fail-system-tweaks", action="store_true", help="Force system tweaks to fail")
-
-    return parser

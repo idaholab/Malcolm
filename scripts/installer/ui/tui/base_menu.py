@@ -86,6 +86,7 @@ class BaseMenu(ABC):
         return prompt_config_item_value(
             ui_mode=self.ui_mode,
             config_item=config_item,
+            malcolm_config=getattr(self, "malcolm_config", None),
             back_label=None,
             show_preamble=show_preamble,
         )
@@ -189,35 +190,3 @@ class BaseMenu(ABC):
                 return None
         except ValueError:
             return None
-
-
-class MenuAction:
-    """Represents a menu action with key and description."""
-
-    def __init__(self, key: str, description: str):
-        """Initialize the menu action.
-
-        Args:
-            key: The action key/letter
-            description: The action description
-        """
-        self.key = key
-        self.description = description
-
-
-class MenuItem:
-    """Represents a menu item with label and current value."""
-
-    def __init__(self, key: str, label: str, value: Any, help_text: str = None):
-        """Initialize the menu item.
-
-        Args:
-            key: The item key/identifier
-            label: The item label
-            value: The current value
-            help_text: Optional help text
-        """
-        self.key = key
-        self.label = label
-        self.value = value
-        self.help_text = help_text

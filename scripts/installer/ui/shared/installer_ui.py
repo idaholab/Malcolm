@@ -92,15 +92,19 @@ class InstallerUI(ABC):
         pass
 
     @abstractmethod
-    def gather_install_options(self, platform: "BaseInstaller") -> Optional["InstallContext"]:
+    def gather_install_options(
+        self,
+        platform: "BaseInstaller",
+        malcolm_config: "MalcolmConfig",
+        install_context: "InstallContext",
+    ) -> Optional["InstallContext"]:
         """Gather platform-specific installation options from the user.
-
-        This method should interact with the user to fill out the installation-
-        specific options and return them in an InstallContext object.
 
         Args:
             platform: The platform-specific installer instance, which provides
                       the questions to be asked.
+            malcolm_config: MalcolmConfig instance for accessing configuration.
+            install_context: Pre-created InstallContext instance to populate.
 
         Returns:
             An InstallContext object populated with the user's choices, or None

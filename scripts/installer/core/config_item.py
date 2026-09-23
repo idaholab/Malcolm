@@ -55,6 +55,7 @@ class ConfigItem:
     accept_blank: bool = False
     widget_type: WidgetType = None
     metadata: dict = field(default_factory=dict)
+    sort_priority: Optional[int] = None
 
     # Use InitVar to accept `question` in __init__ but store internally as _question
     question: InitVar[Union[str, Callable[[], Any]]] = ""

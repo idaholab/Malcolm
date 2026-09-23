@@ -23,8 +23,11 @@ from scripts.installer.configs.constants.configuration_item_keys import (
     KEY_CONFIG_ITEM_EXPOSE_LOGSTASH,
     KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP,
     KEY_CONFIG_ITEM_EXPOSE_OPENSEARCH,
+    KEY_CONFIG_ITEM_NETBOX_MODE,
+    KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
 )
 from scripts.malcolm_constants import PROFILE_HEDGEHOG
+from scripts.installer.configs.constants.enums import NetboxMode, SearchEngineMode
 
 
 class TestLiveCaptureDependencies(unittest.TestCase):
@@ -79,6 +82,20 @@ class TestOpenPortsDependency(unittest.TestCase):
         self.assertTrue(cfg.get_value(KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP))
         # For Malcolm profile + local OpenSearch we expect OpenSearch exposure as well
         self.assertTrue(cfg.get_value(KEY_CONFIG_ITEM_EXPOSE_OPENSEARCH))
+
+
+class TestProfileScopedChoices(unittest.TestCase):
+    """Verify profile-scoped choice restrictions are enforced consistently."""
+
+    def test_hedgehog_coerces_malcolm_only_modes(self):
+        cfg = MalcolmConfig()
+
+        cfg.set_value(KEY_CONFIG_ITEM_NETBOX_MODE, NetboxMode.LOCAL.value)
+        cfg.set_value(KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE, SearchEngineMode.OPENSEARCH_LOCAL.value)
+        cfg.set_value(KEY_CONFIG_ITEM_MALCOLM_PROFILE, PROFILE_HEDGEHOG)
+
+        self.assertEqual(cfg.get_value(KEY_CONFIG_ITEM_NETBOX_MODE), NetboxMode.REMOTE.value)
+        self.assertEqual(cfg.get_value(KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE), SearchEngineMode.OPENSEARCH_REMOTE.value)
 
 
 if __name__ == "__main__":

@@ -30,13 +30,51 @@ def _dependency_label_string(malcolm_config, keys: List[str]) -> str:
     return " -> ".join(labels)
 
 
+def _build_menu_item_path(malcolm_config, menu_item_key: str) -> List[str]:
+    """Build the full path from root to the given MenuItem by traversing up the hierarchy.
+    
+    Args:
+        malcolm_config: MalcolmConfig instance
+        menu_item_key: The key of the MenuItem to build the path for
+        
+    Returns:
+        List of MenuItem labels from root to the given MenuItem (most specific last)
+    """
+    path: List[str] = []
+    current_key = menu_item_key
+    
+    # Traverse up the MenuItem hierarchy
+    visited = set()  # Prevent infinite loops
+    while current_key and current_key not in visited:
+        visited.add(current_key)
+        menu_item = malcolm_config.get_menu_item(current_key)
+        if menu_item:
+            # Ensure "Settings" is appended for MenuItems
+            label = menu_item.label or current_key
+            if not label.endswith(" Settings"):
+                label = f"{label} Settings"
+            path.insert(0, label)  # Insert at beginning to build from root
+            current_key = menu_item.ui_parent
+        else:
+            break
+    
+    return path
+
+
 def _resolve_depends_on(malcolm_config, dep_chain: List[str], ui_parent: Optional[str]) -> str:
     dep_text = _dependency_label_string(malcolm_config, dep_chain)
     if dep_text:
         return dep_text
     if ui_parent:
+        parent_menu = malcolm_config.get_menu_item(ui_parent)
+        if parent_menu:
+            label = parent_menu.label or ui_parent
+            if not label.endswith(" Settings"):
+                label = f"{label} Settings"
+            return label
         parent_item = malcolm_config.get_item(ui_parent)
-        return parent_item.label if parent_item else ui_parent
+        if parent_item:
+            return parent_item.label if parent_item else ui_parent
     return "None"
 
 
@@ -68,12 +106,12 @@ def format_search_results_text(
     lines: List[str] = []
     lines.append(f"--- Search Results for '{search_term}' ---")
 
-    visible_count = hidden_count = 0
+    visible_count = hidden_count = section_count = 0
     rows: List[str] = []
 
     names = [result["label"] or result["key"] for result in results]
     name_width = max(len("Name"), *(len(name) for name in names))
-    status_values = {"visible", "hidden"}
+    status_values = {"visible", "hidden", "section"}
     status_width = max(len("Status"), *(len(value) for value in status_values))
     item_width = max(len("Item"), 4)
 
@@ -89,6 +127,8 @@ def format_search_results_text(
             color = Fore.GREEN
         elif status == "hidden":
             color = Fore.RED
+        elif status == "section":
+            color = Fore.CYAN
         else:
             color = ""
 
@@ -101,29 +141,55 @@ def format_search_results_text(
         visible = result["visible"]
         ui_parent = result["ui_parent"]
         dep_chain = result["dependency_chain"]
+        is_menu = result.get("item_type") == "menu"
 
         status: str
-        if visible:
-            visible_count += 1
-            status = "visible"
-            depends_on = "None"
-        else:
-            hidden_count += 1
-            status = "hidden"
-            depends_on = _resolve_depends_on(malcolm_config, dep_chain, ui_parent)
+        depends_on: str
+        item_token: str
 
-        item_token = "-"
-        if visible:
-            if include_numbers:
+        if is_menu:
+            section_count += 1
+            status = "section"
+            menu_path = _build_menu_item_path(malcolm_config, ui_parent) if ui_parent else []
+            depends_on = " -> ".join(menu_path) if menu_path else "(top-level)"
+            item_token = "-"
+        else:
+            # Item is only visible in UI if dependency rules pass AND any MenuItem parent is expanded
+            is_visible_in_ui = visible
+            menu_item_parent = None
+            if ui_parent:
+                menu_item_parent = malcolm_config.get_menu_item(ui_parent)
+                if menu_item_parent:
+                    is_visible_in_ui = visible and malcolm_config.is_menu_item_expanded(ui_parent)
+
+            if is_visible_in_ui:
+                visible_count += 1
+                status = "visible"
+                depends_on = "None"
+            else:
+                hidden_count += 1
+                status = "hidden"
+                if menu_item_parent and visible:
+                    menu_path = _build_menu_item_path(malcolm_config, ui_parent)
+                    if menu_path:
+                        depends_on = " -> ".join(menu_path)
+                    else:
+                        menu_label = menu_item_parent.label or ui_parent
+                        if not menu_label.endswith(" Settings"):
+                            menu_label = f"{menu_label} Settings"
+                        depends_on = menu_label
+                else:
+                    depends_on = _resolve_depends_on(malcolm_config, dep_chain, ui_parent)
+
+            if is_visible_in_ui and include_numbers:
                 try:
-                    item_number = displayed_keys.index(key) + 1
-                    item_token = str(item_number)
+                    item_token = str(displayed_keys.index(key) + 1)
                 except ValueError:
                     item_token = "?."
-            else:
+            elif is_visible_in_ui:
                 item_token = "-"
-        else:
-            item_token = "-."
+            else:
+                item_token = "-."
 
         status_cell = format_status_cell(status)
         row = f"{item_token:>{item_width}}  " f"{label:<{name_width}}  " f"{status_cell} " f"{depends_on}"
@@ -132,10 +198,12 @@ def format_search_results_text(
     lines.extend(rows)
 
     if debug_mode:
-        total_count = visible_count + hidden_count
+        total_count = visible_count + hidden_count + section_count
         summary = f"{visible_count} visible"
         if hidden_count:
             summary += f", {hidden_count} hidden"
+        if section_count:
+            summary += f", {section_count} section"
         lines.append("")
         lines.append(f"Found {total_count} items: {summary}")
     else:
@@ -144,5 +212,7 @@ def format_search_results_text(
             lines.append(f"Found {visible_count} items you can configure now.")
         if hidden_count:
             lines.append(f"Found {hidden_count} hidden items - enable their dependencies to access them.")
+        if section_count:
+            lines.append(f"Found {section_count} matching section(s).")
 
     return "\n".join(lines)

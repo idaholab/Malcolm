@@ -70,25 +70,29 @@ class DependencyManager:
         """Register a visibility dependency rule.
 
         Args:
-            item_key: The target configuration item key
+            item_key: The target configuration item or menu item key
             visibility_rule: The visibility rule specification
         """
         item = self.config.get_item(item_key)
-        if not item:
+        menu_item = self.config.get_menu_item(item_key) if not item else None
+        
+        if not item and not menu_item:
             InstallerLogger.warning(f"Cannot register visibility rule for unknown item: {item_key}")
             return
+        
+        target_item = item if item else menu_item
 
-        # Set UI parent if specified
-        if visibility_rule.ui_parent is not None:
+        # Set UI parent if specified (only for config items, not menu items)
+        if item and visibility_rule.ui_parent is not None:
             item.ui_parent = visibility_rule.ui_parent
-        elif not visibility_rule.is_top_level:
+        elif item and not visibility_rule.is_top_level:
             # For non-top-level items, set the first dependency as the parent
             if isinstance(visibility_rule.depends_on, list):
                 item.ui_parent = visibility_rule.depends_on[0]
             else:
                 item.ui_parent = visibility_rule.depends_on
 
-        if item.ui_parent:
+        if item and item.ui_parent:
             children = self.config._parent_map.setdefault(item.ui_parent, [])
             if item_key not in children:
                 children.append(item_key)
@@ -109,8 +113,21 @@ class DependencyManager:
                 else:
                     visible = bool(visibility_rule.condition)
 
-                if item.ui_parent and not self.config.is_item_visible(item.ui_parent):
-                    visible = False
+                # Check parent visibility (could be menu item or config item)
+                if item and item.ui_parent:
+                    parent_visible = (
+                        self.config.is_menu_item_visible(item.ui_parent) 
+                        or self.config.is_item_visible(item.ui_parent)
+                    )
+                    if not parent_visible:
+                        visible = False
+                elif menu_item and menu_item.ui_parent:
+                    parent_visible = (
+                        self.config.is_menu_item_visible(menu_item.ui_parent)
+                        or self.config.is_item_visible(menu_item.ui_parent)
+                    )
+                    if not parent_visible:
+                        visible = False
 
                 self.config._set_item_visible(item_key, visible)
 
@@ -147,6 +164,19 @@ class DependencyManager:
                 observer = self._visibility_observers.get(child_key)
                 if observer:
                     observer(None)
+        
+        # Also handle menu item children
+        for menu_key, menu_item in self.config._menu_items.items():
+            if menu_item.ui_parent == parent_key:
+                if not visible:
+                    self.config._set_item_visible(menu_key, False)
+                else:
+                    # Re-evaluate menu item visibility
+                    menu_dep = DEPENDENCY_CONFIG.get(menu_key)
+                    if menu_dep and menu_dep.visibility:
+                        observer = self._visibility_observers.get(menu_key)
+                        if observer:
+                            observer(None)
 
     def _register_value_rule(self, item_key: str, value_rule: ValueRule):
         """Register a value dependency rule.

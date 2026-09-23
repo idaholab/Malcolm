@@ -11,8 +11,8 @@ Provides standard button components with consistent styling.
 """
 
 import customtkinter
-from components.styles import PADDING_LARGE, PADDING_MEDIUM, COLOR_SUCCESS
-from .frame import Frame
+from scripts.installer.ui.gui.components.styles import PADDING_LARGE, PADDING_MEDIUM, COLOR_SUCCESS
+from scripts.installer.ui.gui.components.frame import Frame
 
 
 class Button:

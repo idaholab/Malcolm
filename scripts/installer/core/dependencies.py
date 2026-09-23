@@ -39,6 +39,20 @@ from scripts.installer.configs.constants.enums import (
 )
 
 from scripts.installer.configs.constants.configuration_item_keys import *
+from scripts.installer.configs.constants.menu_item_keys import (
+    KEY_MENU_ITEM_NETWORK,
+    KEY_MENU_ITEM_ANALYSIS,
+    KEY_MENU_ITEM_ANALYSIS_LIVE,
+    KEY_MENU_ITEM_ANALYSIS_HISTORICAL,
+    KEY_MENU_ITEM_STORAGE,
+    KEY_MENU_ITEM_ENRICHMENT,
+    KEY_MENU_ITEM_ENRICHMENT_NETBOX,
+    KEY_MENU_ITEM_RUNTIME_SETTINGS,
+    KEY_MENU_ITEM_RUNTIME_CONTAINERS,
+    KEY_MENU_ITEM_RUNTIME_RESOURCES,
+    KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
+    KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
+)
 
 
 @dataclass
@@ -91,63 +105,150 @@ DEFAULT_VALUE_UNCHANGED = _UnchangedType()
 
 DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     # -------------------------------------------------------------------------
+    # MENU ITEM VISIBILITY RULES
+    # -------------------------------------------------------------------------
+    KEY_MENU_ITEM_NETWORK: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            is_top_level=True,
+        )
+    ),
+    KEY_MENU_ITEM_ANALYSIS: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            is_top_level=True,
+        )
+    ),
+    KEY_MENU_ITEM_ANALYSIS_LIVE: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,  # Always visible, parent relationship handled via ui_parent
+            condition=True,
+            ui_parent=KEY_MENU_ITEM_ANALYSIS,
+        )
+    ),
+    KEY_MENU_ITEM_ANALYSIS_HISTORICAL: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_ANALYSIS,
+        )
+    ),
+    KEY_MENU_ITEM_STORAGE: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            is_top_level=True,
+        )
+    ),
+    KEY_MENU_ITEM_ENRICHMENT: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            is_top_level=True,
+        )
+    ),
+    KEY_MENU_ITEM_ENRICHMENT_NETBOX: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,  # Always visible, parent relationship handled via ui_parent
+            condition=True,
+            ui_parent=KEY_MENU_ITEM_ENRICHMENT,
+        )
+    ),
+    KEY_MENU_ITEM_RUNTIME_SETTINGS: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            is_top_level=True,
+        )
+    ),
+    KEY_MENU_ITEM_RUNTIME_CONTAINERS: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,  # Always visible, parent relationship handled via ui_parent
+            condition=True,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_SETTINGS,
+        )
+    ),
+    KEY_MENU_ITEM_RUNTIME_RESOURCES: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_SETTINGS,
+        )
+    ),
+    KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,  # Always visible, parent relationship handled via ui_parent
+            condition=True,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_SETTINGS,
+        )
+    ),
+    KEY_MENU_ITEM_MALCOLM_OS_PLATFORM: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,  # System-level, not config-dependent
+            condition=SYSTEM_INFO["malcolm_iso_install"],
+            is_top_level=True,
+        )
+    ),
+    # -------------------------------------------------------------------------
     # PROFILE AND RUNTIME DEPENDENCIES
     # -------------------------------------------------------------------------
     KEY_CONFIG_ITEM_PROCESS_USER_ID: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_RUNTIME_BIN,
             condition=lambda runtime: bool(runtime),
-            ui_parent=KEY_CONFIG_ITEM_RUNTIME_BIN,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
         )
     ),
     KEY_CONFIG_ITEM_PROCESS_GROUP_ID: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_RUNTIME_BIN,
             condition=lambda runtime: bool(runtime),
-            ui_parent=KEY_CONFIG_ITEM_RUNTIME_BIN,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
         )
     ),
     KEY_CONFIG_ITEM_CONTAINER_NETWORK_NAME: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
             condition=lambda orch: orch != OrchestrationFramework.KUBERNETES,
-            ui_parent=KEY_CONFIG_ITEM_RUNTIME_BIN,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
         )
     ),
     KEY_CONFIG_ITEM_MALCOLM_RESTART_POLICY: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
             condition=lambda orch: orch == OrchestrationFramework.DOCKER_COMPOSE,
-            ui_parent=KEY_CONFIG_ITEM_RUNTIME_BIN,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
         )
     ),
-    # Malcolm profile top-level items
+    # Network menu items
     KEY_CONFIG_ITEM_NGINX_SSL: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         )
     ),
     KEY_CONFIG_ITEM_NGINX_RESOLVER_IPV4: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         )
     ),
     KEY_CONFIG_ITEM_NGINX_RESOLVER_IPV6: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         )
     ),
     KEY_CONFIG_ITEM_USE_DEFAULT_STORAGE_LOCATIONS: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
             condition=lambda orch: orch != OrchestrationFramework.KUBERNETES,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_STORAGE,
         )
     ),
     KEY_CONFIG_ITEM_TRAEFIK_LABELS: DependencySpec(
@@ -159,35 +260,35 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, orch: (
                 profile == PROFILE_MALCOLM and orch == OrchestrationFramework.DOCKER_COMPOSE
             ),
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         )
     ),
     KEY_CONFIG_ITEM_REVERSE_DNS: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_ENRICHMENT,
         )
     ),
     KEY_CONFIG_ITEM_AUTO_OUI: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_ENRICHMENT,
         )
     ),
     KEY_CONFIG_ITEM_AUTO_FREQ: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_ENRICHMENT,
         )
     ),
     KEY_CONFIG_ITEM_OPEN_PORTS: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
@@ -199,14 +300,12 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=None,
             condition=True,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_ENRICHMENT_NETBOX,
         ),
         value=ValueRule(
-            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-            condition=True,
-            default_value=lambda profile: (
-                NetboxMode.LOCAL.value if profile == PROFILE_MALCOLM else NetboxMode.REMOTE.value
-            ),
+            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
+            condition=lambda profile, mode: (profile == PROFILE_HEDGEHOG and mode == NetboxMode.LOCAL.value),
+            default_value=NetboxMode.REMOTE.value,
             only_if_unmodified=False,
         ),
     ),
@@ -214,7 +313,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_STORAGE,
         )
     ),
     KEY_CONFIG_ITEM_CLEAN_UP_OLD_ARTIFACTS: DependencySpec(
@@ -222,7 +321,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             depends_on=None,
             # actually visible in both profiles, as "hedgehog mode" arkime viewer manages PCAP too
             condition=True,
-            is_top_level=True,
+            ui_parent=KEY_MENU_ITEM_STORAGE,
         ),
         value=ValueRule(
             depends_on=[
@@ -242,12 +341,12 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             ),
         ),
     ),
-    # Hedgehog profile items
+    # Hedgehog profile items (visible only in Hedgehog mode, shown in Network tab)
     KEY_CONFIG_ITEM_REMOTE_MALCOLM_HOST: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_HEDGEHOG,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
@@ -260,7 +359,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_HEDGEHOG,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_CONFIG_ITEM_REMOTE_MALCOLM_HOST,
         ),
         value=ValueRule(
             depends_on=[
@@ -280,7 +379,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: (profile == PROFILE_HEDGEHOG) and SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
         value=ValueRule(
             depends_on=[
@@ -300,70 +399,70 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_AUDITLOG: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_CPU: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_DF: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_DISK: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_KMSG: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_MEM: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_NETWORK: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_SYSTEMD: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_AUX_FW_THERMAL: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=SYSTEM_INFO["malcolm_iso_install"],
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_MALCOLM_OS_PLATFORM,
         ),
     ),
     KEY_CONFIG_ITEM_TRAEFIK_HOST: DependencySpec(
@@ -403,37 +502,29 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile in (PROFILE_HEDGEHOG, PROFILE_MALCOLM),
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_ANALYSIS_LIVE,
         )
     ),
     KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=None,
             condition=True,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
         ),
         value=ValueRule(
-            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-            condition=True,
-            default_value=lambda profile: (
-                SearchEngineMode.OPENSEARCH_LOCAL.value
-                if (profile == PROFILE_MALCOLM)
-                else SearchEngineMode.OPENSEARCH_REMOTE.value
+            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE],
+            condition=lambda profile, mode: (
+                profile == PROFILE_HEDGEHOG and mode == SearchEngineMode.OPENSEARCH_LOCAL.value
             ),
+            default_value=SearchEngineMode.OPENSEARCH_REMOTE.value,
+            only_if_unmodified=False,
         ),
-    ),
-    KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE: DependencySpec(
-        visibility=VisibilityRule(
-            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-            condition=lambda profile: profile == PROFILE_MALCOLM,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-        )
     ),
     KEY_CONFIG_ITEM_LS_MEMORY: DependencySpec(
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_RESOURCES,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
@@ -445,7 +536,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
             condition=lambda profile: profile == PROFILE_MALCOLM,
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_RESOURCES,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
@@ -484,7 +575,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, mode: (
                 (profile == PROFILE_MALCOLM) and (mode == SearchEngineMode.OPENSEARCH_LOCAL.value)
             ),
-            ui_parent=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_RESOURCES,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE,
@@ -536,7 +627,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, mode: (
                 (profile == PROFILE_MALCOLM) and (mode == SearchEngineMode.ELASTICSEARCH_REMOTE.value)
             ),
-            ui_parent=KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
@@ -556,6 +647,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             condition=lambda profile, mode: (
                 profile == PROFILE_MALCOLM and mode != SearchEngineMode.ELASTICSEARCH_REMOTE.value
             ),
+            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
         )
     ),
     KEY_CONFIG_ITEM_OPENSEARCH_SECONDARY_MODE: DependencySpec(
@@ -563,6 +655,13 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             depends_on=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
             condition=lambda enabled: bool(enabled),
             ui_parent=KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE,
+        )
+    ),
+    KEY_CONFIG_ITEM_SECONDARY_DOCUMENT_STORE: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_DOCUMENT_STORE,
         )
     ),
     # Index management
@@ -613,6 +712,11 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     # -------------------------------------------------------------------------
     # Parent item: automatically enabled when any capture/analysis method is enabled
     KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_NETWORK,
+        ),
         value=ValueRule(
             depends_on=[
                 KEY_CONFIG_ITEM_PCAP_NETSNIFF,
@@ -663,27 +767,13 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         ),
     ),
     KEY_CONFIG_ITEM_PCAP_TCPDUMP: DependencySpec(
+        # Visibility only — no auto-default. PCAP_NETSNIFF is the default capture engine
+        # for Malcolm/local; tcpdump is opt-in and would otherwise race with netsniff in
+        # observer ordering since their value rules are mutually exclusive.
         visibility=VisibilityRule(
             depends_on=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
             condition=lambda enabled: bool(enabled),
             ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
-        ),
-        value=ValueRule(
-            depends_on=[
-                KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
-                KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-                KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE,
-                KEY_CONFIG_ITEM_PCAP_NETSNIFF,
-                KEY_CONFIG_ITEM_LIVE_ARKIME,
-            ],
-            condition=True,
-            default_value=lambda live_traffic, profile, mode, netsniff, arkime: (
-                bool(live_traffic)
-                and (profile == PROFILE_MALCOLM)
-                and (mode == SearchEngineMode.OPENSEARCH_LOCAL.value)
-                and (not bool(netsniff))
-                and (not bool(arkime))
-            ),
         ),
     ),
     KEY_CONFIG_ITEM_LIVE_ARKIME: DependencySpec(
@@ -805,7 +895,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE: DependencySpec(
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_AUTO_ARKIME],
-            condition=lambda profile, _auto_arkime: profile == PROFILE_MALCOLM,
+            condition=lambda profile, auto_arkime: (profile == PROFILE_MALCOLM) and bool(auto_arkime),
             ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
         ),
         value=ValueRule(
@@ -817,9 +907,15 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     ),
     KEY_CONFIG_ITEM_ARKIME_ALLOW_WISE_CONFIG: DependencySpec(
         visibility=VisibilityRule(
-            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_AUTO_ARKIME],
-            condition=lambda profile, _auto_arkime: profile == PROFILE_MALCOLM,
-            ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
+            depends_on=[
+                KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+                KEY_CONFIG_ITEM_AUTO_ARKIME,
+                KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
+            ],
+            condition=lambda profile, auto_arkime, expose_wise: (
+                (profile == PROFILE_MALCOLM) and bool(auto_arkime) and bool(expose_wise)
+            ),
+            ui_parent=KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
         ),
         value=ValueRule(
             depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
@@ -832,10 +928,13 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[
                 KEY_CONFIG_ITEM_MALCOLM_PROFILE,
-                KEY_CONFIG_ITEM_LIVE_ARKIME,
+                KEY_CONFIG_ITEM_AUTO_ARKIME,
+                KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
             ],
-            condition=lambda profile, live_arkime: (profile != PROFILE_MALCOLM) or bool(live_arkime),
-            ui_parent=KEY_CONFIG_ITEM_AUTO_ARKIME,
+            condition=lambda profile, auto_arkime, expose_wise: (
+                (profile == PROFILE_MALCOLM) and bool(auto_arkime) and bool(expose_wise)
+            ),
+            ui_parent=KEY_CONFIG_ITEM_ARKIME_EXPOSE_WISE,
         ),
         value=ValueRule(
             depends_on=[
@@ -857,8 +956,8 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
     # -------------------------------------------------------------------------
     KEY_CONFIG_ITEM_NETBOX_URL: DependencySpec(
         visibility=VisibilityRule(
-            depends_on=[KEY_CONFIG_ITEM_MALCOLM_PROFILE, KEY_CONFIG_ITEM_NETBOX_MODE],
-            condition=lambda profile, mode: ((profile == PROFILE_MALCOLM) and (mode == NetboxMode.REMOTE.value)),
+            depends_on=KEY_CONFIG_ITEM_NETBOX_MODE,
+            condition=lambda mode: (mode == NetboxMode.REMOTE.value),
             ui_parent=KEY_CONFIG_ITEM_NETBOX_MODE,
         )
     ),
@@ -971,7 +1070,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
                 KEY_CONFIG_ITEM_FILE_CARVE_MODE,
             ],
             condition=lambda enabled, mode: bool(enabled) and (mode != FileExtractionMode.NONE.value),
-            ui_parent=KEY_CONFIG_ITEM_FILE_CARVE_MODE,
+            ui_parent=KEY_CONFIG_ITEM_PIPELINE_ENABLED,
         )
     ),
     KEY_CONFIG_ITEM_FILE_SCAN_RULE_UPDATE: DependencySpec(
@@ -1189,7 +1288,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP, KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS],
             condition=lambda exposed, defaults: bool(exposed) and not bool(defaults),
-            ui_parent=KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP,
+            ui_parent=KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS,
         )
     ),
     KEY_CONFIG_ITEM_FILEBEAT_TCP_PARSE_SOURCE_FIELD: DependencySpec(
@@ -1232,7 +1331,7 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
         visibility=VisibilityRule(
             depends_on=[KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP, KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS],
             condition=lambda exposed, defaults: bool(exposed) and not bool(defaults),
-            ui_parent=KEY_CONFIG_ITEM_EXPOSE_FILEBEAT_TCP,
+            ui_parent=KEY_CONFIG_ITEM_FILEBEAT_TCP_DEFAULTS,
         )
     ),
     # -------------------------------------------------------------------------
@@ -1466,6 +1565,66 @@ DEPENDENCY_CONFIG: Dict[str, DependencySpec] = {
             depends_on=KEY_CONFIG_ITEM_ZEEK_PULL_INTELLIGENCE_FEEDS,
             condition=lambda enabled: bool(enabled),
             ui_parent=KEY_CONFIG_ITEM_ZEEK_PULL_INTELLIGENCE_FEEDS,
+        )
+    ),
+    # Historical Analysis items (always visible, mapped to menu)
+    KEY_CONFIG_ITEM_AUTO_ARKIME: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_ANALYSIS_HISTORICAL,
+        )
+    ),
+    KEY_CONFIG_ITEM_AUTO_SURICATA: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_ANALYSIS_HISTORICAL,
+        )
+    ),
+    KEY_CONFIG_ITEM_AUTO_ZEEK: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_MENU_ITEM_ANALYSIS_HISTORICAL,
+        )
+    ),
+    # Runtime Settings - Containers (always visible, mapped to menu)
+    KEY_CONFIG_ITEM_RUNTIME_BIN: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
+        )
+    ),
+    KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            ui_parent=KEY_MENU_ITEM_RUNTIME_CONTAINERS,
+        )
+    ),
+    KEY_CONFIG_ITEM_IMAGE_ARCH: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=False,
+            # No ui_parent - system architecture is auto-detected, not user-configurable
+        )
+    ),
+    # Malcolm Profile (top-level, no menu parent - appears before menu groups)
+    KEY_CONFIG_ITEM_MALCOLM_PROFILE: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=None,
+            condition=True,
+            is_top_level=True,
+        )
+    ),
+    # PCAP Node Name (used by both live and historical)
+    KEY_CONFIG_ITEM_PCAP_NODE_NAME: DependencySpec(
+        visibility=VisibilityRule(
+            depends_on=KEY_CONFIG_ITEM_MALCOLM_PROFILE,
+            condition=lambda profile: profile == PROFILE_MALCOLM,
+            ui_parent=KEY_CONFIG_ITEM_CAPTURE_LIVE_NETWORK_TRAFFIC,
         )
     ),
 }

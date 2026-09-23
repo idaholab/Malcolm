@@ -11,6 +11,22 @@ A customtkinter scrollable frame with consistent styling.
 import customtkinter
 
 
+class ScrollableFrame(customtkinter.CTkScrollableFrame):
+    """Scrollable frame wrapper with consistent styling."""
+
+    def __init__(self, parent, label_text="", **kwargs):
+        """Initialize the scrollable frame.
+
+        Args:
+            parent: Parent widget
+            label_text: Optional label for the frame
+            **kwargs: Additional arguments passed to CTkScrollableFrame
+        """
+        super().__init__(parent, label_text=label_text, label_fg_color="transparent", **kwargs)
+        # Expose the inner scrollable frame for convenience
+        self.scrollable_frame = self
+
+
 def create_scrollable_frame(parent, label_text="", fill_expand=True, padding=(10, 10)):
     """
     Create a scrollable frame widget with consistent styling.

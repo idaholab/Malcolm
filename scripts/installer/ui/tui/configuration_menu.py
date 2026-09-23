@@ -59,13 +59,26 @@ class ConfigurationMenu(BaseMenu):
         for row in rows:
             if not row.visible:
                 continue
+            # Check if it's a MenuItem or ConfigItem
             item = self.malcolm_config.get_item(row.key)
-            if not item:
+            menu_item = self.malcolm_config.get_menu_item(row.key) if not item else None
+            
+            if not item and not menu_item:
                 continue
-            value_display = ValueFormatter.format_config_value(item.label, item.get_value())
-            item_number = len(self.displayed_keys) + 1
-            self.displayed_keys.append(row.key)
-            self.menu_builder.add_tree_item(row.prefix, item_number, item.label, value_display)
+            
+            if menu_item:
+                label = menu_item.label or row.key
+                if not label.endswith(" Settings"):
+                    label = f"{label} Settings"
+                item_number = len(self.displayed_keys) + 1
+                self.displayed_keys.append(row.key)
+                self.menu_builder.add_tree_item(row.prefix, item_number, label, "", show_value=False)
+            else:
+                # ConfigItem - display with value
+                value_display = ValueFormatter.format_config_value(item.label, item.get_value())
+                item_number = len(self.displayed_keys) + 1
+                self.displayed_keys.append(row.key)
+                self.menu_builder.add_tree_item(row.prefix, item_number, item.label, value_display, show_value=True)
 
         self.menu_builder.add_action_section()
         self.menu_builder.add_action(
@@ -153,13 +166,25 @@ class ConfigurationMenu(BaseMenu):
         self.ask_string("Press Enter to continue...", default="")
 
     def _handle_item_selection(self, item_index: int) -> None:
-        """Handle selection of a configuration item.
+        """Handle selection of a configuration item or menu item.
 
         Args:
             item_index: The index of the selected item
         """
         selected_key = self.displayed_keys[item_index]
+        
+        # Check if it's a MenuItem (non-editable) or ConfigItem
+        menu_item = self.malcolm_config.get_menu_item(selected_key)
+        if menu_item:
+            # MenuItem - toggle expanded state to show/hide children
+            self.malcolm_config.toggle_menu_item_expanded(selected_key)
+            # Rebuild menu to show/hide children
+            self.build_menu()
+            return
+        
         item_to_edit = self.malcolm_config.get_item(selected_key)
+        if not item_to_edit:
+            return
 
         while True:
             new_value = self.prompt_config_item(item_to_edit)

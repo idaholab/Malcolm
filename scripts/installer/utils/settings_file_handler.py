@@ -240,33 +240,32 @@ class SettingsFileHandler:
             configuration_section: Configuration settings from file
 
         Returns:
-            List of configuration keys that were missing and used defaults
+            List of registered configuration keys absent from the settings file (which therefore kept their defaults).
+            Sentinel values count as present — the user explicitly wrote them to mean "keep default".
         """
-        missing_configuration = []
-
         # apply settings to MalcolmConfig
         for key, value in configuration_section.items():
-            if self.malcolm_config.get_item(key) is not None:
-                try:
-                    # Skip sentinel values (leave as default None/empty)
-                    if value == CONFIG_ITEM_NONE_SENTINEL:
-                        InstallerLogger.debug(f"Skipping configuration item {key} (sentinel value)")
-                        continue
-                    # delegate normalization and validation to MalcolmConfig
-                    self.malcolm_config.apply_default(key, value)
-                    InstallerLogger.debug(f"Set configuration item {key} = {value}")
-                except Exception as e:
-                    InstallerLogger.warning(f"Failed to set configuration item {key}: {e}")
-            else:
+            if self.malcolm_config.get_item(key) is None:
                 InstallerLogger.warning(f"Unknown configuration item in settings file: {key}")
+                continue
+            if value == CONFIG_ITEM_NONE_SENTINEL:
+                InstallerLogger.debug(f"Skipping configuration item {key} (sentinel value)")
+                continue
+            try:
+                self.malcolm_config.apply_default(key, value)
+                InstallerLogger.debug(f"Set configuration item {key} = {value}")
+            except Exception as e:
+                InstallerLogger.warning(f"Failed to set configuration item {key}: {e}")
 
-        # identify configuration items that weren't set and use defaults
-        for item_key, item in self.malcolm_config.get_all_config_items().items():
-            if not item.is_modified:
-                missing_configuration.append(item_key)
-                InstallerLogger.debug(
-                    f"Configuration item {item_key} not found in settings file, using default: {item.get_value()}"
-                )
+        file_keys = set(configuration_section.keys())
+        missing_configuration = [
+            item_key for item_key in self.malcolm_config.get_all_config_items() if item_key not in file_keys
+        ]
+        for item_key in missing_configuration:
+            item = self.malcolm_config.get_item(item_key)
+            InstallerLogger.debug(
+                f"Configuration item {item_key} not found in settings file, using default: {item.get_value() if item else None}"
+            )
 
         return missing_configuration
 

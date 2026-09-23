@@ -9,9 +9,9 @@ Provides consistently styled label-input field pairs.
 """
 
 import customtkinter
-from components.styles import PADDING_LARGE, PADDING_SMALL
-from .font_manager import FontManager
-from .frame import Frame
+from scripts.installer.ui.gui.components.styles import PADDING_LARGE, PADDING_SMALL
+from scripts.installer.ui.gui.components.font_manager import FontManager
+from scripts.installer.ui.gui.components.frame import Frame
 
 
 class LabeledInput:

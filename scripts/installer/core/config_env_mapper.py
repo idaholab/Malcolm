@@ -724,8 +724,8 @@ class EnvMapper:
             # orchestration mode: authoritative CONTAINER_RUNTIME_KEY
             self._reverse_precedence_by_item[KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE] = [
                 KEY_ENV_CONTAINER_RUNTIME_KEY,
-                # We don't derive orchestration mode from polling, they could have reason
-                #   to set polling = false without using kubernetes. runtime is enough.
+                # polling flags are not authoritative — users may disable polling without
+                # using Kubernetes; CONTAINER_RUNTIME_KEY is the only signal we trust.
                 # KEY_ENV_PCAP_PIPELINE_POLLING,
                 # KEY_ENV_FILEBEAT_WATCHER_POLLING,
             ]

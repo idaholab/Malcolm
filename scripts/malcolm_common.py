@@ -208,6 +208,7 @@ class UserInputDefaultsBehavior(IntFlag):
 class UserInterfaceMode(IntFlag):
     InteractionDialog = auto()
     InteractionInput = auto()
+    InteractionGUI = auto()
 
 
 class DialogBackException(Exception):
@@ -920,6 +921,8 @@ def ChooseOne(
             "height": max(_h, 12),
             "width": _w,
         }
+        if defaulted is not None:
+            kwargs["default_item"] = defaulted[0]
         code, reply = MainDialog.radiolist(str(prompt), **kwargs)
         if code == Dialog.CANCEL or code == Dialog.ESC:
             raise DialogCanceledException(prompt)
