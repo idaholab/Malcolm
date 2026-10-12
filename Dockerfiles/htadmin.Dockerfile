@@ -31,8 +31,10 @@ ARG BOOTSTRAP_VERSION=3.3.6
 ENV PHP_VERSION=$PHP_VERSION
 ENV BOOTSTRAP_VERSION=$BOOTSTRAP_VERSION
 
-ARG HTADMIN_REF=php-8
-ENV HTADMIN_URL="https://codeload.github.com/mmguero-dev/htadmin/tar.gz/refs/heads/$HTADMIN_REF"
+# Keep the upstream source fixed and verify the exact archive before extracting it.
+ENV HTADMIN_COMMIT="eedf183a951d4b7c6f03beb9b53f1a98fb3de71f"
+ENV HTADMIN_SHA256="66beaeaa2b680f178b9a3260a675c35f8c85f2a6e9db00ac15bdb51fcee9c243"
+ENV HTADMIN_URL="https://codeload.github.com/mmguero-dev/htadmin/tar.gz/${HTADMIN_COMMIT}"
 
 RUN apt-get -q update && \
     apt-get -y -q --allow-downgrades --allow-remove-essential --allow-change-held-packages --no-install-recommends install \
@@ -51,7 +53,9 @@ RUN apt-get -q update && \
     mkdir -p /run/php && \
   cd /tmp && \
     mkdir -p ./htadmin && \
-    curl -sSL "$HTADMIN_URL" | tar xzvf - -C ./htadmin --strip-components 1 && \
+    curl -fsSL "$HTADMIN_URL" -o ./htadmin.tar.gz && \
+    echo "${HTADMIN_SHA256}  ./htadmin.tar.gz" | sha256sum -c - && \
+    tar xzf ./htadmin.tar.gz -C ./htadmin --strip-components 1 && \
     find /tmp/htadmin -type f -name index.php -execdir mv index.php htadmin.php \; && \
     find /tmp/htadmin -type f -exec sed -i 's/index.php/htadmin.php/g' "{}" \; && \
     mv /tmp/htadmin/sites/html/htadmin /var/www/htadmin && \
@@ -75,6 +79,8 @@ ADD --chmod=644 docs/images/favicon/favicon.ico /var/www/htadmin/
 ADD --chmod=644 htadmin/supervisord.conf /supervisord.conf
 ADD --chmod=755 htadmin/htadmin.sh /usr/local/bin/
 ADD --chmod=644 htadmin/src/bootstrap.* /var/www/htadmin/
+ADD --chmod=644 htadmin/src/malcolm.css /var/www/htadmin/
+ADD --chmod=644 docs/images/icon/icon.svg /var/www/htadmin/malcolm-icon.svg
 ADD --chmod=644 htadmin/src/includes/*.php /var/www/htadmin/includes/
 ADD --chmod=644 htadmin/php/php.ini /etc/php/$PHP_VERSION/fpm/php.ini
 ADD --chmod=644 htadmin/nginx/sites-available/default /etc/nginx/sites-available/default

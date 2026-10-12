@@ -1,10 +1,10 @@
+# syntax=docker/dockerfile:1
 # Copyright (c) 2026 Battelle Energy Alliance, LLC.  All rights reserved.
 
 ####################################################################################
 # first build documentation with jekyll
 FROM ghcr.io/mmguero-dev/jekyll:latest AS docbuild
 
-ARG GITHUB_TOKEN
 ARG VCS_REVISION
 ENV VCS_REVISION=$VCS_REVISION
 
@@ -18,8 +18,9 @@ ADD --chmod=644 https://use.fontawesome.com/releases/v4.7.0/css/font-awesome-css
 WORKDIR /site
 
 # build documentation, remove unnecessary files, then massage a bit to work nicely with NGINX (which will be serving it)
-RUN find /site -type f -name "*.md" -exec sed -i "s/{{[[:space:]]*site.github.build_revision[[:space:]]*}}/$VCS_REVISION/g" "{}" \; && \
-    ( [ -n "${GITHUB_TOKEN}" ] && export JEKYLL_GITHUB_TOKEN="${GITHUB_TOKEN}" || true ) && \
+#   GITHUB_TOKEN is provided as a build secret (not a build argument) so it is not recorded in the image history
+RUN --mount=type=secret,id=GITHUB_TOKEN,env=JEKYLL_GITHUB_TOKEN \
+    find /site -type f -name "*.md" -exec sed -i "s/{{[[:space:]]*site.github.build_revision[[:space:]]*}}/$VCS_REVISION/g" "{}" \; && \
     sed -i "s/^\(show_downloads:\).*/\1 false/" /site/_config.yml && \
     sed -i "s/^\(offline_mode:\).*/\1 true/" /site/_config.yml && \
     sed -i -e "/^mastodon:/,+2d" /site/_config.yml && \
@@ -128,12 +129,15 @@ ENV NGINX_LDAP_TLS_STUNNEL_CHECK_HOST=$NGINX_LDAP_TLS_STUNNEL_CHECK_HOST
 ENV NGINX_LDAP_TLS_STUNNEL_CHECK_IP=$NGINX_LDAP_TLS_STUNNEL_CHECK_IP
 ENV NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL=$NGINX_LDAP_TLS_STUNNEL_VERIFY_LEVEL
 
-# build latest openresty with nginx-auth-ldap
-ENV NGINX_AUTH_LDAP_BRANCH=master
+# Build OpenResty with an immutable nginx-auth-ldap revision.
+# This module executes inside the authentication reverse proxy. BuildKit must
+# reject changed source archives rather than building an unverified branch HEAD.
+# Update the revision and SHA-256 together when upgrading the LDAP module.
+ARG NGINX_AUTH_LDAP_REVISION=394261b38c77ef692d98e9a05d28843b5a355921
 
 # NGINX source
 COPY --from=getresty /usr/local/src/openresty/openresty.tar.gz /openresty.tar.gz
-ADD https://codeload.github.com/mmguero-dev/nginx-auth-ldap/tar.gz/$NGINX_AUTH_LDAP_BRANCH /nginx-auth-ldap.tar.gz
+ADD --checksum=sha256:925d2b368db64d4bee6b17bb5b1958c44d20a1b945ac194f1db4fdd551614743 https://codeload.github.com/mmguero-dev/nginx-auth-ldap/tar.gz/$NGINX_AUTH_LDAP_REVISION /nginx-auth-ldap.tar.gz
 
 # component icons from original sources and stuff for offline landing page
 ADD https://opensearch.org/wp-content/uploads/2025/01/opensearch_logo_default.svg /usr/share/nginx/html/assets/img/
