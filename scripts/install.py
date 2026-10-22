@@ -92,6 +92,11 @@ from scripts.installer.ui.tui.tui_installer_ui import TUIInstallerUI
 from scripts.installer.utils.artifact_utils import decide_and_handle_artifacts
 from scripts.installer.utils.env_file_utils import apply_extra_env_settings
 from scripts.installer.utils.logger_utils import InstallerLogger
+from scripts.installer.utils.host_memory_preflight import (
+    host_memory_check_applies,
+    linux_swap_total_kib,
+    low_memory_warning,
+)
 from scripts.installer.utils.settings_file_handler import SettingsFileHandler
 
 
@@ -466,6 +471,28 @@ def determine_presentation_mode(parsed_args: argparse.Namespace) -> Presentation
         return dui_mode
 
     return PresentationMode.MODE_TUI
+
+
+def show_host_memory_warning(malcolm_config, ui_impl, presentation_mode: PresentationMode) -> bool:
+    """Warn before config export/write when this host is clearly too small for the full local stack.
+
+    Read-only: never changes settings. Skipped for Hedgehog, Kubernetes, and a remote primary OpenSearch.
+    """
+    if not host_memory_check_applies(
+        malcolm_config.get_value(KEY_CONFIG_ITEM_MALCOLM_PROFILE),
+        malcolm_config.get_value(KEY_CONFIG_ITEM_DOCKER_ORCHESTRATION_MODE),
+        malcolm_config.get_value(KEY_CONFIG_ITEM_OPENSEARCH_PRIMARY_MODE),
+    ):
+        return False
+
+    warning = low_memory_warning(SYSTEM_INFO.get('total_mem_bytes'), linux_swap_total_kib())
+    if warning is None:
+        return False
+
+    InstallerLogger.warning(warning)
+    if ui_impl is not None and presentation_mode in (PresentationMode.MODE_TUI, PresentationMode.MODE_DUI):
+        ui_impl.display_message(warning)
+    return True
 
 
 def main():
@@ -874,6 +901,9 @@ def main():
             summary = format_validation_summary(issues)
             InstallerLogger.error(summary)
             sys.exit(2)
+
+    # Surface unsupported local host memory before exporting or saving settings.
+    show_host_memory_warning(malcolm_config, ui_impl, presentation_mode)
 
     # Export configuration to malcolm config file if requested (no writes to env yet)
     if parsed_args.exportMalcolmConfigFile is not None:

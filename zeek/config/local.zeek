@@ -12,7 +12,6 @@ global disable_log_passwords = (getenv("ZEEK_DISABLE_LOG_PASSWORDS") == true_reg
 global disable_ssl_validate_certs = (getenv("ZEEK_DISABLE_SSL_VALIDATE_CERTS") == true_regex) ? T : F;
 global disable_track_all_assets = (getenv("ZEEK_DISABLE_TRACK_ALL_ASSETS") == true_regex) ? T : F;
 global disable_best_guess_ics = (getenv("ZEEK_DISABLE_BEST_GUESS_ICS") == true_regex) ? T : F;
-global disable_detect_routers = (getenv("ZEEK_DISABLE_DETECT_ROUTERS") == true_regex) ? T : F;
 global c1222_authentication_value = (getenv("ZEEK_C1222_AUTHENTICATION_VALUE") == true_regex) ? T : F;
 global c1222_identification_service =(getenv("ZEEK_C1222_IDENTIFICATION_SERVICE") == true_regex) ? T : F;
 global c1222_read_write_service = (getenv("ZEEK_C1222_READ_WRITE_SERVICE") == true_regex) ? T : F;
@@ -117,7 +116,11 @@ global json_format = (getenv("ZEEK_JSON") == true_regex) ? T : F;
 @endif
 @load policy/protocols/conn/vlan-logging
 @load policy/protocols/conn/mac-logging
+@load policy/protocols/conn/multicast-participants
 @load policy/protocols/modbus/known-masters-slaves
+@if (!disable_spicy_zip)
+  @load policy/files/zip/register
+@endif
 @load policy/frameworks/notice/community-id
 @load ./iana_registry.zeek
 @load ./login.zeek
@@ -127,16 +130,71 @@ global json_format = (getenv("ZEEK_JSON") == true_regex) ? T : F;
  @load ./guess.zeek
 @endif
 
-@if (!disable_detect_routers)
-  @load ./known-routers.zeek
-@endif
-
 @load packages
 @if (!disable_ics_all)
   @load ACID/scripts
 @endif
 @if (!disable_intel)
   @load intel
+
+  # When reading a PCAP file, hold off on packet processing until every intel file has
+  #   finished its initial read. The input framework loads Intel::read_files asynchronously,
+  #   so without this, packets at the start of a PCAP (or all of a small one) are processed
+  #   against an empty or partially-loaded intel store and never generate intel.log hits.
+  #   Live capture is left alone, and files that don't exist aren't counted, since they
+  #   never raise Input::end_of_data and would otherwise leave processing suspended. If an
+  #   intel file fails outright, stop waiting and continue so the PCAP still gets processed
+  #   rather than hanging. File-level reader problems (e.g., a header missing a required field)
+  #   are reported as "<file>/Input::READER_...: ..." reporter warnings/errors and leave the
+  #   stream open waiting for the file to be fixed, so they never raise Input::end_of_data;
+  #   per-line problems are prefixed "<file>:<line>: ..." instead and don't match.
+  global intel_files_pending: count = 0;
+
+  event zeek_init() &priority=10 {
+    if (!reading_traces())
+      return;
+    for (intel_file in Intel::read_files) {
+      if (file_size(intel_file) >= 0.0)
+        ++intel_files_pending;
+    }
+    if (intel_files_pending > 0)
+      suspend_processing();
+  }
+
+  event Input::end_of_data(name: string, source: string) {
+    if ((intel_files_pending > 0) && (source in Intel::read_files)) {
+      --intel_files_pending;
+      if (intel_files_pending == 0)
+        continue_processing();
+    }
+  }
+
+  event Intel::read_error(desc: Input::EventDescription, message: string, level: Reporter::Level) {
+    if ((intel_files_pending > 0) && (level == Reporter::ERROR) && (desc$source in Intel::read_files)) {
+      intel_files_pending = 0;
+      continue_processing();
+    }
+  }
+
+  function intel_files_reader_problem(msg: string) {
+    if (intel_files_pending == 0)
+      return;
+    for (intel_file in Intel::read_files) {
+      if (starts_with(msg, intel_file + "/Input::READER_")) {
+        intel_files_pending = 0;
+        continue_processing();
+        return;
+      }
+    }
+  }
+
+  event reporter_warning(t: time, msg: string, location: string) {
+    intel_files_reader_problem(msg);
+  }
+
+  event reporter_error(t: time, msg: string, location: string) {
+    intel_files_reader_problem(msg);
+  }
 @endif
 @load custom
 
@@ -279,9 +337,6 @@ event zeek_init() &priority=-5 {
   }
   if (disable_spicy_wireguard) {
     Spicy::disable_protocol_analyzer(Analyzer::ANALYZER_SPICY_WIREGUARD);
-  }
-  if (disable_spicy_zip) {
-    Spicy::disable_file_analyzer(Files::ANALYZER_SPICY_ZIP);
   }
 
   # register additional ports for Analyzers

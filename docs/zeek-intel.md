@@ -7,7 +7,7 @@
     - [Mandiant](#ZeekIntelMandiant)
     - [Endorsement Disclaimer](#IntelFeedDisclaimer)
 
-To quote Zeek's [Intelligence Framework](https://docs.zeek.org/en/master/frameworks/intel.html) documentation, "The goals of Zeek’s Intelligence Framework are to consume intelligence data, make it available for matching, and provide infrastructure to improve performance and memory utilization. Data in the Intelligence Framework is an atomic piece of intelligence such as an IP address or an e-mail address. This atomic data will be packed with metadata such as a freeform source field, a freeform descriptive field, and a URL which might lead to more information about the specific item." Zeek [intelligence](https://docs.zeek.org/en/master/scripts/base/frameworks/intel/main.zeek.html) [indicator types](https://docs.zeek.org/en/master/scripts/base/frameworks/intel/main.zeek.html#type-Intel::Type) include IP addresses, URLs, file names, hashes, email addresses, and more.
+To quote Zeek's [Intelligence Framework](https://docs.zeek.org/en/master/frameworks/intel.html) documentation, "The goals of Zeek's Intelligence Framework are to consume intelligence data, make it available for matching, and provide infrastructure to improve performance and memory utilization. Data in the Intelligence Framework is an atomic piece of intelligence such as an IP address or an e-mail address. This atomic data will be packed with metadata such as a freeform source field, a freeform descriptive field, and a URL which might lead to more information about the specific item." Zeek [intelligence](https://docs.zeek.org/en/master/scripts/base/frameworks/intel/main.zeek.html) [indicator types](https://docs.zeek.org/en/master/scripts/base/frameworks/intel/main.zeek.html#type-Intel::Type) include IP addresses, URLs, file names, hashes, email addresses, and more.
 
 Malcolm doesn't come bundled with intelligence files from any particular feed, but they can be easily included into a local instance. On [startup]({{ site.github.repository_url }}/blob/{{ site.github.build_revision }}/zeek/scripts/zeek_intel_setup.sh), Malcolm's `ghcr.io/idaholab/malcolm/zeek` container enumerates the subdirectories under `./zeek/intel` (which is [bind mounted](https://docs.docker.com/storage/bind-mounts/) into the container's runtime) and configures Zeek so those intelligence files will be automatically included in its local policy. Subdirectories under `./zeek/intel` that contain their own `__load__.zeek` file will be `@load`-ed as-is, while subdirectories containing "loose" intelligence files will be [loaded](https://docs.zeek.org/en/master/frameworks/intel.html#loading-intelligence) automatically with a `redef Intel::read_files` directive.
 
@@ -24,6 +24,8 @@ As multiple instances of this container may be running in a Malcolm deployment (
 Additional settings governing Malcolm's behavior when pulling from threat intelligence feeds may be specified during Malcolm configuration (see the [**end-to-end Malcolm installation example**](malcolm-hedgehog-e2e-iso-install.md#MalcolmConfig)). The global [`ZEEK_INTEL_FEED_SINCE`](malcolm-config.md#MalcolmConfigEnvVars) value can be overridden per-feed by adding a `since` value to the corresponding configuration YAML file described below.
 
 Setting `ZEEK_DISABLE_INTEL_OFFLINE=true` (in `./config/zeek-offline.env`) or `ZEEK_DISABLE_INTEL_LIVE=true` (in `./config/zeek-live.env`) disables loading of the `./zeek/intel` scripts for the `zeek` or `zeek-live` containers, respectively. This is useful when you want threat intelligence applied to live traffic but not to uploaded PCAP (historical) processing.
+
+When processing [uploaded PCAP](upload.md#Upload), the `zeek` container waits for all of its intelligence files to finish loading into memory before it begins processing packets, so that indicators can match traffic from the very start of each PCAP file. Zeek loads intelligence files in the background, and without this wait, packets at the beginning of a PCAP file (or every packet in a small one) could be processed before the intelligence data was available and would never generate `intel.log` entries. Because the intelligence files are loaded anew for each PCAP file, large intelligence feeds add a corresponding delay to the start of processing for every uploaded PCAP file. If an intelligence file exists but can't be read (for example, if its header is missing a required field), Zeek logs a warning to `reporter.log`, stops waiting, and processes the PCAP file using whatever intelligence data has loaded by then, so some matches may be missed. Individual malformed lines in an intelligence file are skipped with a warning and don't affect the wait. The `zeek-live` container is unaffected by this behavior, as live traffic is processed as intelligence files are loaded and refreshed.
 
 For a public example of Zeek intelligence files, see Critical Path Security's [repository](https://github.com/CriticalPathSecurity/Zeek-Intelligence-Feeds), which aggregates data from various other threat feeds into Zeek's format.
 
@@ -71,6 +73,8 @@ Each Zeek intelligence item matches a single value on its own, so Malcolm conver
 * Branches of an `OR` that can't be expressed (other `AND` combinations such as an address with a port, negations, `LIKE`, `MATCHES`, ordering comparisons) are dropped while the other branches are kept. Indicators with nothing that can be expressed, including those relating separate observations (`AND` or `FOLLOWEDBY` between observations, `WITHIN`, `REPEATS`, and `START`/`STOP` qualifiers), are skipped with a warning.
 
 Malcolm uses the [stix2](https://pypi.org/project/stix2/) and [taxii2-client](https://pypi.org/project/taxii2-client/) Python libraries to access STIX™/TAXII™ threat intelligence feeds.
+
+STIX 2.1 indicators with a numeric `confidence` (0-100) preserve it in the extended Zeek intel `meta.confidence` field and convert it to the 0-10 CIF confidence scale. Indicators without confidence do not get an invented value. Confidence is not a threat severity score.
 
 ## <a name="ZeekIntelMISP"></a>MISP
 
@@ -1024,6 +1028,8 @@ These other parameters can also optionally be provided:
 ```
 
 Malcolm uses the [google/mandiant-ti-client](https://github.com/google/mandiant-ti-client) Python library to access Mandiant threat intelligence feeds.
+
+Mandiant `mscore` (0-100) represents confidence that an indicator is malicious, not its separate threat rating. Valid scores populate `meta.confidence` and the 0-10 CIF confidence field. Non-numeric and out-of-range scores are omitted. When `include_threat_rating: true`, a numeric Mandiant `threat_rating.threat_score` (0-100) populates the separate `meta.threat_score` field. Missing, malformed, and out-of-range values are omitted; mapping uses the current response without additional per-indicator API requests. The default `include_threat_rating: false` remains unchanged.
 
 ## <a name="IntelFeedDisclaimer"></a>Disclaimer
 
