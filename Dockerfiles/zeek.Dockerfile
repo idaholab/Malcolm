@@ -55,9 +55,12 @@ ENV SUPERCRONIC_VERSION="0.2.51"
 ENV SUPERCRONIC_URL="https://github.com/aptible/supercronic/releases/download/v$SUPERCRONIC_VERSION/supercronic-linux-"
 ENV SUPERCRONIC_CRONTAB="${ZEEK_DIR}/etc/crontab"
 
+ENV JQ_VERSION="1.8.2"
+ENV JQ_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-linux-"
+
 # build and install system packages, zeek, spicy and plugins
 RUN --mount=type=bind,source=shared/bin/install-verified-binary.sh,target=/usr/local/share/install-verified-binary.sh,ro \
-    --mount=type=bind,source=shared/checksums/binaries.sha256,target=/usr/local/share/binaries.sha256,ro \
+    --mount=type=bind,source=shared/pins/binaries.sha256,target=/usr/local/share/binaries.sha256,ro \
     apt-get -q update && \
     apt-get install -q -y --no-install-recommends \
       bc \
@@ -75,7 +78,6 @@ RUN --mount=type=bind,source=shared/bin/install-verified-binary.sh,target=/usr/l
       git \
       gnupg2 \
       iproute2 \
-      jq \
       less \
       libatomic1 \
       libcap2-bin \
@@ -127,6 +129,7 @@ RUN --mount=type=bind,source=shared/bin/install-verified-binary.sh,target=/usr/l
       zlib1g-dev && \
     python3 -m pip install --break-system-packages --no-cache-dir -r /usr/local/src/requirements.txt && \
     sh /usr/local/share/install-verified-binary.sh /usr/local/bin/supercronic "${SUPERCRONIC_URL}{arch}" "supercronic_${SUPERCRONIC_VERSION}_linux_{arch}" && \
+    sh /usr/local/share/install-verified-binary.sh /usr/local/bin/jq "${JQ_URL}{arch}" "jq_${JQ_VERSION}_linux_{arch}" && \
     cd "${ZEEK_DIR}"/share/zeek/site && \
       COREPACK_DEFAULT_TO_LATEST=0 /usr/share/nodejs/corepack/shims/npm install redis@6.3.0 && \
     cd /tmp && \
@@ -154,6 +157,10 @@ RUN --mount=type=bind,source=shared/bin/install-verified-binary.sh,target=/usr/l
     cd /tmp && \
     apt-get clean && \
       rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/cache/*/*
+
+# make certifi use the system store (populated from /var/local/ca-trust on startup)
+RUN CERTIFI_PEM="$(python3 -c 'import certifi; print(certifi.where())')" && \
+    ln -sf /etc/ssl/certs/ca-certificates.crt "$CERTIFI_PEM"
 
 # add configuration and scripts
 COPY --from=ghcr.io/mmguero-dev/gostatic:latest@sha256:cba944f026b430ba5db45f563b32b0ad849703ae5996d3a30ce5deffd1ef9112 --chmod=755 /goStatic /usr/bin/goStatic
@@ -289,7 +296,6 @@ ENV ZEEK_DISABLE_STATS=$ZEEK_DISABLE_STATS
 ENV ZEEK_DISABLE_LOG_PASSWORDS=$ZEEK_DISABLE_LOG_PASSWORDS
 ENV ZEEK_DISABLE_SSL_VALIDATE_CERTS=$ZEEK_DISABLE_SSL_VALIDATE_CERTS
 ENV ZEEK_DISABLE_TRACK_ALL_ASSETS=$ZEEK_DISABLE_TRACK_ALL_ASSETS
-ENV ZEEK_DISABLE_DETECT_ROUTERS=$ZEEK_DISABLE_DETECT_ROUTERS
 ENV ZEEK_DISABLE_IANA_LOOKUP=$ZEEK_DISABLE_IANA_LOOKUP
 ENV ZEEK_DISABLE_BEST_GUESS_ICS=$ZEEK_DISABLE_BEST_GUESS_ICS
 
